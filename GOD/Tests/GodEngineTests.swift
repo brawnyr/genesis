@@ -37,3 +37,12 @@ import Testing
     engine.clearLayer(0)
     #expect(engine.layers[0].hits.count == 0)
 }
+
+@Test @MainActor func signalLevelsUpdateDuringPlayback() {
+    let engine = GodEngine()
+    for level in engine.channelSignalLevels {
+        #expect(level == 0.0)
+    }
+    #expect(engine.channelSignalLevels.count == 8)
+    #expect(engine.channelTriggered.count == 8)
+}

@@ -7,6 +7,8 @@ class GodEngine: ObservableObject {
     @Published var padBank = PadBank()
     @Published var metronome = Metronome()
     @Published var capture = GodCapture()
+    @Published var channelSignalLevels: [Float] = Array(repeating: 0, count: 8)
+    @Published var channelTriggered: [Bool] = Array(repeating: false, count: 8)
 
     var voices: [Voice] = []
 
@@ -56,6 +58,13 @@ class GodEngine: ObservableObject {
 
         let vel = Float(velocity) / 127.0
         voices.append(Voice(sample: sample, velocity: vel))
+
+        DispatchQueue.main.async {
+            self.channelTriggered[padIndex] = true
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                self.channelTriggered[padIndex] = false
+            }
+        }
     }
 
     func processBlock(frameCount: Int) -> [Float] {
@@ -107,6 +116,28 @@ class GodEngine: ObservableObject {
             var v = voice
             let done = v.fill(into: &output, count: frameCount)
             return done ? nil : v
+        }
+
+        // Calculate per-channel signal levels (peak detection)
+        var newLevels = Array<Float>(repeating: 0, count: 8)
+        for voice in voices {
+            for i in 0..<8 {
+                if let padSample = padBank.pads[i].sample,
+                   padSample.name == voice.sample.name {
+                    let remaining = min(frameCount, voice.sample.data.count - voice.position)
+                    if remaining > 0 {
+                        let start = max(0, voice.position)
+                        let end = min(voice.sample.data.count, start + remaining)
+                        for j in start..<end {
+                            newLevels[i] = max(newLevels[i], abs(voice.sample.data[j] * voice.velocity))
+                        }
+                    }
+                }
+            }
+        }
+
+        DispatchQueue.main.async { [newLevels] in
+            self.channelSignalLevels = newLevels
         }
 
         // Capture
