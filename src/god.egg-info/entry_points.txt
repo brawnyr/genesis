@@ -1,2 +1,0 @@
-[console_scripts]
-god = god.main:run
