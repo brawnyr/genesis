@@ -1,26 +1,32 @@
-# cbeat
+# GOD — Genesis On Disk
 
-Terminal-based MPC-style beat production tool.
+Terminal-based loop production process.
 
 ## What This Is
-A TUI DAW focused on pad-based sample triggering, MPC-style loop recording, and sample manipulation. Built for a fast, hands-on workflow using an Arturia MiniLab 3 as the primary input.
+A TUI loop-stacking instrument driven by an Arturia MiniLab 3. Not a DAW. A process. Play pads, stack patterns, capture output.
 
-## Core Concepts
-- **TUI dashboard** with panels: pad grid, step sequencer, mixer, waveform display
-- **MiniLab 3** pads are the primary instrument input (MIDI)
-- **MPC workflow**: set bar length, hit record, play pads, quantize, loop
-- **Sample manipulation**: chop, pitch shift, time stretch, effects
-- **Splice** is the primary sample source
+## Core Workflow
+- Set tempo (whole numbers) and bar length (1, 2, or 4 bars)
+- Play MiniLab 3 pads — samples trigger and loop
+- Stack patterns: each layer loops, you keep adding on top
+- Patterns have on/off, volume, color/symbol-coded status
+- **GOD button**: arms capture — on next loop pass, records all output to disk
+- Master volume control
+
+## Visual Language
+- Colors and symbols indicate pattern state (playing, muted, etc.)
+- Clean, modern TUI — no clutter, no note grids, no piano roll
+- You play it, you hear it, you feel it
 
 ## Tech Stack
 - Python
-- TUI: `textual` or `rich`
+- TUI: `textual`
 - MIDI: `mido` + `python-rtmidi`
-- Audio: `sounddevice`, `pedalboard` (effects)
-- Keep it lightweight
+- Audio: `sounddevice`
+- Keep it light
 
 ## Principles
-- Keep it light — minimal dependencies, fast startup
-- Build for the workflow, not features
-- MiniLab 3 is always the primary input
-- Terminal-first, may become a standalone app later
+- Light and fast
+- Performance-first — you play, it records
+- Iterate constantly
+- No bloat, no DAW features you won't use
