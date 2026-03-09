@@ -23,8 +23,12 @@ class GodEngine: ObservableObject {
     private var audioLayers: [Layer] = (0..<8).map { Layer(index: $0, name: "PAD \($0 + 1)") }
     private var audioCaptureState: GodCapture.State = .idle
     var voices: [Voice] = []
+    let midiRingBuffer = MIDIRingBuffer()
+
+    private static let ccToLayerOffset = 14
 
     private var pendingLevels: [Float] = Array(repeating: 0, count: 8)
+    private var pendingTriggers: [Bool] = Array(repeating: false, count: 8)
     private var uiUpdateCounter = 0
 
     // Sync UI state to audio thread (called from main thread before audio starts)
@@ -103,25 +107,29 @@ class GodEngine: ObservableObject {
         audioMetronomeOn = metronome.isOn
     }
 
-    func onPadHit(note: Int, velocity: Int) {
-        guard audioIsPlaying,
-              let padIndex = padBank.padIndex(forNote: note),
+    private func handlePadHit(note: Int, velocity: Int) {
+        guard let padIndex = padBank.padIndex(forNote: note),
               let sample = padBank.pads[padIndex].sample else { return }
 
-        layers[padIndex].addHit(at: audioPosition, velocity: velocity)
         audioLayers[padIndex].addHit(at: audioPosition, velocity: velocity)
-        layers[padIndex].name = padBank.pads[padIndex].name
         audioLayers[padIndex].name = padBank.pads[padIndex].name
 
-        let vel = Float(velocity) / 127.0
-        voices.append(Voice(sample: sample, velocity: vel))
+        let vel = Float(velocity) / 127.0 * audioLayers[padIndex].volume
+        voices.append(Voice(sample: sample, velocity: vel, padIndex: padIndex))
 
-        DispatchQueue.main.async {
-            self.channelTriggered[padIndex] = true
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
-                self.channelTriggered[padIndex] = false
-            }
-        }
+        pendingTriggers[padIndex] = true
+    }
+
+    private func handleNoteOff(note: Int) {
+        guard let padIndex = padBank.padIndex(forNote: note) else { return }
+        guard !padBank.pads[padIndex].isOneShot else { return }
+        voices.removeAll { $0.padIndex == padIndex }
+    }
+
+    private func handleCC(number: Int, value: Int) {
+        let layerIndex = number - Self.ccToLayerOffset
+        guard layerIndex >= 0, layerIndex < 8 else { return }
+        audioLayers[layerIndex].volume = Float(value) / 127.0
     }
 
     func processBlock(frameCount: Int) -> [Float] {
@@ -132,6 +140,18 @@ class GodEngine: ObservableObject {
         let loopLen = audioLoopLengthFrames
 
         guard loopLen > 0 else { return output }
+
+        // Drain MIDI events from ring buffer
+        midiRingBuffer.drain { event in
+            switch event {
+            case .noteOn(let note, let velocity):
+                handlePadHit(note: note, velocity: velocity)
+            case .noteOff(let note):
+                handleNoteOff(note: note)
+            case .cc(let number, let value):
+                handleCC(number: number, value: value)
+            }
+        }
 
         // Check each layer for hits in this block's range
         for layer in audioLayers where !layer.isMuted {
@@ -148,8 +168,8 @@ class GodEngine: ObservableObject {
 
             for hit in hits {
                 if let sample = padBank.pads[layer.index].sample {
-                    let vel = Float(hit.velocity) / 127.0
-                    voices.append(Voice(sample: sample, velocity: vel))
+                    let vel = Float(hit.velocity) / 127.0 * layer.volume
+                    voices.append(Voice(sample: sample, velocity: vel, padIndex: layer.index))
                 }
             }
         }
@@ -178,18 +198,16 @@ class GodEngine: ObservableObject {
         }
 
         // Calculate per-channel signal levels (peak detection)
-        for voice in voices {
-            for i in 0..<8 {
-                if let padSample = padBank.pads[i].sample,
-                   padSample.name == voice.sample.name {
-                    let remaining = min(frameCount, voice.sample.data.count - voice.position)
-                    if remaining > 0 {
-                        let start = max(0, voice.position)
-                        let end = min(voice.sample.data.count, start + remaining)
-                        for j in start..<end {
-                            pendingLevels[i] = max(pendingLevels[i], abs(voice.sample.data[j] * voice.velocity))
-                        }
-                    }
+        for voice in voices where voice.padIndex >= 0 && voice.padIndex < 8 {
+            let remaining = min(frameCount, voice.sample.data.count - voice.position)
+            if remaining > 0 {
+                let start = max(0, voice.position)
+                let end = min(voice.sample.data.count, start + remaining)
+                for j in start..<end {
+                    pendingLevels[voice.padIndex] = max(
+                        pendingLevels[voice.padIndex],
+                        abs(voice.sample.data[j] * voice.velocity)
+                    )
                 }
             }
         }
@@ -225,11 +243,23 @@ class GodEngine: ObservableObject {
             let pos = audioPosition
             let levels = pendingLevels
             let masterPeak = peak
+            let triggers = pendingTriggers
+            let layerVolumes = audioLayers.map { $0.volume }
             pendingLevels = Array(repeating: 0, count: 8)
+            pendingTriggers = Array(repeating: false, count: 8)
             DispatchQueue.main.async {
                 self.transport.position = pos
                 self.channelSignalLevels = levels
                 self.masterLevel = masterPeak
+                for i in 0..<8 {
+                    if triggers[i] {
+                        self.channelTriggered[i] = true
+                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                            self.channelTriggered[i] = false
+                        }
+                    }
+                    self.layers[i].volume = layerVolumes[i]
+                }
             }
         }
 

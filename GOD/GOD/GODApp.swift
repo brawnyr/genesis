@@ -31,7 +31,7 @@ struct GODApp: App {
         try? audio.start()
         audioManager = audio
 
-        let midi = MIDIManager(engine: engine)
+        let midi = MIDIManager(ringBuffer: engine.midiRingBuffer)
         midi.start()
         midiManager = midi
     }

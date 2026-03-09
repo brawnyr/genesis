@@ -2,7 +2,7 @@ import Testing
 @testable import GOD
 
 @Test func ringBufferWriteAndDrain() {
-    var buffer = MIDIRingBuffer()
+    let buffer = MIDIRingBuffer()
     buffer.write(.noteOn(note: 36, velocity: 100))
     buffer.write(.noteOn(note: 37, velocity: 80))
 
@@ -25,14 +25,14 @@ import Testing
 }
 
 @Test func ringBufferDrainEmpty() {
-    var buffer = MIDIRingBuffer()
+    let buffer = MIDIRingBuffer()
     var events: [MIDIEvent] = []
     buffer.drain { events.append($0) }
     #expect(events.count == 0)
 }
 
 @Test func ringBufferOverflow() {
-    var buffer = MIDIRingBuffer()
+    let buffer = MIDIRingBuffer()
     // Fill past capacity (256)
     for i in 0..<300 {
         buffer.write(.noteOn(note: i % 128, velocity: 100))
@@ -44,7 +44,7 @@ import Testing
 }
 
 @Test func ringBufferNoteOff() {
-    var buffer = MIDIRingBuffer()
+    let buffer = MIDIRingBuffer()
     buffer.write(.noteOff(note: 36))
     var events: [MIDIEvent] = []
     buffer.drain { events.append($0) }
@@ -57,7 +57,7 @@ import Testing
 }
 
 @Test func ringBufferCC() {
-    var buffer = MIDIRingBuffer()
+    let buffer = MIDIRingBuffer()
     buffer.write(.cc(number: 14, value: 64))
     var events: [MIDIEvent] = []
     buffer.drain { events.append($0) }

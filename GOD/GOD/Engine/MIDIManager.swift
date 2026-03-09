@@ -4,12 +4,12 @@ import Foundation
 class MIDIManager: ObservableObject {
     private var midiClient: MIDIClientRef = 0
     private var inputPort: MIDIPortRef = 0
-    private weak var engine: GodEngine?
+    private let ringBuffer: MIDIRingBuffer
 
     @Published var connectedDevice: String = "None"
 
-    init(engine: GodEngine) {
-        self.engine = engine
+    init(ringBuffer: MIDIRingBuffer) {
+        self.ringBuffer = ringBuffer
     }
 
     func start() {
@@ -48,7 +48,6 @@ class MIDIManager: ObservableObject {
             }
         }
 
-        // Fallback: connect first available source
         if sourceCount > 0 {
             let source = MIDIGetSource(0)
             MIDIPortConnectSource(inputPort, source, nil)
@@ -67,15 +66,19 @@ class MIDIManager: ObservableObject {
 
         for _ in 0..<list.numPackets {
             let word = packet.words.0
-
             let status = (word >> 16) & 0xF0
-            let note = Int((word >> 8) & 0x7F)
-            let velocity = Int(word & 0x7F)
+            let data1 = Int((word >> 8) & 0x7F)
+            let data2 = Int(word & 0x7F)
 
-            if status == 0x90 && velocity > 0 { // note on
-                DispatchQueue.main.async { [weak self] in
-                    self?.engine?.onPadHit(note: note, velocity: velocity)
-                }
+            switch status {
+            case 0x90 where data2 > 0:
+                ringBuffer.write(.noteOn(note: data1, velocity: data2))
+            case 0x80, 0x90:
+                ringBuffer.write(.noteOff(note: data1))
+            case 0xB0:
+                ringBuffer.write(.cc(number: data1, value: data2))
+            default:
+                break
             }
 
             var current = packet
