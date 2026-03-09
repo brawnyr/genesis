@@ -46,8 +46,13 @@ class GodApp(App):
 
     def on_mount(self) -> None:
         self.engine.midi.connect()
+        self.engine.start_audio_stream()
         self._refresh_ui()
         self.set_interval(1 / 30, self._refresh_ui)
+
+    def on_unmount(self) -> None:
+        self.engine.stop_audio_stream()
+        self.engine.midi.disconnect()
 
     def _refresh_ui(self) -> None:
         transport = self.query_one(TransportBar)

@@ -107,3 +107,25 @@ class GodEngine:
         self.capture.write(buf)
         buf *= self.audio.master_volume
         return buf
+
+    def start_audio_stream(self) -> None:
+        """Open the sounddevice output stream."""
+        import sounddevice as sd
+        self._stream = sd.OutputStream(
+            samplerate=self.sample_rate,
+            blocksize=self.buffer_size,
+            channels=1,
+            dtype="float32",
+            callback=self._audio_callback,
+        )
+        self._stream.start()
+
+    def _audio_callback(self, outdata, frames, time_info, status) -> None:
+        """Called by sounddevice to fill the output buffer."""
+        buf = self.process_block(frames)
+        outdata[:, 0] = buf
+
+    def stop_audio_stream(self) -> None:
+        if hasattr(self, "_stream"):
+            self._stream.stop()
+            self._stream.close()
