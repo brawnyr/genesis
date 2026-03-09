@@ -1,4 +1,5 @@
 import SwiftUI
+import AppKit
 
 @main
 struct GODApp: App {
@@ -6,11 +7,19 @@ struct GODApp: App {
     @State private var audioManager: AudioManager?
     @State private var midiManager: MIDIManager?
 
+    init() {
+        // Activate as a foreground app so the window gets focus from terminal
+        NSApplication.shared.setActivationPolicy(.regular)
+        NSApplication.shared.activate(ignoringOtherApps: true)
+    }
+
     var body: some Scene {
         WindowGroup {
             ContentView(engine: engine)
                 .onAppear {
                     startManagers()
+                    // Ensure window is key and front
+                    NSApplication.shared.windows.first?.makeKeyAndOrderFront(nil)
                 }
         }
         .windowStyle(.hiddenTitleBar)

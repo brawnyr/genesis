@@ -5,6 +5,10 @@ struct Metronome {
     var volume: Float = 0.5
 
     func beatLengthFrames(bpm: Int, sampleRate: Double) -> Int {
+        Self.beatLengthFramesStatic(bpm: bpm, sampleRate: sampleRate)
+    }
+
+    static func beatLengthFramesStatic(bpm: Int, sampleRate: Double) -> Int {
         Int(60.0 / Double(bpm) * sampleRate)
     }
 

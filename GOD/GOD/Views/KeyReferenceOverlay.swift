@@ -7,36 +7,36 @@ struct KeyReferenceOverlay: View {
         ("SPC", "play / stop"),
         ("G", "god capture"),
         ("M", "metronome"),
+        ("S", "setup pads"),
         ("↑", "bpm +1"),
         ("↓", "bpm -1"),
         ("1-8", "mute / unmute"),
-        ("/", "command input"),
-        ("ESC", "stop / dismiss"),
+        ("ESC", "stop"),
         ("?", "this help"),
     ]
 
     var body: some View {
-        VStack(spacing: 12) {
+        VStack(spacing: 16) {
             Text("KEYS")
                 .font(Theme.monoLarge)
                 .foregroundColor(Theme.text)
 
-            VStack(alignment: .leading, spacing: 6) {
+            VStack(alignment: .leading, spacing: 8) {
                 ForEach(shortcuts, id: \.key) { shortcut in
-                    HStack(spacing: 16) {
+                    HStack(spacing: 20) {
                         Text(shortcut.key)
                             .foregroundColor(Theme.blue)
-                            .frame(width: 50, alignment: .trailing)
+                            .frame(width: 60, alignment: .trailing)
                         Text(shortcut.action)
                             .foregroundColor(Theme.text)
                     }
                 }
             }
 
-            Text("press any key to close")
+            Text("press ? to close")
                 .font(Theme.monoSmall)
                 .foregroundColor(Theme.subtle)
-                .padding(.top, 8)
+                .padding(.top, 12)
         }
         .font(Theme.mono)
         .padding(40)

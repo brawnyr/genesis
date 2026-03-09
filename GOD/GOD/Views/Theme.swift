@@ -21,10 +21,10 @@ enum Theme {
     // Subtle — only for empty slots and track background
     static let subtle = Color(white: 0.25)
 
-    // Fonts
-    static let mono = Font.system(size: 13, design: .monospaced)
-    static let monoSmall = Font.system(size: 11, design: .monospaced)
-    static let monoTiny = Font.system(size: 10, design: .monospaced)
-    static let monoLarge = Font.system(size: 18, design: .monospaced)
-    static let monoTitle = Font.system(size: 24, design: .monospaced).weight(.bold)
+    // Fonts — bumped sizes for readability
+    static let mono = Font.system(size: 16, design: .monospaced)
+    static let monoSmall = Font.system(size: 14, design: .monospaced)
+    static let monoTiny = Font.system(size: 12, design: .monospaced)
+    static let monoLarge = Font.system(size: 22, design: .monospaced)
+    static let monoTitle = Font.system(size: 28, design: .monospaced).weight(.bold)
 }

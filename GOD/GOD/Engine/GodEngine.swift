@@ -2,6 +2,7 @@ import Foundation
 import Combine
 
 class GodEngine: ObservableObject {
+    // UI state — only mutated on main thread
     @Published var transport = Transport()
     @Published var layers: [Layer] = (0..<8).map { Layer(index: $0, name: "PAD \($0 + 1)") }
     @Published var padBank = PadBank()
@@ -10,51 +11,88 @@ class GodEngine: ObservableObject {
     @Published var channelSignalLevels: [Float] = Array(repeating: 0, count: 8)
     @Published var channelTriggered: [Bool] = Array(repeating: false, count: 8)
 
+    // Audio thread state — never touches @Published directly
+    private var audioPosition: Int = 0
+    private var audioIsPlaying: Bool = false
+    private var audioBPM: Int = 120
+    private var audioBarCount: Int = 4
+    private var audioMetronomeOn: Bool = true
+    private var audioMetronomeVolume: Float = 0.5
+    private var audioLayers: [Layer] = (0..<8).map { Layer(index: $0, name: "PAD \($0 + 1)") }
+    private var audioCaptureState: GodCapture.State = .idle
     var voices: [Voice] = []
+
+    private var pendingLevels: [Float] = Array(repeating: 0, count: 8)
+    private var uiUpdateCounter = 0
+
+    // Sync UI state to audio thread (called from main thread before audio starts)
+    private func syncToAudio() {
+        audioIsPlaying = transport.isPlaying
+        audioBPM = transport.bpm
+        audioBarCount = transport.barCount
+        audioPosition = transport.position
+        audioMetronomeOn = metronome.isOn
+        audioMetronomeVolume = metronome.volume
+        audioLayers = layers
+        audioCaptureState = capture.state
+    }
 
     func togglePlay() {
         transport.isPlaying.toggle()
         if !transport.isPlaying {
             transport.position = 0
+            audioPosition = 0
+            audioIsPlaying = false
             voices.removeAll()
+        } else {
+            audioIsPlaying = true
         }
     }
 
     func stop() {
         transport.isPlaying = false
         transport.position = 0
+        audioPosition = 0
+        audioIsPlaying = false
         voices.removeAll()
     }
 
     func setBPM(_ bpm: Int) {
         transport.bpm = bpm
+        audioBPM = transport.bpm
     }
 
     func toggleMute(layer index: Int) {
         guard index >= 0, index < layers.count else { return }
         layers[index].isMuted.toggle()
+        audioLayers[index].isMuted = layers[index].isMuted
     }
 
     func clearLayer(_ index: Int) {
         guard index >= 0, index < layers.count else { return }
         layers[index].clear()
+        audioLayers[index].clear()
     }
 
     func toggleCapture() {
         capture.toggle()
+        audioCaptureState = capture.state
     }
 
     func toggleMetronome() {
         metronome.isOn.toggle()
+        audioMetronomeOn = metronome.isOn
     }
 
     func onPadHit(note: Int, velocity: Int) {
-        guard transport.isPlaying,
+        guard audioIsPlaying,
               let padIndex = padBank.padIndex(forNote: note),
               let sample = padBank.pads[padIndex].sample else { return }
 
-        layers[padIndex].addHit(at: transport.position, velocity: velocity)
+        layers[padIndex].addHit(at: audioPosition, velocity: velocity)
+        audioLayers[padIndex].addHit(at: audioPosition, velocity: velocity)
         layers[padIndex].name = padBank.pads[padIndex].name
+        audioLayers[padIndex].name = padBank.pads[padIndex].name
 
         let vel = Float(velocity) / 127.0
         voices.append(Voice(sample: sample, velocity: vel))
@@ -69,13 +107,15 @@ class GodEngine: ObservableObject {
 
     func processBlock(frameCount: Int) -> [Float] {
         var output = [Float](repeating: 0, count: frameCount)
-        guard transport.isPlaying else { return output }
+        guard audioIsPlaying else { return output }
 
-        let startPos = transport.position
-        let loopLen = transport.loopLengthFrames
+        let startPos = audioPosition
+        let loopLen = audioLoopLengthFrames
+
+        guard loopLen > 0 else { return output }
 
         // Check each layer for hits in this block's range
-        for layer in layers where !layer.isMuted {
+        for layer in audioLayers where !layer.isMuted {
             let endPos = startPos + frameCount
             let hits: [Hit]
 
@@ -96,8 +136,8 @@ class GodEngine: ObservableObject {
         }
 
         // Metronome
-        if metronome.isOn {
-            let beatLen = metronome.beatLengthFrames(bpm: transport.bpm, sampleRate: Transport.sampleRate)
+        if audioMetronomeOn {
+            let beatLen = Metronome.beatLengthFramesStatic(bpm: audioBPM, sampleRate: Transport.sampleRate)
             for i in 0..<frameCount {
                 let frameInLoop = (startPos + i) % loopLen
                 if beatLen > 0 && frameInLoop % beatLen == 0 {
@@ -105,7 +145,7 @@ class GodEngine: ObservableObject {
                     let click = Metronome.generateClick(isDownbeat: isDownbeat, sampleRate: Transport.sampleRate)
                     voices.append(Voice(
                         sample: Sample(name: "click", data: click, sampleRate: Transport.sampleRate),
-                        velocity: metronome.volume
+                        velocity: audioMetronomeVolume
                     ))
                 }
             }
@@ -119,7 +159,6 @@ class GodEngine: ObservableObject {
         }
 
         // Calculate per-channel signal levels (peak detection)
-        var newLevels = Array<Float>(repeating: 0, count: 8)
         for voice in voices {
             for i in 0..<8 {
                 if let padSample = padBank.pads[i].sample,
@@ -129,62 +168,50 @@ class GodEngine: ObservableObject {
                         let start = max(0, voice.position)
                         let end = min(voice.sample.data.count, start + remaining)
                         for j in start..<end {
-                            newLevels[i] = max(newLevels[i], abs(voice.sample.data[j] * voice.velocity))
+                            pendingLevels[i] = max(pendingLevels[i], abs(voice.sample.data[j] * voice.velocity))
                         }
                     }
                 }
             }
         }
 
-        DispatchQueue.main.async { [newLevels] in
-            self.channelSignalLevels = newLevels
+        // Advance audio position
+        audioPosition += frameCount
+        var wrapped = false
+        if audioPosition >= loopLen {
+            audioPosition -= loopLen
+            wrapped = true
         }
 
         // Capture
-        if capture.state == .recording {
+        if audioCaptureState == .recording {
             capture.append(buffer: output)
         }
-
-        // Advance transport
-        let wrapped = transport.advance(frames: frameCount)
         if wrapped {
             capture.onLoopBoundary()
+            audioCaptureState = capture.state
+        }
+
+        // Throttle UI updates — sync position + levels ~30x/sec
+        uiUpdateCounter += frameCount
+        if uiUpdateCounter >= 1323 {
+            uiUpdateCounter = 0
+            let pos = audioPosition
+            let levels = pendingLevels
+            pendingLevels = Array(repeating: 0, count: 8)
+            DispatchQueue.main.async {
+                self.transport.position = pos
+                self.channelSignalLevels = levels
+            }
         }
 
         return output
     }
 
-    func executeCommand(_ input: String) {
-        let parts = input.lowercased().trimmingCharacters(in: .whitespaces).split(separator: " ")
-        guard let cmd = parts.first else { return }
-
-        switch cmd {
-        case "play":
-            if !transport.isPlaying { togglePlay() }
-        case "stop":
-            stop()
-        case "god":
-            toggleCapture()
-        case "bpm":
-            if let val = parts.dropFirst().first, let bpm = Int(val) {
-                setBPM(bpm)
-            }
-        case "mute":
-            if let val = parts.dropFirst().first, let idx = Int(val) {
-                if idx >= 1, idx <= 8 { toggleMute(layer: idx - 1) }
-            }
-        case "unmute":
-            if let val = parts.dropFirst().first, let idx = Int(val) {
-                if idx >= 1, idx <= 8, layers[idx - 1].isMuted {
-                    toggleMute(layer: idx - 1)
-                }
-            }
-        case "clear":
-            if let val = parts.dropFirst().first, let idx = Int(val) {
-                if idx >= 1, idx <= 8 { clearLayer(idx - 1) }
-            }
-        default:
-            break
-        }
+    private var audioLoopLengthFrames: Int {
+        let beatsPerLoop = Double(audioBarCount * 4)
+        let secondsPerBeat = 60.0 / Double(audioBPM)
+        return Int(beatsPerLoop * secondsPerBeat * Transport.sampleRate)
     }
+
 }
