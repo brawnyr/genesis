@@ -39,7 +39,7 @@ struct ContentView: View {
             .padding()
         }
         .sheet(isPresented: $showSetup) {
-            SetupPlaceholder(isPresented: $showSetup)
+            SetupView(engine: engine, isPresented: $showSetup)
                 .frame(width: 500, height: 500)
         }
         .onKeyPress(.space) {
@@ -65,25 +65,6 @@ struct ContentView: View {
         .onKeyPress(.escape) {
             engine.stop()
             return .handled
-        }
-    }
-}
-
-// Placeholder until Task 15 creates the real SetupView
-struct SetupPlaceholder: View {
-    @Binding var isPresented: Bool
-    var body: some View {
-        ZStack {
-            Theme.bg
-            VStack {
-                Text("SETUP")
-                    .font(Theme.monoLarge)
-                    .foregroundColor(Theme.text)
-                Button("CLOSE") { isPresented = false }
-                    .font(Theme.mono)
-                    .foregroundColor(Theme.accent)
-                    .buttonStyle(.plain)
-            }
         }
     }
 }

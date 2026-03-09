@@ -1,0 +1,80 @@
+import SwiftUI
+import UniformTypeIdentifiers
+
+struct SetupView: View {
+    @ObservedObject var engine: GodEngine
+    @Binding var isPresented: Bool
+
+    var body: some View {
+        ZStack {
+            Theme.bg.ignoresSafeArea()
+
+            VStack(spacing: 16) {
+                Text("SET UP PADS")
+                    .font(Theme.monoLarge)
+                    .foregroundColor(Theme.text)
+                    .padding(.top)
+
+                ForEach(0..<8, id: \.self) { i in
+                    HStack {
+                        Text("PAD \(i + 1)")
+                            .font(Theme.mono)
+                            .foregroundColor(Theme.dim)
+                            .frame(width: 60, alignment: .leading)
+
+                        Text(engine.padBank.pads[i].sample?.name ?? "—")
+                            .font(Theme.mono)
+                            .foregroundColor(Theme.text)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+
+                        Button("LOAD") {
+                            loadSample(forPad: i)
+                        }
+                        .font(Theme.monoSmall)
+                        .foregroundColor(Theme.accent)
+                        .buttonStyle(.plain)
+
+                        if engine.padBank.pads[i].sample != nil {
+                            Button("×") {
+                                engine.padBank.pads[i].sample = nil
+                                engine.padBank.pads[i].samplePath = nil
+                                engine.padBank.pads[i].name = "PAD \(i + 1)"
+                            }
+                            .font(Theme.mono)
+                            .foregroundColor(Theme.red)
+                            .buttonStyle(.plain)
+                        }
+                    }
+                    .padding(.horizontal)
+                }
+
+                Spacer()
+
+                Button("DONE") {
+                    try? engine.padBank.save()
+                    isPresented = false
+                }
+                .font(Theme.mono)
+                .foregroundColor(Theme.accent)
+                .buttonStyle(.plain)
+                .padding()
+            }
+            .padding()
+        }
+    }
+
+    private func loadSample(forPad index: Int) {
+        let panel = NSOpenPanel()
+        panel.allowedContentTypes = [UTType.audio]
+        panel.canChooseDirectories = false
+        panel.allowsMultipleSelection = false
+
+        if panel.runModal() == .OK, let url = panel.url {
+            if let sample = try? Sample.load(from: url) {
+                engine.padBank.assign(sample: sample, toPad: index)
+                engine.padBank.pads[index].samplePath = url.path
+                engine.layers[index].name = sample.name.uppercased()
+            }
+        }
+    }
+}
