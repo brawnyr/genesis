@@ -1,7 +1,6 @@
 import Foundation
 import Combine
 
-@MainActor
 class GodEngine: ObservableObject {
     @Published var transport = Transport()
     @Published var layers: [Layer] = (0..<8).map { Layer(index: $0, name: "PAD \($0 + 1)") }
