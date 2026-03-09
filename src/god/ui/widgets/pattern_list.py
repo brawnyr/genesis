@@ -1,4 +1,5 @@
 """Pattern list — shows stacked patterns with state indicators."""
+from rich.text import Text
 from textual.app import ComposeResult
 from textual.widget import Widget
 from textual.widgets import Static
@@ -11,6 +12,7 @@ class PatternRow(Static):
     PatternRow.playing { color: #4ade80; }
     PatternRow.muted { color: #6b7280; }
     PatternRow.recording { color: #ef4444; text-style: bold; }
+    PatternRow.empty { color: #7a7a9e; }
     """
 
     def __init__(self, name: str, state: str, volume: float, index: int, active: bool = False):
@@ -19,14 +21,14 @@ class PatternRow(Static):
         self._volume = volume
         self._index = index
         self._active = active
-        super().__init__(self._render())
+        super().__init__()
         self.add_class(state)
 
-    def _render(self) -> str:
+    def render(self) -> Text:
         symbol = SYMBOLS.get(self._state, SYMBOLS["empty"])
-        active_marker = "\u2192" if self._active else " "
-        vol_bar = "\u2588" * int(self._volume * 8) + "\u2591" * (8 - int(self._volume * 8))
-        return f" {active_marker} {symbol} {self._pattern_name:<16} {vol_bar} "
+        active_marker = "→" if self._active else " "
+        vol_bar = "█" * int(self._volume * 8) + "░" * (8 - int(self._volume * 8))
+        return Text(f" {active_marker} {symbol} {self._pattern_name:<16} {vol_bar} ")
 
 
 class PatternList(Widget):
@@ -40,7 +42,7 @@ class PatternList(Widget):
     """
 
     def compose(self) -> ComposeResult:
-        yield Static(" PATTERNS ", id="pattern-header")
+        yield Static(Text(" PATTERNS "), id="pattern-header")
 
     def refresh_patterns(self, patterns: list[dict]) -> None:
         for row in self.query(PatternRow):

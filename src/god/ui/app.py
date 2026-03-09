@@ -1,8 +1,13 @@
 """Main GOD Textual application."""
+import logging
+import traceback
+
 from textual.app import App, ComposeResult
 from textual.binding import Binding
 from textual.widgets import Footer, Header
 from god.engine import GodEngine
+
+log = logging.getLogger("god.ui")
 from god.ui.widgets.transport_bar import TransportBar
 from god.ui.widgets.pattern_list import PatternList
 from god.ui.widgets.status_panel import StatusPanel
@@ -45,16 +50,29 @@ class GodApp(App):
         yield Footer()
 
     def on_mount(self) -> None:
-        self.engine.midi.connect()
-        self.engine.start_audio_stream()
-        self._refresh_ui()
-        self.set_interval(1 / 30, self._refresh_ui)
+        try:
+            self.engine.midi.connect()
+            log.info("MIDI connected: %s", self.engine.midi.port_name or "none")
+            self.engine.start_audio_stream()
+            log.info("Audio stream started")
+            self._refresh_ui()
+            self.set_interval(1 / 30, self._refresh_ui)
+        except Exception:
+            log.critical("Crash in on_mount:\n%s", traceback.format_exc())
+            raise
 
     def on_unmount(self) -> None:
         self.engine.stop_audio_stream()
         self.engine.midi.disconnect()
 
     def _refresh_ui(self) -> None:
+        try:
+            self._do_refresh()
+        except Exception:
+            log.critical("Crash in _refresh_ui:\n%s", traceback.format_exc())
+            raise
+
+    def _do_refresh(self) -> None:
         transport = self.query_one(TransportBar)
         transport.bpm = self.engine.transport.bpm
         transport.bar_count = self.engine.transport.bar_count
@@ -86,10 +104,16 @@ class GodApp(App):
         )
 
     def action_toggle_play(self) -> None:
-        if self.engine.transport.playing:
-            self.engine.stop()
-        else:
-            self.engine.play()
+        try:
+            if self.engine.transport.playing:
+                log.info("Stopping playback")
+                self.engine.stop()
+            else:
+                log.info("Starting playback")
+                self.engine.play()
+        except Exception:
+            log.critical("Crash in toggle_play:\n%s", traceback.format_exc())
+            raise
 
     def action_stop_all(self) -> None:
         self.engine.stop_all()
