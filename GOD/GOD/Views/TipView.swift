@@ -1,0 +1,43 @@
+import SwiftUI
+
+struct TipView: View {
+    @State private var tipDeck = TipDeck()
+    @State private var currentTip = ""
+    @State private var tipStartTime = Date()
+    @State private var elapsed: Double = 0
+
+    private let charInterval = 0.08
+    private let cycleInterval = 12.0
+    private let timer = Timer.publish(every: 0.05, on: .main, in: .common).autoconnect()
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 2) {
+            let typewriter = TypewriterState(text: currentTip, charInterval: charInterval)
+            let visible = typewriter.visibleText(elapsed: elapsed)
+
+            Text("\"\(visible)\"")
+                .font(Theme.monoSmall)
+                .foregroundColor(Theme.dim)
+
+            if elapsed >= typewriter.totalDuration {
+                Text("— claude")
+                    .font(Theme.monoTiny)
+                    .foregroundColor(Theme.muted)
+            }
+        }
+        .onAppear { nextTip() }
+        .onReceive(timer) { _ in
+            elapsed = Date().timeIntervalSince(tipStartTime)
+            let typewriter = TypewriterState(text: currentTip, charInterval: charInterval)
+            if elapsed > typewriter.totalDuration + cycleInterval {
+                nextTip()
+            }
+        }
+    }
+
+    private func nextTip() {
+        currentTip = tipDeck.next()
+        tipStartTime = Date()
+        elapsed = 0
+    }
+}
