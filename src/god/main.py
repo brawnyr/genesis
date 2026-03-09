@@ -18,7 +18,7 @@ def setup_logging():
         format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
         datefmt="%Y-%m-%d %H:%M:%S",
     )
-    # Also log uncaught exceptions
+
     def exception_handler(exc_type, exc_value, exc_tb):
         logging.critical(
             "Uncaught exception:\n%s",
@@ -37,15 +37,20 @@ def run():
     log.info("Python %s", sys.version)
 
     try:
-        from god.audio import Sample
-        from god.ui.app import GodApp
+        from god.web.server import engine, run_server
 
-        app = GodApp()
-        log.info("Engine created")
+        # Need to import after create_app to get engine reference
+        from god.web.server import create_app
+        app, sio = create_app()
+
+        # Re-import engine after creation
+        from god.web import server
+        eng = server.engine
 
         # Load pad config if it exists
         config_path = os.path.expanduser("~/.god/pads.json")
         if os.path.exists(config_path):
+            from god.audio import Sample
             log.info("Loading pad config from %s", config_path)
             with open(config_path) as f:
                 pad_config = json.load(f)
@@ -53,20 +58,43 @@ def run():
                 pad_idx = int(pad_str)
                 if os.path.exists(sample_path):
                     sample = Sample.from_file(sample_path)
-                    app.engine.pad_bank.assign(pad_idx, sample)
+                    eng.pad_bank.assign(pad_idx, sample)
                     log.info("Pad %d: %s", pad_idx, sample_path)
                 else:
                     log.warning("Pad %d: file not found: %s", pad_idx, sample_path)
         else:
             log.info("No pad config found at %s", config_path)
 
-        log.info("Launching TUI")
-        app.run()
+        # Connect MIDI
+        eng.midi.connect()
+        log.info("MIDI connected: %s", eng.midi.port_name or "none")
+
+        # Start audio stream
+        eng.start_audio_stream()
+        log.info("Audio stream started")
+
+        # Start state push thread
+        import threading
+        state_thread = threading.Thread(target=server._state_loop, daemon=True)
+        state_thread.start()
+
+        # Open browser
+        import webbrowser
+        port = 6660
+        webbrowser.open(f"http://127.0.0.1:{port}")
+
+        log.info("GOD web server starting on port %d", port)
+        print(f"\n  GOD — Genesis On Disk")
+        print(f"  http://127.0.0.1:{port}")
+        print(f"  Press Ctrl+C to stop\n")
+        sio.run(app, host="127.0.0.1", port=port, debug=False, use_reloader=False, log_output=False)
         log.info("GOD exited normally")
 
+    except KeyboardInterrupt:
+        log.info("GOD stopped by user")
+        print("\nGOD stopped.")
     except Exception:
         log.critical("GOD crashed:\n%s", traceback.format_exc())
-        # Write crash to a separate file for easy access
         crash_file = os.path.join(LOG_DIR, "last_crash.txt")
         with open(crash_file, "w") as f:
             f.write(f"GOD crash — {datetime.now().isoformat()}\n\n")

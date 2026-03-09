@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GOD — Genesis On Disk</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=IBM+Plex+Mono:wght@300;400;500;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <div class="noise-overlay"></div>
+
+    <div class="app">
+        <!-- Header -->
+        <header class="header">
+            <div class="logo">
+                <span class="logo-text">GOD</span>
+                <span class="logo-sub">GENESIS ON DISK</span>
+            </div>
+            <div class="connection-status" id="connection-dot">
+                <span class="dot"></span>
+                <span class="status-text">OFFLINE</span>
+            </div>
+        </header>
+
+        <!-- Transport -->
+        <section class="transport">
+            <div class="transport-group tempo-group">
+                <label class="transport-label">TEMPO</label>
+                <div class="tempo-control">
+                    <button class="tempo-btn" data-action="bpm_down">−</button>
+                    <span class="tempo-value" id="bpm">120</span>
+                    <button class="tempo-btn" data-action="bpm_up">+</button>
+                </div>
+            </div>
+
+            <div class="transport-group bars-group">
+                <label class="transport-label">BARS</label>
+                <div class="bar-selector">
+                    <button class="bar-btn" data-bars="1">1</button>
+                    <button class="bar-btn active" data-bars="2">2</button>
+                    <button class="bar-btn" data-bars="4">4</button>
+                </div>
+            </div>
+
+            <div class="transport-group controls-group">
+                <button class="control-btn play-btn" id="play-btn" data-action="toggle_play">
+                    <svg class="icon play-icon" viewBox="0 0 24 24" id="play-icon">
+                        <polygon points="6,3 20,12 6,21" fill="currentColor"/>
+                    </svg>
+                    <svg class="icon stop-icon hidden" viewBox="0 0 24 24" id="stop-icon">
+                        <rect x="5" y="5" width="14" height="14" rx="2" fill="currentColor"/>
+                    </svg>
+                </button>
+                <button class="control-btn stopall-btn" data-action="stop_all">
+                    <svg class="icon" viewBox="0 0 24 24">
+                        <rect x="4" y="4" width="16" height="16" rx="2" fill="currentColor"/>
+                        <rect x="8" y="8" width="8" height="8" rx="1" fill="#0a0a0f"/>
+                    </svg>
+                </button>
+            </div>
+
+            <div class="transport-group metronome-group">
+                <label class="transport-label">METRO</label>
+                <button class="metro-btn" id="metro-btn" data-action="toggle_metronome">
+                    <span class="metro-indicator" id="metro-indicator"></span>
+                    <span class="metro-text" id="metro-sound">soft_click</span>
+                </button>
+            </div>
+
+            <div class="transport-group god-group">
+                <button class="god-btn" id="god-btn" data-action="god_toggle">
+                    <span class="god-icon" id="god-icon">◇</span>
+                    <span class="god-label">GOD</span>
+                </button>
+            </div>
+        </section>
+
+        <!-- Loop Progress -->
+        <section class="loop-section">
+            <div class="loop-bar-container">
+                <div class="loop-bar" id="loop-bar"></div>
+                <div class="loop-beat-markers" id="beat-markers"></div>
+            </div>
+            <div class="loop-info">
+                <span class="bar-indicator" id="bar-indicator">BAR 1/1</span>
+                <span class="pass-counter" id="pass-counter"></span>
+            </div>
+        </section>
+
+        <!-- Patterns -->
+        <section class="patterns-section">
+            <div class="patterns-header">
+                <span class="section-title">PATTERNS</span>
+                <div class="pattern-actions">
+                    <button class="pattern-action-btn" data-action="undo" title="Undo (U)">↩</button>
+                    <button class="pattern-action-btn" data-action="redo" title="Redo (R)">↪</button>
+                </div>
+            </div>
+            <div class="patterns-list" id="patterns-list">
+                <div class="empty-state">Press Space to begin</div>
+            </div>
+        </section>
+
+        <!-- Footer -->
+        <footer class="footer">
+            <div class="shortcuts">
+                <kbd>Space</kbd> Play/Stop
+                <kbd>G</kbd> GOD
+                <kbd>U</kbd> Undo
+                <kbd>R</kbd> Redo
+                <kbd>M</kbd> Metro
+                <kbd>↑↓</kbd> BPM
+                <kbd>1</kbd><kbd>2</kbd><kbd>4</kbd> Bars
+            </div>
+        </footer>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.7.4/socket.io.min.js"></script>
+    <script src="{{ url_for('static', filename='app.js') }}"></script>
+</body>
+</html>
