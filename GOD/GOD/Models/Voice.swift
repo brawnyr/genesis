@@ -3,6 +3,7 @@ import Foundation
 struct Voice {
     let sample: Sample
     let velocity: Float
+    var padIndex: Int = -1
     var position: Int = 0
 
     mutating func fill(into buffer: inout [Float], count: Int) -> Bool {

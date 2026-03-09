@@ -6,6 +6,7 @@ struct Pad {
     var name: String
     var sample: Sample?
     var samplePath: String?
+    var isOneShot: Bool = true
 }
 
 struct PadAssignment: Codable {

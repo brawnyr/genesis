@@ -10,6 +10,7 @@ struct Layer {
     var name: String
     var hits: [Hit] = []
     var isMuted: Bool = false
+    var volume: Float = 1.0
 
     mutating func addHit(at position: Int, velocity: Int) {
         hits.append(Hit(position: position, velocity: velocity))
