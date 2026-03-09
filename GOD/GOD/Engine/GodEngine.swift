@@ -29,6 +29,7 @@ class GodEngine: ObservableObject {
 
     private var pendingLevels: [Float] = Array(repeating: 0, count: 8)
     private var pendingTriggers: [Bool] = Array(repeating: false, count: 8)
+    private var pendingHits: [(padIndex: Int, position: Int, velocity: Int)] = []
     private var uiUpdateCounter = 0
 
     // Sync UI state to audio thread (called from main thread before audio starts)
@@ -117,6 +118,7 @@ class GodEngine: ObservableObject {
         let vel = Float(velocity) / 127.0 * audioLayers[padIndex].volume
         voices.append(Voice(sample: sample, velocity: vel, padIndex: padIndex))
 
+        pendingHits.append((padIndex: padIndex, position: audioPosition, velocity: velocity))
         pendingTriggers[padIndex] = true
     }
 
@@ -245,9 +247,15 @@ class GodEngine: ObservableObject {
             let masterPeak = peak
             let triggers = pendingTriggers
             let layerVolumes = audioLayers.map { $0.volume }
+            let hits = pendingHits
+            pendingHits.removeAll()
             pendingLevels = Array(repeating: 0, count: 8)
             pendingTriggers = Array(repeating: false, count: 8)
             DispatchQueue.main.async {
+                for hit in hits {
+                    self.layers[hit.padIndex].addHit(at: hit.position, velocity: hit.velocity)
+                    self.layers[hit.padIndex].name = self.padBank.pads[hit.padIndex].name
+                }
                 self.transport.position = pos
                 self.channelSignalLevels = levels
                 self.masterLevel = masterPeak
