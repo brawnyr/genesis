@@ -10,6 +10,8 @@ class GodEngine: ObservableObject {
     @Published var capture = GodCapture()
     @Published var channelSignalLevels: [Float] = Array(repeating: 0, count: 8)
     @Published var channelTriggered: [Bool] = Array(repeating: false, count: 8)
+    @Published var masterLevel: Float = 0
+    var masterVolume: Float = 1.0
 
     // Audio thread state — never touches @Published directly
     private var audioPosition: Int = 0
@@ -60,6 +62,23 @@ class GodEngine: ObservableObject {
     func setBPM(_ bpm: Int) {
         transport.bpm = bpm
         audioBPM = transport.bpm
+    }
+
+    func setBarCount(_ count: Int) {
+        transport.barCount = count
+        audioBarCount = transport.barCount
+    }
+
+    func cycleBarCount(forward: Bool) {
+        let options = [1, 2, 4]
+        if let idx = options.firstIndex(of: transport.barCount) {
+            let next = forward ? min(idx + 1, options.count - 1) : max(idx - 1, 0)
+            setBarCount(options[next])
+        }
+    }
+
+    func adjustMasterVolume(_ delta: Float) {
+        masterVolume = max(0, min(2.0, masterVolume + delta))
     }
 
     func toggleMute(layer index: Int) {
@@ -175,6 +194,13 @@ class GodEngine: ObservableObject {
             }
         }
 
+        // Apply master volume and track master level
+        var peak: Float = 0
+        for i in 0..<frameCount {
+            output[i] *= masterVolume
+            peak = max(peak, abs(output[i]))
+        }
+
         // Advance audio position
         audioPosition += frameCount
         var wrapped = false
@@ -198,10 +224,12 @@ class GodEngine: ObservableObject {
             uiUpdateCounter = 0
             let pos = audioPosition
             let levels = pendingLevels
+            let masterPeak = peak
             pendingLevels = Array(repeating: 0, count: 8)
             DispatchQueue.main.async {
                 self.transport.position = pos
                 self.channelSignalLevels = levels
+                self.masterLevel = masterPeak
             }
         }
 

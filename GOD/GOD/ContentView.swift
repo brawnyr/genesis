@@ -45,7 +45,6 @@ struct ContentView: View {
         ZStack {
             Theme.bg.ignoresSafeArea()
 
-            // Invisible key capture layer
             KeyCaptureRepresentable { keyCode, chars in
                 handleKey(keyCode: keyCode, chars: chars)
             }
@@ -67,13 +66,15 @@ struct ContentView: View {
                 TipView()
                     .padding(.vertical, 4)
 
-                // Key strip — prominent
-                HStack(spacing: 16) {
+                // Key strip
+                HStack(spacing: 14) {
                     KeyLabel(key: "SPC", action: "play")
-                    KeyLabel(key: "G", action: "capture")
+                    KeyLabel(key: "G", action: "god")
                     KeyLabel(key: "M", action: "metro")
                     KeyLabel(key: "S", action: "setup")
                     KeyLabel(key: "↑↓", action: "bpm")
+                    KeyLabel(key: "[]", action: "bars")
+                    KeyLabel(key: "-+", action: "vol")
                     KeyLabel(key: "1-8", action: "mute")
                     KeyLabel(key: "?", action: "help")
                 }
@@ -107,6 +108,10 @@ struct ContentView: View {
             engine.setBPM(engine.transport.bpm - 1)
         case 53: // escape
             engine.stop()
+        case 33: // [
+            engine.cycleBarCount(forward: false)
+        case 30: // ]
+            engine.cycleBarCount(forward: true)
         default:
             break
         }
@@ -115,6 +120,10 @@ struct ContentView: View {
             switch c {
             case "?":
                 showKeyReference.toggle()
+            case "-":
+                engine.adjustMasterVolume(-0.05)
+            case "=", "+":
+                engine.adjustMasterVolume(0.05)
             case "1": engine.toggleMute(layer: 0)
             case "2": engine.toggleMute(layer: 1)
             case "3": engine.toggleMute(layer: 2)
@@ -129,7 +138,7 @@ struct ContentView: View {
     }
 }
 
-// MARK: - Key label for the bottom strip
+// MARK: - Key label
 
 struct KeyLabel: View {
     let key: String

@@ -37,19 +37,23 @@ struct ChannelRowView: View {
 
     var body: some View {
         HStack(spacing: 12) {
+            // Channel number — lights up orange on trigger
             Text("\(index + 1)")
-                .foregroundColor(Theme.text)
-                .frame(width: 16, alignment: .trailing)
+                .foregroundColor(triggered ? Theme.orange : Theme.text)
+                .frame(width: 20, alignment: .trailing)
 
+            // Sample name
             Text(displayName)
-                .foregroundColor(Theme.text)
-                .frame(width: 80, alignment: .leading)
+                .foregroundColor(triggered ? Theme.orange : Theme.text)
+                .frame(width: 100, alignment: .leading)
 
+            // Active/muted indicator
             if hasContent {
                 Text(layer.isMuted ? "○" : "●")
                     .foregroundColor(layer.isMuted ? Theme.text : Theme.blue)
             }
 
+            // Signal meter
             if hasContent && !layer.isMuted {
                 SignalMeterView(level: signalLevel)
             }
@@ -57,9 +61,12 @@ struct ChannelRowView: View {
             Spacer()
         }
         .font(Theme.mono)
-        .padding(.vertical, 2)
-        .padding(.horizontal, 4)
-        .background(triggered ? Theme.text.opacity(0.15) : Color.clear)
-        .animation(.easeOut(duration: 0.08), value: triggered)
+        .padding(.vertical, 4)
+        .padding(.horizontal, 8)
+        .background(
+            RoundedRectangle(cornerRadius: 4)
+                .fill(triggered ? Theme.orange.opacity(0.2) : Color.clear)
+        )
+        .animation(.easeOut(duration: 0.1), value: triggered)
     }
 }
