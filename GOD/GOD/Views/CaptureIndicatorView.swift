@@ -6,37 +6,34 @@ struct CaptureIndicatorView: View {
 
     var body: some View {
         HStack(spacing: 8) {
-            Circle()
-                .fill(captureColor)
-                .frame(width: 8, height: 8)
-                .opacity(engine.capture.state == .recording ? (pulse ? 1.0 : 0.4) : 1.0)
-                .onAppear {
-                    withAnimation(.easeInOut(duration: 0.6).repeatForever(autoreverses: true)) {
-                        pulse = true
-                    }
-                }
+            Text(engine.capture.state == .idle ? "○" : "◉")
+                .foregroundColor(captureColor)
+                .opacity(engine.capture.state == .recording ? (pulse ? 1.0 : 0.5) : 1.0)
 
             Text("GOD")
-                .font(Theme.mono)
                 .foregroundColor(captureColor)
 
             if engine.capture.state == .armed {
-                Text("ARMED")
-                    .font(Theme.monoSmall)
-                    .foregroundColor(Theme.amber)
+                Text("— armed")
+                    .foregroundColor(Theme.orange)
             } else if engine.capture.state == .recording {
-                Text("REC")
-                    .font(Theme.monoSmall)
-                    .foregroundColor(Theme.red)
+                Text("— recording")
+                    .foregroundColor(Theme.orange)
+            }
+        }
+        .font(Theme.mono)
+        .onAppear {
+            withAnimation(.easeInOut(duration: 0.5).repeatForever(autoreverses: true)) {
+                pulse = true
             }
         }
     }
 
     private var captureColor: Color {
         switch engine.capture.state {
-        case .idle: return Theme.dim
-        case .armed: return Theme.amber
-        case .recording: return Theme.red
+        case .idle: return Theme.text
+        case .armed: return Theme.orange
+        case .recording: return Theme.orange
         }
     }
 }

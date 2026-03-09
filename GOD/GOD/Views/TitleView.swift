@@ -1,16 +1,16 @@
 import SwiftUI
 
 struct TitleView: View {
-    @State private var phase: CGFloat = 0
+    @State private var breathing = false
 
     var body: some View {
-        Text("G O D")
+        Text("G   O   D")
             .font(Theme.monoTitle)
             .foregroundColor(Theme.text)
-            .opacity(0.8 + 0.2 * Darwin.sin(Double(phase)))
+            .opacity(breathing ? 1.0 : 0.7)
             .onAppear {
-                withAnimation(.easeInOut(duration: 4).repeatForever(autoreverses: true)) {
-                    phase = .pi * 2
+                withAnimation(.easeInOut(duration: 3).repeatForever(autoreverses: true)) {
+                    breathing = true
                 }
             }
     }

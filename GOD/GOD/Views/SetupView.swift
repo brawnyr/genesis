@@ -19,7 +19,7 @@ struct SetupView: View {
                     HStack {
                         Text("PAD \(i + 1)")
                             .font(Theme.mono)
-                            .foregroundColor(Theme.dim)
+                            .foregroundColor(Theme.subtle)
                             .frame(width: 60, alignment: .leading)
 
                         Text(engine.padBank.pads[i].sample?.name ?? "—")
@@ -31,7 +31,7 @@ struct SetupView: View {
                             loadSample(forPad: i)
                         }
                         .font(Theme.monoSmall)
-                        .foregroundColor(Theme.accent)
+                        .foregroundColor(Theme.blue)
                         .buttonStyle(.plain)
 
                         if engine.padBank.pads[i].sample != nil {
@@ -55,7 +55,7 @@ struct SetupView: View {
                     isPresented = false
                 }
                 .font(Theme.mono)
-                .foregroundColor(Theme.accent)
+                .foregroundColor(Theme.blue)
                 .buttonStyle(.plain)
                 .padding()
             }

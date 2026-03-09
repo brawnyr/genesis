@@ -17,12 +17,12 @@ struct TipView: View {
 
             Text("\"\(visible)\"")
                 .font(Theme.monoSmall)
-                .foregroundColor(Theme.dim)
+                .foregroundColor(Theme.text)
 
             if elapsed >= typewriter.totalDuration {
                 Text("— claude")
                     .font(Theme.monoTiny)
-                    .foregroundColor(Theme.muted)
+                    .foregroundColor(Theme.blue)
             }
         }
         .onAppear { nextTip() }
