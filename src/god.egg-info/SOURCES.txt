@@ -1,0 +1,10 @@
+pyproject.toml
+src/god/__init__.py
+src/god/main.py
+src/god.egg-info/PKG-INFO
+src/god.egg-info/SOURCES.txt
+src/god.egg-info/dependency_links.txt
+src/god.egg-info/entry_points.txt
+src/god.egg-info/requires.txt
+src/god.egg-info/top_level.txt
+tests/test_placeholder.py
