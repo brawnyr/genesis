@@ -25,12 +25,15 @@ class GodEngine: ObservableObject {
     var voices: [Voice] = []
     let midiRingBuffer = MIDIRingBuffer()
 
-    private static let ccToLayerOffset = 14
+    /// CC number offset — CC (ccToLayerOffset + n) controls layer n volume.
+    /// Default 14 maps CC 14–21 to layers 0–7 (Arturia MiniLab 3 knobs).
+    static var ccToLayerOffset = 14
 
     private var pendingLevels: [Float] = Array(repeating: 0, count: 8)
     private var pendingTriggers: [Bool] = Array(repeating: false, count: 8)
     private var pendingHits: [(padIndex: Int, position: Int, velocity: Int)] = []
     private var uiUpdateCounter = 0
+    private var lastClearedLayerIndex: Int?
 
     // Sync UI state to audio thread (called from main thread before audio starts)
     private func syncToAudio() {
@@ -96,6 +99,14 @@ class GodEngine: ObservableObject {
         guard index >= 0, index < layers.count else { return }
         layers[index].clear()
         audioLayers[index].clear()
+        lastClearedLayerIndex = index
+    }
+
+    func undoLastClear() {
+        guard let index = lastClearedLayerIndex else { return }
+        layers[index].undo()
+        audioLayers[index].undo()
+        lastClearedLayerIndex = nil
     }
 
     func toggleCapture() {
@@ -134,14 +145,15 @@ class GodEngine: ObservableObject {
         audioLayers[layerIndex].volume = Float(value) / 127.0
     }
 
-    func processBlock(frameCount: Int) -> [Float] {
-        var output = [Float](repeating: 0, count: frameCount)
-        guard audioIsPlaying else { return output }
+    func processBlock(frameCount: Int) -> (left: [Float], right: [Float]) {
+        var outputL = [Float](repeating: 0, count: frameCount)
+        var outputR = [Float](repeating: 0, count: frameCount)
+        guard audioIsPlaying else { return (outputL, outputR) }
 
         let startPos = audioPosition
         let loopLen = audioLoopLengthFrames
 
-        guard loopLen > 0 else { return output }
+        guard loopLen > 0 else { return (outputL, outputR) }
 
         // Drain MIDI events from ring buffer
         midiRingBuffer.drain { event in
@@ -184,41 +196,28 @@ class GodEngine: ObservableObject {
                 if beatLen > 0 && frameInLoop % beatLen == 0 {
                     let isDownbeat = frameInLoop == 0
                     let click = Metronome.generateClick(isDownbeat: isDownbeat, sampleRate: Transport.sampleRate)
-                    voices.append(Voice(
-                        sample: Sample(name: "click", data: click, sampleRate: Transport.sampleRate),
-                        velocity: audioMetronomeVolume
-                    ))
+                    voices.append(Voice(sample: click, velocity: audioMetronomeVolume))
                 }
             }
         }
 
-        // Mix all active voices
+        // Mix all active voices — track per-channel peak during fill
         voices = voices.compactMap { voice in
             var v = voice
-            let done = v.fill(into: &output, count: frameCount)
-            return done ? nil : v
-        }
-
-        // Calculate per-channel signal levels (peak detection)
-        for voice in voices where voice.padIndex >= 0 && voice.padIndex < 8 {
-            let remaining = min(frameCount, voice.sample.data.count - voice.position)
-            if remaining > 0 {
-                let start = max(0, voice.position)
-                let end = min(voice.sample.data.count, start + remaining)
-                for j in start..<end {
-                    pendingLevels[voice.padIndex] = max(
-                        pendingLevels[voice.padIndex],
-                        abs(voice.sample.data[j] * voice.velocity)
-                    )
-                }
+            let (done, peak) = v.fill(intoLeft: &outputL, right: &outputR, count: frameCount,
+                                               pan: 0.5, hpCoeffs: .bypass, lpCoeffs: .bypass)
+            if v.padIndex >= 0 && v.padIndex < 8 {
+                pendingLevels[v.padIndex] = max(pendingLevels[v.padIndex], peak)
             }
+            return done ? nil : v
         }
 
         // Apply master volume and track master level
         var peak: Float = 0
         for i in 0..<frameCount {
-            output[i] *= masterVolume
-            peak = max(peak, abs(output[i]))
+            outputL[i] *= masterVolume
+            outputR[i] *= masterVolume
+            peak = max(peak, abs(outputL[i]), abs(outputR[i]))
         }
 
         // Advance audio position
@@ -231,7 +230,7 @@ class GodEngine: ObservableObject {
 
         // Capture
         if audioCaptureState == .recording {
-            capture.append(buffer: output)
+            capture.append(left: outputL, right: outputR)
         }
         if wrapped {
             capture.onLoopBoundary()
@@ -271,7 +270,7 @@ class GodEngine: ObservableObject {
             }
         }
 
-        return output
+        return (outputL, outputR)
     }
 
     private var audioLoopLengthFrames: Int {

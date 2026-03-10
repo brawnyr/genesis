@@ -6,15 +6,46 @@ struct Voice {
     var padIndex: Int = -1
     var position: Int = 0
 
-    mutating func fill(into buffer: inout [Float], count: Int) -> Bool {
-        let remaining = sample.data.count - position
+    // Per-voice filter state (separate L/R for stereo independence)
+    var hpStateL = BiquadState()
+    var hpStateR = BiquadState()
+    var lpStateL = BiquadState()
+    var lpStateR = BiquadState()
+
+    /// Mixes this voice into stereo buffers with filtering and panning.
+    /// Returns (finished, peak).
+    mutating func fill(intoLeft left: inout [Float], right: inout [Float], count: Int,
+                       pan: Float, hpCoeffs: BiquadCoefficients, lpCoeffs: BiquadCoefficients
+    ) -> (finished: Bool, peak: Float) {
+        let remaining = sample.frameCount - position
         let toWrite = min(count, remaining)
+        var peak: Float = 0
+
+        let panL = cos(pan * .pi / 2.0)
+        let panR = sin(pan * .pi / 2.0)
 
         for i in 0..<toWrite {
-            buffer[i] += sample.data[position + i] * velocity
+            var l = sample.left[position + i] * velocity
+            var r = sample.right[position + i] * velocity
+
+            // HP filter
+            l = biquadProcessSample(l, coeffs: hpCoeffs, state: &hpStateL)
+            r = biquadProcessSample(r, coeffs: hpCoeffs, state: &hpStateR)
+
+            // LP filter
+            l = biquadProcessSample(l, coeffs: lpCoeffs, state: &lpStateL)
+            r = biquadProcessSample(r, coeffs: lpCoeffs, state: &lpStateR)
+
+            // Pan (equal-power)
+            l *= panL
+            r *= panR
+
+            left[i] += l
+            right[i] += r
+            peak = max(peak, abs(l), abs(r))
         }
 
         position += toWrite
-        return position >= sample.data.count
+        return (position >= sample.frameCount, peak)
     }
 }
