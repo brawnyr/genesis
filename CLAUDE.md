@@ -24,8 +24,20 @@ A SwiftUI app for live loop-stacking driven by an Arturia MiniLab 3. Not a DAW. 
 - `GOD/GOD/Views/` — SwiftUI views (Theme, Transport, LoopBar, PadGrid, LayerList, Tips, etc.)
 - `GOD/Tests/` — Swift Testing unit tests
 
+## Current State
+- **Active codebase: Swift only** — `GOD/` directory is the live project
+- `src/god/` and `tests/` are the **legacy Python v1 prototype** — do NOT modify or review
+- Branch: `god-v2-swift`
+- 11 Swift test files in `GOD/Tests/`
+- Per-layer effects (biquad filters, pan, volume, CC routing) just landed
+- Design docs and plans live in `docs/`
+
+## Commands
+- `god` alias: `cd ~/god/GOD && swift build && .build/arm64-apple-macosx/debug/GOD`
+- Tests: `cd ~/god/GOD && swift test`
+
 ## Principles
 - Light and fast
 - Performance-first — you play, it records
-- MOMENT-inspired aesthetic: dark, monospace, animated, Claude tips
+- **Anthropic/Claude aesthetic** — dark backgrounds, monospace type, soft glows, muted earth tones with Claude blue (`#6283e2`) and orange (`#da7b4a`) accents, minimal chrome, calm and intentional. All visual/UI decisions should feel like they belong in the Claude product family.
 - No bloat, no DAW features you won't use
