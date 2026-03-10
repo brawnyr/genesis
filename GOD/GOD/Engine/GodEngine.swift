@@ -12,6 +12,7 @@ class GodEngine: ObservableObject {
     @Published var channelTriggered: [Bool] = Array(repeating: false, count: 8)
     @Published var masterLevel: Float = 0
     var masterVolume: Float = 1.0
+    @Published var activePadIndex: Int = 0
 
     // Audio thread state — never touches @Published directly
     private var audioPosition: Int = 0
@@ -25,15 +26,13 @@ class GodEngine: ObservableObject {
     var voices: [Voice] = []
     let midiRingBuffer = MIDIRingBuffer()
 
-    /// CC number offset — CC (ccToLayerOffset + n) controls layer n volume.
-    /// Default 14 maps CC 14–21 to layers 0–7 (Arturia MiniLab 3 knobs).
-    static var ccToLayerOffset = 14
 
     private var pendingLevels: [Float] = Array(repeating: 0, count: 8)
     private var pendingTriggers: [Bool] = Array(repeating: false, count: 8)
     private var pendingHits: [(padIndex: Int, position: Int, velocity: Int)] = []
     private var uiUpdateCounter = 0
     private var lastClearedLayerIndex: Int?
+    private var audioActivePadIndex: Int = 0
 
     // Sync UI state to audio thread (called from main thread before audio starts)
     private func syncToAudio() {
@@ -123,6 +122,7 @@ class GodEngine: ObservableObject {
         guard let padIndex = padBank.padIndex(forNote: note),
               let sample = padBank.pads[padIndex].sample else { return }
 
+        audioActivePadIndex = padIndex
         audioLayers[padIndex].addHit(at: audioPosition, velocity: velocity)
         audioLayers[padIndex].name = padBank.pads[padIndex].name
 
@@ -140,9 +140,18 @@ class GodEngine: ObservableObject {
     }
 
     private func handleCC(number: Int, value: Int) {
-        let layerIndex = number - Self.ccToLayerOffset
-        guard layerIndex >= 0, layerIndex < 8 else { return }
-        audioLayers[layerIndex].volume = Float(value) / 127.0
+        switch number {
+        case 14: // Volume
+            audioLayers[audioActivePadIndex].volume = Float(value) / 127.0
+        case 15: // Pan
+            audioLayers[audioActivePadIndex].pan = Float(value) / 127.0
+        case 16: // HP Cutoff
+            audioLayers[audioActivePadIndex].hpCutoff = ccToFrequency(value)
+        case 17: // LP Cutoff
+            audioLayers[audioActivePadIndex].lpCutoff = ccToFrequency(value)
+        default:
+            break
+        }
     }
 
     func processBlock(frameCount: Int) -> (left: [Float], right: [Float]) {
@@ -204,8 +213,16 @@ class GodEngine: ObservableObject {
         // Mix all active voices — track per-channel peak during fill
         voices = voices.compactMap { voice in
             var v = voice
+            let layer = v.padIndex >= 0 && v.padIndex < 8 ? audioLayers[v.padIndex] : nil
+            let hpCoeffs = (layer?.hpCutoff ?? 20) <= 21
+                ? BiquadCoefficients.bypass
+                : BiquadCoefficients.highPass(cutoff: layer!.hpCutoff, sampleRate: Float(Transport.sampleRate))
+            let lpCoeffs = (layer?.lpCutoff ?? 20000) >= 19999
+                ? BiquadCoefficients.bypass
+                : BiquadCoefficients.lowPass(cutoff: layer!.lpCutoff, sampleRate: Float(Transport.sampleRate))
+            let pan = layer?.pan ?? 0.5
             let (done, peak) = v.fill(intoLeft: &outputL, right: &outputR, count: frameCount,
-                                               pan: 0.5, hpCoeffs: .bypass, lpCoeffs: .bypass)
+                                       pan: pan, hpCoeffs: hpCoeffs, lpCoeffs: lpCoeffs)
             if v.padIndex >= 0 && v.padIndex < 8 {
                 pendingLevels[v.padIndex] = max(pendingLevels[v.padIndex], peak)
             }
@@ -246,6 +263,10 @@ class GodEngine: ObservableObject {
             let masterPeak = peak
             let triggers = pendingTriggers
             let layerVolumes = audioLayers.map { $0.volume }
+            let activePad = audioActivePadIndex
+            let layerPans = audioLayers.map { $0.pan }
+            let layerHPCutoffs = audioLayers.map { $0.hpCutoff }
+            let layerLPCutoffs = audioLayers.map { $0.lpCutoff }
             let hits = pendingHits
             pendingHits.removeAll()
             pendingLevels = Array(repeating: 0, count: 8)
@@ -258,6 +279,7 @@ class GodEngine: ObservableObject {
                 self.transport.position = pos
                 self.channelSignalLevels = levels
                 self.masterLevel = masterPeak
+                self.activePadIndex = activePad
                 for i in 0..<8 {
                     if triggers[i] {
                         self.channelTriggered[i] = true
@@ -266,6 +288,9 @@ class GodEngine: ObservableObject {
                         }
                     }
                     self.layers[i].volume = layerVolumes[i]
+                    self.layers[i].pan = layerPans[i]
+                    self.layers[i].hpCutoff = layerHPCutoffs[i]
+                    self.layers[i].lpCutoff = layerLPCutoffs[i]
                 }
             }
         }
