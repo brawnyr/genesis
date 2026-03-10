@@ -11,7 +11,8 @@ struct ChannelListView: View {
                     layer: engine.layers[i],
                     pad: engine.padBank.pads[i],
                     signalLevel: engine.channelSignalLevels[i],
-                    triggered: engine.channelTriggered[i]
+                    triggered: engine.channelTriggered[i],
+                    isActive: engine.activePadIndex == i
                 )
             }
         }
@@ -24,6 +25,7 @@ struct ChannelRowView: View {
     let pad: Pad
     let signalLevel: Float
     let triggered: Bool
+    let isActive: Bool
 
     private var hasContent: Bool {
         pad.sample != nil || !layer.hits.isEmpty
@@ -37,6 +39,11 @@ struct ChannelRowView: View {
 
     var body: some View {
         HStack(spacing: 12) {
+            // Active indicator
+            Rectangle()
+                .fill(isActive ? Theme.blue : Color.clear)
+                .frame(width: 3)
+
             // Channel number — lights up orange on trigger
             Text("\(index + 1)")
                 .foregroundColor(triggered ? Theme.orange : Theme.text)
