@@ -22,6 +22,16 @@ struct PadBank {
     static let baseNote = 36
     static let padCount = 8
 
+    static let spliceFolderNames = ["kicks", "snares", "hats", "perc", "bass", "keys", "vox", "fx"]
+
+    static let spliceBasePath: URL = {
+        FileManager.default.homeDirectoryForCurrentUser
+            .appendingPathComponent("Splice")
+            .appendingPathComponent("sounds")
+    }()
+
+    private static let audioExtensions: Set<String> = ["wav", "aif", "aiff", "mp3", "m4a", "flac", "ogg"]
+
     var pads: [Pad] = (0..<8).map { i in
         Pad(index: i, midiNote: baseNote + i, name: "PAD \(i + 1)")
     }
@@ -71,6 +81,28 @@ struct PadBank {
                 pads[index].samplePath = assignment.path
                 pads[index].name = assignment.name
             }
+        }
+    }
+
+    mutating func loadFromSpliceFolders() {
+        let fm = FileManager.default
+        for (index, folderName) in Self.spliceFolderNames.enumerated() {
+            // Skip pads that already have a sample loaded (pads.json took priority)
+            guard pads[index].sample == nil else { continue }
+
+            let folderURL = Self.spliceBasePath.appendingPathComponent(folderName)
+            guard let contents = try? fm.contentsOfDirectory(at: folderURL,
+                                                              includingPropertiesForKeys: nil)
+                    .filter({ Self.audioExtensions.contains($0.pathExtension.lowercased()) })
+                    .sorted(by: { $0.lastPathComponent < $1.lastPathComponent })
+            else { continue }
+
+            guard let firstFile = contents.first,
+                  let sample = try? Sample.load(from: firstFile) else { continue }
+
+            pads[index].sample = sample
+            pads[index].samplePath = firstFile.path
+            pads[index].name = sample.name.uppercased()
         }
     }
 }
