@@ -34,3 +34,43 @@ import Testing
     layer.isMuted.toggle()
     #expect(layer.isMuted == true)
 }
+
+@Test func layerUndo() {
+    var layer = Layer(index: 0, name: "KICK")
+    layer.addHit(at: 100, velocity: 100)
+    layer.addHit(at: 200, velocity: 80)
+    #expect(layer.hits.count == 2)
+
+    layer.clear()
+    #expect(layer.hits.count == 0)
+    #expect(layer.canUndo == true)
+
+    layer.undo()
+    #expect(layer.hits.count == 2)
+    #expect(layer.canUndo == false)
+}
+
+@Test func layerUndoWhenNothingCleared() {
+    var layer = Layer(index: 0, name: "KICK")
+    layer.addHit(at: 100, velocity: 100)
+    #expect(layer.canUndo == false)
+    layer.undo() // should be a no-op
+    #expect(layer.hits.count == 1)
+}
+
+@Test func layerEffectDefaults() {
+    let layer = Layer(index: 0, name: "KICK")
+    #expect(layer.pan == 0.5)
+    #expect(layer.hpCutoff == 20.0)
+    #expect(layer.lpCutoff == 20000.0)
+}
+
+@Test func layerEffectParamsSettable() {
+    var layer = Layer(index: 0, name: "KICK")
+    layer.pan = 0.0
+    layer.hpCutoff = 500.0
+    layer.lpCutoff = 8000.0
+    #expect(layer.pan == 0.0)
+    #expect(layer.hpCutoff == 500.0)
+    #expect(layer.lpCutoff == 8000.0)
+}
