@@ -29,6 +29,90 @@ struct PadStripView: View {
     }
 }
 
+// MARK: - Marquee scrolling text
+
+struct MarqueeText: View {
+    let text: String
+    let font: Font
+    let color: Color
+    let shadow: Color
+
+    @State private var textWidth: CGFloat = 0
+    @State private var containerWidth: CGFloat = 0
+    @State private var offset: CGFloat = 0
+
+    private var overflows: Bool { textWidth > containerWidth && containerWidth > 0 }
+    private let gap: CGFloat = 40
+    private let speed: CGFloat = 30 // points per second
+
+    var body: some View {
+        GeometryReader { geo in
+            let _ = updateContainerWidth(geo.size.width)
+            ZStack(alignment: .leading) {
+                if overflows {
+                    HStack(spacing: gap) {
+                        Text(text)
+                            .font(font)
+                            .foregroundColor(color)
+                            .shadow(color: shadow, radius: 6)
+                            .fixedSize()
+                        Text(text)
+                            .font(font)
+                            .foregroundColor(color)
+                            .shadow(color: shadow, radius: 6)
+                            .fixedSize()
+                    }
+                    .offset(x: offset)
+                    .onAppear { startAnimation() }
+                    .onChange(of: text) { _, _ in resetAnimation() }
+                } else {
+                    Text(text)
+                        .font(font)
+                        .foregroundColor(color)
+                        .shadow(color: shadow, radius: 6)
+                        .fixedSize()
+                }
+            }
+            .frame(maxWidth: .infinity, alignment: .center)
+            .clipped()
+        }
+        .background(
+            Text(text)
+                .font(font)
+                .fixedSize()
+                .background(GeometryReader { geo in
+                    Color.clear.onAppear { textWidth = geo.size.width }
+                        .onChange(of: text) { _, _ in textWidth = geo.size.width }
+                })
+                .hidden()
+        )
+        .frame(height: 18)
+    }
+
+    private func updateContainerWidth(_ width: CGFloat) {
+        if containerWidth != width {
+            DispatchQueue.main.async { containerWidth = width }
+        }
+    }
+
+    private func startAnimation() {
+        guard overflows else { return }
+        let totalWidth = textWidth + gap
+        let duration = Double(totalWidth) / Double(speed)
+        offset = 0
+        withAnimation(.linear(duration: duration).repeatForever(autoreverses: false)) {
+            offset = -totalWidth
+        }
+    }
+
+    private func resetAnimation() {
+        offset = 0
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+            startAnimation()
+        }
+    }
+}
+
 // MARK: - Individual pad (cold → hot)
 
 struct PadCell: View {
@@ -62,18 +146,17 @@ struct PadCell: View {
     var body: some View {
         VStack(spacing: 4) {
             // Sample name (or empty indicator)
-            Text(sampleLabel)
-                .font(.system(size: 12, design: .monospaced).bold())
-                .foregroundColor(
-                    isHot && isActive ? .white :
-                    isHot ? Theme.orange :
-                    isCold ? Theme.ice :
-                    Color(white: 0.15)
-                )
-                .shadow(color: isHot ? Theme.orange.opacity(isActive ? 0.6 : 0.3) : .clear, radius: 6)
-                .shadow(color: isCold ? Theme.ice.opacity(0.4) : .clear, radius: 6)
-                .lineLimit(1)
-                .minimumScaleFactor(0.5)
+            MarqueeText(
+                text: sampleLabel,
+                font: .system(size: 14, design: .monospaced).bold(),
+                color: isHot && isActive ? .white :
+                       isHot ? Theme.orange :
+                       isCold ? Theme.ice :
+                       Color(white: 0.15),
+                shadow: isHot ? Theme.orange.opacity(isActive ? 0.6 : 0.3) :
+                        isCold ? Theme.ice.opacity(0.4) :
+                        .clear
+            )
 
             // Folder name
             Text(folderName.uppercased())
