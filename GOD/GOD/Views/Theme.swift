@@ -21,6 +21,10 @@ enum Theme {
     // Subtle — only for empty slots and track background
     static let subtle = Color(white: 0.25)
 
+    // Terminal text — same white but for dimming
+    static let terminalText = Color.white
+    static let terminalDim = Color(white: 0.4)
+
     // Fonts — bumped sizes for readability
     static let mono = Font.system(size: 16, design: .monospaced)
     static let monoSmall = Font.system(size: 14, design: .monospaced)
