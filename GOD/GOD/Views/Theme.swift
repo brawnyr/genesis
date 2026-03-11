@@ -31,4 +31,21 @@ enum Theme {
     static let monoTiny = Font.system(size: 12, design: .monospaced)
     static let monoLarge = Font.system(size: 22, design: .monospaced)
     static let monoTitle = Font.system(size: 28, design: .monospaced).weight(.bold)
+
+    // Canvas
+    static let canvasBg = Color(red: 0.075, green: 0.071, blue: 0.063)  // #131210
+
+    // ASCII GOD title — D clearly distinct from O
+    static let godArtIdle = """
+ ██████   ██████  ██████▄
+██       ██    ██ ██    ██
+██  ████ ██    ██ ██    ██
+██    ██ ██    ██ ██    ██
+ ██████   ██████  ██████▀
+"""
+
+    static let godSubtitle = "GENESIS ON DISK"
+
+    // Charcoal for idle title
+    static let charcoal = Color(red: 0.165, green: 0.157, blue: 0.145)  // #2a2825
 }
