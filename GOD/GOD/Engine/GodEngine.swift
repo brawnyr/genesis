@@ -11,6 +11,8 @@ class GodEngine: ObservableObject {
     @Published var channelSignalLevels: [Float] = Array(repeating: 0, count: 8)
     @Published var channelTriggered: [Bool] = Array(repeating: false, count: 8)
     @Published var masterLevel: Float = 0
+    @Published var masterLevelDb: Float = -.infinity
+    @Published var channelLevelDb: [Float] = Array(repeating: -.infinity, count: 8)
     @Published var masterVolume: Float = 1.0
     @Published var detectedBPMs: [Int: Double] = [:]
     @Published var activePadIndex: Int = 0
@@ -353,6 +355,8 @@ class GodEngine: ObservableObject {
                 self.transport.position = pos
                 self.channelSignalLevels = levels
                 self.masterLevel = masterPeak
+                self.masterLevelDb = linearToDb(masterPeak)
+                self.channelLevelDb = levels.map { linearToDb($0) }
                 for i in 0..<8 {
                     if triggers[i] {
                         self.channelTriggered[i] = true

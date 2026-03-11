@@ -354,6 +354,11 @@ struct CCPanelView: View {
             .shadow(color: Theme.orange.opacity(masterVolumeMode ? 0.3 : 0.15), radius: 20)
             .padding(.top, 6)
 
+            Text(formatDb(engine.masterLevelDb))
+                .font(.system(size: 11, design: .monospaced))
+                .foregroundColor(engine.masterLevelDb > 0 ? Theme.orange : Color(white: 0.4))
+                .shadow(color: engine.masterLevelDb > 0 ? Theme.orange.opacity(0.4) : .clear, radius: 4)
+
             if masterVolumeMode {
                 Text("[V] to exit")
                     .font(.system(size: 10, design: .monospaced))
@@ -420,7 +425,7 @@ struct CCPanelView: View {
                 .padding(.bottom, 6)
 
             VStack(alignment: .leading, spacing: 0) {
-                InspectorRow(label: "vol", value: "\(Int(layer.volume * 100))%", highlight: !masterVolumeMode)
+                InspectorRow(label: "vol", value: "\(Int(layer.volume * 100))% \(formatDb(engine.channelLevelDb[activeIndex]))", highlight: !masterVolumeMode)
                 InspectorRow(label: "pan", value: EngineEventInterpreter.formatPan(layer.pan))
                 InspectorRow(label: "HP", value: EngineEventInterpreter.formatFrequency(layer.hpCutoff),
                              highlight: layer.hpCutoff > 21)

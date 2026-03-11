@@ -376,10 +376,12 @@ struct ContentView: View {
                 let digit = Float(c.asciiValue! - Character("0").asciiValue!)
                 if masterVolumeMode {
                     engine.setMasterVolume(digit / 9.0)
-                    interpreter.appendLine("master vol → \(Int(engine.masterVolume * 100))%", kind: .state)
+                    let mDb = formatDb(linearToDb(engine.masterVolume))
+                    interpreter.appendLine("master vol → \(Int(engine.masterVolume * 100))% (\(mDb))", kind: .state)
                 } else {
                     engine.setLayerVolume(engine.activePadIndex, volume: digit / 9.0)
-                    interpreter.appendLine("pad \(engine.activePadIndex + 1) vol → \(Int(digit / 9.0 * 100))%", kind: .state)
+                    let pDb = formatDb(linearToDb(digit / 9.0))
+                    interpreter.appendLine("pad \(engine.activePadIndex + 1) vol → \(Int(digit / 9.0 * 100))% (\(pDb))", kind: .state)
                 }
             default: break
             }
