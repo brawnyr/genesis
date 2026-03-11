@@ -253,6 +253,85 @@ struct LoopProgressBar: View {
     }
 }
 
+// MARK: - Inspector helper views
+
+struct InspectorSectionHeader: View {
+    let title: String
+    let color: Color
+
+    var body: some View {
+        HStack(spacing: 6) {
+            Text("▶")
+                .font(.system(size: 10, design: .monospaced))
+                .foregroundColor(color)
+            Text(title)
+                .font(.system(size: 10, design: .monospaced))
+                .foregroundColor(Color.white.opacity(0.3))
+                .tracking(0.5)
+        }
+    }
+}
+
+struct InspectorRow: View {
+    let label: String
+    let value: String
+    let highlight: Bool
+    let labelWidth: CGFloat
+
+    init(label: String, value: String, highlight: Bool = false, labelWidth: CGFloat = 40) {
+        self.label = label
+        self.value = value
+        self.highlight = highlight
+        self.labelWidth = labelWidth
+    }
+
+    var body: some View {
+        HStack(spacing: 0) {
+            Text(label)
+                .foregroundColor(Color.white.opacity(0.3))
+                .frame(width: labelWidth, alignment: .leading)
+            Text(value)
+                .foregroundColor(highlight ? Theme.orange : Color.white.opacity(0.6))
+                .shadow(color: highlight ? Theme.orange.opacity(0.2) : .clear, radius: 4)
+        }
+        .font(.system(size: 12, design: .monospaced))
+        .padding(.vertical, 1)
+    }
+}
+
+struct CutBadge: View {
+    let isOn: Bool
+
+    var body: some View {
+        HStack(spacing: 8) {
+            Text("cut")
+                .foregroundColor(Color.white.opacity(0.3))
+                .frame(width: 40, alignment: .leading)
+            Text(isOn ? "ON" : "OFF")
+                .font(.system(size: 11, design: .monospaced).bold())
+                .foregroundColor(isOn ? Theme.orange : Color.white.opacity(0.3))
+                .padding(.horizontal, 8)
+                .padding(.vertical, 1)
+                .background(
+                    RoundedRectangle(cornerRadius: 3)
+                        .fill(isOn ? Theme.orange.opacity(0.15) : Color.clear)
+                )
+                .overlay(
+                    RoundedRectangle(cornerRadius: 3)
+                        .stroke(isOn ? Theme.orange.opacity(0.3) : Color.white.opacity(0.1), lineWidth: 1)
+                )
+                .shadow(color: isOn ? Theme.orange.opacity(0.3) : .clear, radius: 6)
+            if isOn {
+                Text("notes chop")
+                    .font(.system(size: 9, design: .monospaced))
+                    .foregroundColor(Color.white.opacity(0.2))
+            }
+        }
+        .font(.system(size: 12, design: .monospaced))
+        .padding(.vertical, 1)
+    }
+}
+
 // MARK: - Right-side panel (CC readout + sample browser)
 
 struct CCPanelView: View {
@@ -314,42 +393,70 @@ struct CCPanelView: View {
 
     private var padReadoutView: some View {
         VStack(alignment: .leading, spacing: 0) {
-            // Pad number + folder
-            HStack(spacing: 6) {
-                Text("\(activeIndex + 1)")
-                    .font(.system(size: 28, design: .monospaced).bold())
-                    .foregroundColor(layer.isMuted ? Theme.ice : Theme.orange)
-                Text(folderName.uppercased())
-                    .font(.system(size: 16, design: .monospaced).bold())
-                    .foregroundColor(layer.isMuted ? Theme.ice.opacity(0.7) : Theme.orange.opacity(0.7))
+            // Channel name — hero
+            Text(folderName.uppercased())
+                .font(.system(size: 22, design: .monospaced).bold())
+                .foregroundColor(layer.isMuted ? Theme.ice : Theme.orange)
+                .tracking(2)
+                .shadow(color: (layer.isMuted ? Theme.ice : Theme.orange).opacity(0.4), radius: 25)
+
+            Rectangle()
+                .fill(Color.white.opacity(0.04))
+                .frame(height: 1)
+                .padding(.vertical, 10)
+
+            // SAMPLE section
+            InspectorSectionHeader(title: "SAMPLE", color: Theme.blue.opacity(0.5))
+                .padding(.bottom, 6)
+
+            VStack(alignment: .leading, spacing: 0) {
+                if let sample = pad.sample {
+                    InspectorRow(label: "file", value: sample.name.lowercased(), labelWidth: 40)
+                    InspectorRow(label: "dur", value: String(format: "%.2fs", sample.durationMs / 1000.0), labelWidth: 40)
+                    if let bpm = engine.detectedBPMs[activeIndex] {
+                        InspectorRow(label: "bpm", value: "\(Int(bpm))", highlight: true, labelWidth: 40)
+                    } else {
+                        InspectorRow(label: "bpm", value: "--", labelWidth: 40)
+                    }
+                } else {
+                    InspectorRow(label: "file", value: "--", labelWidth: 40)
+                }
             }
-            .shadow(color: (layer.isMuted ? Theme.ice : Theme.orange).opacity(0.2), radius: 6)
-            .padding(.bottom, 4)
+            .padding(.leading, 16)
 
-            if let sample = pad.sample {
-                Text(sample.name.lowercased())
-                    .font(.system(size: 13, design: .monospaced))
-                    .foregroundColor(Color(white: 0.55))
-                    .lineLimit(1)
-            } else {
-                Text("[no sample]")
-                    .font(.system(size: 13, design: .monospaced))
-                    .foregroundColor(Theme.subtle)
+            Rectangle()
+                .fill(Color.white.opacity(0.04))
+                .frame(height: 1)
+                .padding(.vertical, 10)
+
+            // PARAMS section
+            InspectorSectionHeader(title: "PARAMS", color: Theme.orange.opacity(0.5))
+                .padding(.bottom, 6)
+
+            VStack(alignment: .leading, spacing: 0) {
+                InspectorRow(label: "vol", value: "\(Int(layer.volume * 100))%", highlight: !masterVolumeMode)
+                InspectorRow(label: "pan", value: EngineEventInterpreter.formatPan(layer.pan))
+                InspectorRow(label: "HP", value: EngineEventInterpreter.formatFrequency(layer.hpCutoff),
+                             highlight: layer.hpCutoff > 21)
+                InspectorRow(label: "LP", value: EngineEventInterpreter.formatFrequency(layer.lpCutoff),
+                             highlight: layer.lpCutoff < 19999)
             }
+            .padding(.leading, 16)
 
-            Divider()
-                .background(Theme.subtle.opacity(0.3))
-                .padding(.vertical, 8)
+            Rectangle()
+                .fill(Color.white.opacity(0.04))
+                .frame(height: 1)
+                .padding(.vertical, 10)
 
-            CCRow(label: "vol", value: "\(Int(layer.volume * 100))%", highlight: !masterVolumeMode)
-            CCRow(label: "pan", value: EngineEventInterpreter.formatPan(layer.pan), highlight: false)
-            CCRow(label: "HP", value: EngineEventInterpreter.formatFrequency(layer.hpCutoff),
-                  highlight: layer.hpCutoff > 21)
-            CCRow(label: "LP", value: EngineEventInterpreter.formatFrequency(layer.lpCutoff),
-                  highlight: layer.lpCutoff < 19999)
+            // MODE section
+            InspectorSectionHeader(title: "MODE", color: Theme.orange.opacity(0.5))
+                .padding(.bottom, 6)
+
+            CutBadge(isOn: layer.cut)
+                .padding(.leading, 16)
 
             Spacer()
-}
+        }
     }
 }
 
@@ -499,23 +606,3 @@ struct SampleBrowserView: View {
     }
 }
 
-// MARK: - CC Row
-
-struct CCRow: View {
-    let label: String
-    let value: String
-    let highlight: Bool
-
-    var body: some View {
-        HStack(spacing: 0) {
-            Text(label)
-                .foregroundColor(Color(white: 0.4))
-                .frame(width: 40, alignment: .leading)
-            Text(value)
-                .foregroundColor(highlight ? Theme.orange : Color(white: 0.75))
-                .shadow(color: highlight ? Theme.orange.opacity(0.2) : .clear, radius: 4)
-        }
-        .font(.system(size: 14, design: .monospaced))
-        .padding(.vertical, 3)
-    }
-}
