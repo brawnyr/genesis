@@ -5,7 +5,7 @@ struct Transport {
     private static let validBarCounts: Set<Int> = [1, 2, 4]
 
     var bpm: Int = 120 {
-        didSet { bpm = max(1, bpm) }
+        didSet { bpm = max(1, min(999, bpm)) }
     }
 
     var barCount: Int = 4 {

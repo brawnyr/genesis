@@ -21,7 +21,7 @@ import Testing
     capture.onLoopBoundary() // recording
 
     let buffer: [Float] = [0.1, 0.2, 0.3]
-    capture.append(buffer: buffer)
-    capture.append(buffer: buffer)
+    capture.append(left: buffer, right: buffer)
+    capture.append(left: buffer, right: buffer)
     #expect(capture.accumulatedFrames == 6)
 }

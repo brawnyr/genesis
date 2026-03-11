@@ -12,7 +12,7 @@ struct Metronome {
         Int(60.0 / Double(bpm) * sampleRate)
     }
 
-    static func generateClick(isDownbeat: Bool, sampleRate: Double) -> [Float] {
+    static func generateClick(isDownbeat: Bool, sampleRate: Double) -> Sample {
         let duration = 0.02 // 20ms
         let frameCount = Int(duration * sampleRate)
         let frequency: Double = isDownbeat ? 1500.0 : 1000.0
@@ -25,6 +25,6 @@ struct Metronome {
             let sine = Float(sin(2.0 * .pi * frequency * t))
             buffer[i] = sine * envelope * amplitude
         }
-        return buffer
+        return Sample(name: "click", left: buffer, right: buffer, sampleRate: sampleRate)
     }
 }

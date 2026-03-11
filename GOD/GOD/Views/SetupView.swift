@@ -1,5 +1,8 @@
 import SwiftUI
 import UniformTypeIdentifiers
+import os
+
+private let logger = Logger(subsystem: "com.god.ui", category: "SetupView")
 
 struct SetupView: View {
     @ObservedObject var engine: GodEngine
@@ -51,7 +54,11 @@ struct SetupView: View {
                 Spacer()
 
                 Button("DONE") {
-                    try? engine.padBank.save()
+                    do {
+                        try engine.padBank.save()
+                    } catch {
+                        logger.error("Failed to save pad config: \(error.localizedDescription)")
+                    }
                     isPresented = false
                 }
                 .font(Theme.mono)
@@ -70,10 +77,13 @@ struct SetupView: View {
         panel.allowsMultipleSelection = false
 
         if panel.runModal() == .OK, let url = panel.url {
-            if let sample = try? Sample.load(from: url) {
+            do {
+                let sample = try Sample.load(from: url)
                 engine.padBank.assign(sample: sample, toPad: index)
                 engine.padBank.pads[index].samplePath = url.path
                 engine.layers[index].name = sample.name.uppercased()
+            } catch {
+                logger.error("Failed to load sample from \(url.lastPathComponent): \(error.localizedDescription)")
             }
         }
     }

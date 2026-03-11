@@ -12,7 +12,7 @@ import Foundation
 
 @Test func padSampleAssignment() {
     var pads = PadBank()
-    let sample = Sample(name: "kick", data: [0.1, 0.2], sampleRate: 44100)
+    let sample = Sample(name: "kick", left: [0.1, 0.2], right: [0.1, 0.2], sampleRate: 44100)
     pads.assign(sample: sample, toPad: 0)
     #expect(pads.pads[0].sample?.name == "kick")
 }

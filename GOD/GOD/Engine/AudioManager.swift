@@ -1,4 +1,7 @@
 import AVFoundation
+import os
+
+private let logger = Logger(subsystem: "com.god.audio", category: "AudioManager")
 
 class AudioManager {
     private let audioEngine = AVAudioEngine()
@@ -10,23 +13,28 @@ class AudioManager {
     }
 
     func start() throws {
-        let format = AVAudioFormat(standardFormatWithSampleRate: 44100, channels: 1)!
+        let format = AVAudioFormat(standardFormatWithSampleRate: Transport.sampleRate, channels: 2)!
 
         let node = AVAudioSourceNode(format: format) { [weak self] _, _, frameCount, audioBufferList -> OSStatus in
             guard let engine = self?.godEngine else { return noErr }
 
-            let output = engine.processBlock(frameCount: Int(frameCount))
+            let (left, right) = engine.processBlock(frameCount: Int(frameCount))
 
             let ablPointer = UnsafeMutableAudioBufferListPointer(audioBufferList)
-            let buffer = ablPointer[0]
-            let ptr = buffer.mData?.assumingMemoryBound(to: Float.self)
+            let leftPtr = ablPointer[0].mData?.assumingMemoryBound(to: Float.self)
+            let rightPtr: UnsafeMutablePointer<Float>?
+
+            if ablPointer.count >= 2 {
+                rightPtr = ablPointer[1].mData?.assumingMemoryBound(to: Float.self)
+            } else {
+                rightPtr = nil
+            }
 
             for i in 0..<Int(frameCount) {
-                if i < output.count {
-                    ptr?[i] = output[i]
-                } else {
-                    ptr?[i] = 0
-                }
+                let l = i < left.count ? left[i] : 0
+                let r = i < right.count ? right[i] : 0
+                leftPtr?[i] = l
+                rightPtr?[i] = r
             }
 
             return noErr
@@ -36,7 +44,13 @@ class AudioManager {
         audioEngine.attach(node)
         audioEngine.connect(node, to: audioEngine.mainMixerNode, format: format)
 
-        try audioEngine.start()
+        do {
+            try audioEngine.start()
+            logger.info("Audio engine started — stereo \(Transport.sampleRate)Hz")
+        } catch {
+            logger.error("Audio engine failed to start: \(error.localizedDescription)")
+            throw error
+        }
     }
 
     func stop() {

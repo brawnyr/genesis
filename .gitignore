@@ -23,5 +23,12 @@ Thumbs.db
 *.ogg
 samples/
 
+# Swift
+.build/
+.swiftpm/
+
+# Test cache
+.pytest_cache/
+
 # Environment
 .env

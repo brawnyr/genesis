@@ -8,7 +8,9 @@ struct TipView: View {
 
     private let charInterval = 0.08
     private let cycleInterval = 12.0
-    private let timer = Timer.publish(every: 0.05, on: .main, in: .common).autoconnect()
+
+    // Static timer avoids accumulating duplicates if view is recreated
+    private static let timer = Timer.publish(every: 0.05, on: .main, in: .common).autoconnect()
 
     var body: some View {
         VStack(alignment: .leading, spacing: 2) {
@@ -26,7 +28,7 @@ struct TipView: View {
             }
         }
         .onAppear { nextTip() }
-        .onReceive(timer) { _ in
+        .onReceive(Self.timer) { _ in
             elapsed = Date().timeIntervalSince(tipStartTime)
             let typewriter = TypewriterState(text: currentTip, charInterval: charInterval)
             if elapsed > typewriter.totalDuration + cycleInterval {
