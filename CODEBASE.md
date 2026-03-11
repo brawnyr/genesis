@@ -32,11 +32,13 @@ GODApp (@main)
 ```swift
 struct Transport {
     static let sampleRate: Double = 44100.0
+    static let beatsPerBar = 4
     var bpm: Int = 120          // clamped 1-999
     var barCount: Int = 4       // valid: 1, 2, 4
     var position: Int = 0       // current frame position
     var isPlaying: Bool = false
-    var loopLengthFrames: Int   // computed: barCount * 4 beats * (60/bpm) * sampleRate
+    var loopLengthFrames: Int   // computed: barCount * beatsPerBar * (60/bpm) * sampleRate
+    var currentBeat: Int        // computed: 1-based beat position in loop
     mutating func advance(frames:) -> Bool  // returns true on loop wrap
     mutating func reset()
 }
@@ -87,8 +89,10 @@ struct Layer {
     let index: Int; var name: String
     var hits: [Hit], isMuted: Bool, volume: Float = 1.0
     var pan: Float = 0.5        // 0=L, 0.5=C, 1=R
-    var hpCutoff: Float = 20.0  // Hz
-    var lpCutoff: Float = 20000.0
+    static let hpBypassFrequency: Float = 20.0
+    static let lpBypassFrequency: Float = 20000.0
+    var hpCutoff: Float = Layer.hpBypassFrequency
+    var lpCutoff: Float = Layer.lpBypassFrequency
     var cut: Bool = false
     mutating func addHit(at:velocity:)
     func hits(inRange:) -> [Hit]
@@ -119,13 +123,14 @@ struct BiquadCoefficients {
     static func highPass(cutoff:sampleRate:) -> BiquadCoefficients
 }
 func biquadProcessSample(_:coeffs:state:) -> Float  // Direct Form II Transposed
-func ccToFrequency(_ cc: Int) -> Float  // 0-127 → 20Hz-20kHz exponential
+func ccToFrequency(_ cc: Int) -> Float  // 0-127 → 20Hz-20kHz exponential (input clamped)
 ```
 
 ### Metronome.swift
 ```swift
 struct Metronome {
     var isOn: Bool = true, volume: Float = 0.5
+    // Named constants: clickDuration, downbeatFreq, beatFreq, downbeatAmplitude, beatAmplitude, clickDecayRate
     static func beatLengthFramesStatic(bpm:sampleRate:) -> Int
     static func generateClick(isDownbeat:sampleRate:) -> Sample  // 20ms sine burst
 }
@@ -136,6 +141,7 @@ struct Metronome {
 struct GodCapture {
     enum State { case idle, armed, recording }
     var state: State = .idle
+    private static let filenameDateFormatter: DateFormatter  // cached static lazy
     mutating func toggle()          // idle→armed, armed→idle, recording→writeAndReset+idle
     mutating func onLoopBoundary()  // armed→recording (clears buffers)
     mutating func append(left:right:)
@@ -145,10 +151,11 @@ struct GodCapture {
 
 ## Engine (GOD/GOD/Engine/)
 
-### GodEngine.swift — Central hub, ~380 lines
-- `@Published` state: transport, layers[8], padBank, metronome, capture, channelSignalLevels, channelTriggered, masterLevel, masterVolume, detectedBPMs, activePadIndex
-- `AudioState` struct (defined above class): groups all audio-thread-only state (position, isPlaying, bpm, barCount, metronomeOn, metronomeVolume, layers, captureState, capture, activePadIndex, toggleMode, pendingMutes, loopLengthFrames computed property)
-- Single `private var audio = AudioState()` replaces individual `audio*` fields
+### GodEngine.swift — Central hub, ~500 lines
+- `@Published` state: transport, layers[PadBank.padCount], padBank, metronome, capture, channelSignalLevels, channelTriggered, masterLevel, masterVolume, detectedBPMs, activePadIndex
+- `AudioState` struct (private, audio-thread-only): groups position, isPlaying, bpm, barCount, metronomeOn, metronomeVolume, layers, captureState, capture, activePadIndex, toggleMode, pendingMutes, loopLengthFrames (computed)
+- Single `private var audio = AudioState()` — all audio-thread state accessed via `audio.`
+- Named constants: `uiUpdateHz` (UI throttle rate)
 - Key methods: togglePlay(), stop(), setBPM(), setBarCount(), cycleBarCount(), setMasterVolume(), toggleMute(), toggleCut(), clearLayer(), undoLastClear(), toggleCapture(), toggleMetronome(), detectBPM()
 - `processBlock(frameCount:) -> (left: [Float], right: [Float])` — THE audio render callback:
   1. Scans audioLayers for loop-replayed hits
@@ -178,9 +185,10 @@ struct GodCapture {
 - `enum MIDIEvent { case noteOn(note:velocity:), noteOff(note:), cc(number:value:) }`
 
 ### EngineEventInterpreter.swift — 210 lines
-- Terminal log with TerminalLine entries (text, kind, timestamp)
+- Terminal log with TerminalLine entries (text, kind, timestamp); cached `timeFormatter` static DateFormatter
 - `LineKind` enum: system, transport, hit, state, capture, browse
 - Tracks pad intensities for visual columns (decay animation)
+- Named decay constants: `shortDecay`, `sustainDecay`, `sustainMinIntensity`, `intensityCutoff`
 - processHits() — logs hit events, updates intensities
 - processStateDiff() — diffs transport/mute/CC/capture changes, emits log lines
 - onLoopBoundary() — emits per-layer summary
@@ -189,7 +197,7 @@ struct GodCapture {
 
 ### BPMDetector.swift — 80 lines
 - Energy-based onset detection using Accelerate/vDSP
-- Window 1024, hop 512, onset peaks → inter-onset intervals → histogram → best BPM
+- Named constants: windowSize, hopSize, onsetThresholdMultiplier, minIntervalSec, maxIntervalSec, histogramBinSec, minBPM, maxBPM
 - Normalizes to 70-180 BPM range
 
 ## Views (GOD/GOD/Views/)
@@ -210,20 +218,22 @@ struct GodCapture {
 - GodTitleLayer: pixel bitmaps for G/O/D letters, animated drift + pulse, three visual modes (idle=ice, playing=orange, godMode=orange+red)
 - TerminalTextLayer: scrolling log with line-kind coloring, blinking cursor, fade-in opacity
 
-### PadStripView.swift — 593 lines
-- PadStripView: HStack of 8 PadCell views
-- PadCell: sample name (MarqueeText), folder label, signal meter, hot/cold/active styling with glow/frost
+### PadStripView.swift — ~580 lines
+- PadStripView: HStack of PadBank.padCount PadCell views
+- PadCellOverlay (ViewModifier): consolidates hot glow, cold frost, trigger flash, pending stroke, and top border overlays
+- PadCell: sample name (MarqueeText), folder label, signal meter, uses PadCellOverlay modifier
 - MarqueeText: auto-scrolling text for long names using TimelineView
 - LoopProgressBar: thin horizontal progress bar
 - CCPanelView (right panel, 190px): master volume display, pad inspector (sample info, params, cut badge), sample browser
 - SampleBrowserView: lists files from Splice folder, W/S navigation, tap to load, file picker fallback
 - Helper views: InspectorSectionHeader, InspectorRow, CutBadge
 
-### TransportView.swift — 112 lines
-- Horizontal bar: play state, BPM, bar count, metronome, beat counter, capture status, master volume, loop progress
+### TransportView.swift — 49 lines
+- Horizontal bar: play state, BPM, bar count, metronome, beat counter (uses transport.currentBeat)
 
-### KeyReferenceOverlay.swift — 58 lines
-- Help overlay listing all keyboard shortcuts
+### KeyReferenceOverlay.swift — ~120 lines
+- `KeyAction` enum (CaseIterable): all keyboard shortcuts with key/action string pairs
+- Help overlay iterates KeyAction.allCases for display
 
 ## App Entry (GODApp.swift) — 164 lines
 - @main struct, creates GodEngine + EngineEventInterpreter
@@ -238,10 +248,12 @@ struct GodCapture {
 - **Per-layer effects**: volume, pan, HP/LP biquad filters applied per-voice in Voice.fill()
 - **Splice integration**: auto-loads from ~/Splice/sounds/{kicks,snares,hats,perc,bass,keys,vox,fx}/
 - **Pad config**: persisted to ~/.god/pads.json
+- **Error logging**: Sample/config operations use os.Logger (Pad.swift) or interpreter terminal (ContentView) instead of silent try?
 
 ## Test Files (GOD/Tests/)
-12 test files using Swift Testing framework (@Test, #expect):
+13 test files using Swift Testing framework (@Test, #expect), 91 tests:
 - TransportTests, LayerTests, PadTests, VoiceTests, MetronomeTests
 - GodEngineTests, GodCaptureTests, BiquadTests
 - MIDITests, MIDIRingBufferTests, EngineEventInterpreterTests
 - BPMDetectorTests, SpliceLoadingTests
+- Note: engineActivePadTracking has a known test bug (velocity assertion)
