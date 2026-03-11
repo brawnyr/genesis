@@ -198,10 +198,11 @@ struct GodCapture {
 - Colors: bg (#1a1917), blue (#6283e2), ice (#64beff), orange (#da7b4a), green, red, amber, subtle, charcoal, canvasBg (#131210)
 - Fonts: mono (16pt), monoSmall (14), monoTiny (12), monoLarge (22), monoTitle (28 bold)
 
-### ContentView.swift — 405 lines
+### ContentView.swift — 447 lines
 - Root view with KeyCaptureView (NSView) for keyboard input
 - Layout: HStack[CanvasView + CCPanelView] → LoopProgressBar → PadStripView → Hotkeys strip
-- Full keyboard handler with modes: normal, BPM mode (B key), browse mode (T key)
+- `EditMode` enum (.normal, .bpm, .browse) replaces boolean state flags
+- Key handling split into mode-dispatched methods: handleKey → handleShiftPad, handleBPMKey, handleBrowseKey, handleNormalKey
 - Keys: SPC=play, G=capture, A/D=pad nav, Shift+1-8=pad jump, Q=cool(mute), E=hot(unmute), M=metro, B=bpm, []=bars, V=master vol mode, 0-9=volume, Z=undo, C=clear, X=cut, T=browse, ESC=stop, ?=help
 
 ### CanvasView.swift — 322 lines
