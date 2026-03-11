@@ -39,17 +39,22 @@ struct MarqueeText: View {
 
     @State private var textWidth: CGFloat = 0
     @State private var containerWidth: CGFloat = 0
-    @State private var offset: CGFloat = 0
 
     private var overflows: Bool { textWidth > containerWidth && containerWidth > 0 }
     private let gap: CGFloat = 40
-    private let speed: CGFloat = 30 // points per second
+    private let speed: CGFloat = 30.0 // points per second
 
     var body: some View {
         GeometryReader { geo in
             let _ = updateContainerWidth(geo.size.width)
-            ZStack(alignment: .leading) {
-                if overflows {
+            if overflows {
+                // TimelineView drives continuous smooth scrolling with no pop on loop
+                TimelineView(.animation) { timeline in
+                    let cycleWidth = textWidth + gap
+                    let elapsed = timeline.date.timeIntervalSinceReferenceDate
+                    let rawOffset = elapsed * speed
+                    let scrollOffset = -(rawOffset.truncatingRemainder(dividingBy: cycleWidth))
+
                     HStack(spacing: gap) {
                         Text(text)
                             .font(font)
@@ -62,18 +67,16 @@ struct MarqueeText: View {
                             .shadow(color: shadow, radius: 6)
                             .fixedSize()
                     }
-                    .offset(x: offset)
-                    .onAppear { startAnimation() }
-                    .onChange(of: text) { _, _ in resetAnimation() }
-                } else {
-                    Text(text)
-                        .font(font)
-                        .foregroundColor(color)
-                        .shadow(color: shadow, radius: 6)
-                        .fixedSize()
+                    .offset(x: scrollOffset)
                 }
+            } else {
+                Text(text)
+                    .font(font)
+                    .foregroundColor(color)
+                    .shadow(color: shadow, radius: 6)
+                    .fixedSize()
+                    .frame(maxWidth: .infinity, alignment: .center)
             }
-            .frame(width: geo.size.width, alignment: .center)
         }
         .clipped()
         .background(
@@ -92,23 +95,6 @@ struct MarqueeText: View {
     private func updateContainerWidth(_ width: CGFloat) {
         if containerWidth != width {
             DispatchQueue.main.async { containerWidth = width }
-        }
-    }
-
-    private func startAnimation() {
-        guard overflows else { return }
-        let totalWidth = textWidth + gap
-        let duration = Double(totalWidth) / Double(speed)
-        offset = 0
-        withAnimation(.linear(duration: duration).repeatForever(autoreverses: false)) {
-            offset = -totalWidth
-        }
-    }
-
-    private func resetAnimation() {
-        offset = 0
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
-            startAnimation()
         }
     }
 }
