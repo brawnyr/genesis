@@ -41,9 +41,13 @@ struct ContentView: View {
     @ObservedObject var interpreter: EngineEventInterpreter
     @State private var showKeyReference = false
     @State private var masterVolumeMode = false
-    @State private var browsingPad = false
+    private enum EditMode {
+        case normal
+        case bpm
+        case browse
+    }
+    @State private var mode: EditMode = .normal
     @State private var browserIndex: Int = 0
-    @State private var bpmMode = false
     @State private var bpmInput = ""
     @State private var bpmPresetIndex = 0
 
@@ -85,7 +89,10 @@ struct ContentView: View {
                     CCPanelView(
                         engine: engine,
                         masterVolumeMode: masterVolumeMode,
-                        browsingPad: $browsingPad,
+                        browsingPad: Binding(
+                            get: { mode == .browse },
+                            set: { mode = $0 ? .browse : .normal }
+                        ),
                         browserIndex: $browserIndex
                     )
                 }
@@ -188,101 +195,114 @@ struct ContentView: View {
     private func handleKey(keyCode: UInt16, chars: String?, modifiers: NSEvent.ModifierFlags) {
         let shift = modifiers.contains(.shift)
 
-        // Shift+1-8: jump directly to pad
-        if shift, let c = chars?.first {
-            // Shift+number row produces !@#$%^&* on US keyboard
-            let shiftDigitMap: [Character: Int] = [
-                "!": 0, "@": 1, "#": 2, "$": 3,
-                "%": 4, "^": 5, "&": 6, "*": 7
-            ]
-            if let padIndex = shiftDigitMap[c] {
-                engine.activePadIndex = padIndex
-                interpreter.appendLine("pad \(padIndex + 1) → \(padName(padIndex))", kind: .state)
-                return
-            }
-            // Numpad: Shift+numpad still produces "1"-"8"
-            let numpadDigitMap: [Character: Int] = [
-                "1": 0, "2": 1, "3": 2, "4": 3,
-                "5": 4, "6": 5, "7": 6, "8": 7
-            ]
-            if let padIndex = numpadDigitMap[c] {
-                engine.activePadIndex = padIndex
-                interpreter.appendLine("pad \(padIndex + 1) → \(padName(padIndex))", kind: .state)
-                return
-            }
+        // Shift+1-8: jump directly to pad (always active)
+        if shift, let c = chars?.first, handleShiftPad(c) {
+            return
         }
 
-        // BPM mode: W/S scroll presets, type digits for custom, ⏎ confirm, ESC cancel
-        if bpmMode {
-            let presets = Self.bpmPresets
-            // W/S scroll through presets
-            if keyCode == Key.w {
-                bpmPresetIndex = max(0, bpmPresetIndex - 1)
-                bpmInput = ""
-                let p = presets[bpmPresetIndex]
-                engine.setBPM(p.bpm)
-                interpreter.appendLine("bpm → \(p.bpm) \(p.mood)", kind: .transport)
-                return
-            }
-            if keyCode == Key.s {
-                bpmPresetIndex = min(presets.count - 1, bpmPresetIndex + 1)
-                bpmInput = ""
-                let p = presets[bpmPresetIndex]
-                engine.setBPM(p.bpm)
-                interpreter.appendLine("bpm → \(p.bpm) \(p.mood)", kind: .transport)
-                return
-            }
-            // Type digits for custom BPM
-            if let c = chars?.first, c >= "0" && c <= "9" {
-                bpmInput.append(c)
-                interpreter.appendLine("bpm → \(bpmInput)_", kind: .transport)
-                return
-            }
-            switch keyCode {
-            case Key.returnKey:
-                if let bpm = Int(bpmInput), bpm > 0 {
-                    engine.setBPM(bpm)
-                    interpreter.appendLine("bpm set → \(bpm)", kind: .transport)
-                }
-                bpmMode = false
-                bpmInput = ""
-                return
-            case Key.escape, Key.b:
-                bpmMode = false
-                bpmInput = ""
-                interpreter.appendLine("bpm closed", kind: .transport)
-                return
-            default:
-                return
-            }
+        switch mode {
+        case .bpm:
+            handleBPMKey(keyCode: keyCode, chars: chars)
+        case .browse:
+            handleBrowseKey(keyCode: keyCode, chars: chars)
+        case .normal:
+            handleNormalKey(keyCode: keyCode, chars: chars)
         }
+    }
 
-        // When browsing: W/S navigate + auto-load, T/ESC/⏎ closes
-        if browsingPad {
-            switch keyCode {
-            case Key.w:
-                browserIndex = max(0, browserIndex - 1)
-                loadBrowserSample()
-                if let name = browserFileName() {
-                    interpreter.appendLine("browse → \(name)", kind: .browse)
-                }
-                return
-            case Key.s:
-                browserIndex += 1 // clamped in the view
-                loadBrowserSample()
-                if let name = browserFileName() {
-                    interpreter.appendLine("browse → \(name)", kind: .browse)
-                }
-                return
-            case Key.returnKey, Key.t, Key.escape:
-                browsingPad = false
-                interpreter.appendLine("browser closed", kind: .browse)
-                return
-            default:
-                break // fall through for non-browser keys (space, A/D, etc.)
-            }
+    private func handleShiftPad(_ c: Character) -> Bool {
+        // Shift+number row produces !@#$%^&* on US keyboard
+        let shiftDigitMap: [Character: Int] = [
+            "!": 0, "@": 1, "#": 2, "$": 3,
+            "%": 4, "^": 5, "&": 6, "*": 7
+        ]
+        if let padIndex = shiftDigitMap[c] {
+            engine.activePadIndex = padIndex
+            interpreter.appendLine("pad \(padIndex + 1) → \(padName(padIndex))", kind: .state)
+            return true
         }
+        // Numpad: Shift+numpad still produces "1"-"8"
+        let numpadDigitMap: [Character: Int] = [
+            "1": 0, "2": 1, "3": 2, "4": 3,
+            "5": 4, "6": 5, "7": 6, "8": 7
+        ]
+        if let padIndex = numpadDigitMap[c] {
+            engine.activePadIndex = padIndex
+            interpreter.appendLine("pad \(padIndex + 1) → \(padName(padIndex))", kind: .state)
+            return true
+        }
+        return false
+    }
 
+    private func handleBPMKey(keyCode: UInt16, chars: String?) {
+        let presets = Self.bpmPresets
+        // W/S scroll through presets
+        if keyCode == Key.w {
+            bpmPresetIndex = max(0, bpmPresetIndex - 1)
+            bpmInput = ""
+            let p = presets[bpmPresetIndex]
+            engine.setBPM(p.bpm)
+            interpreter.appendLine("bpm → \(p.bpm) \(p.mood)", kind: .transport)
+            return
+        }
+        if keyCode == Key.s {
+            bpmPresetIndex = min(presets.count - 1, bpmPresetIndex + 1)
+            bpmInput = ""
+            let p = presets[bpmPresetIndex]
+            engine.setBPM(p.bpm)
+            interpreter.appendLine("bpm → \(p.bpm) \(p.mood)", kind: .transport)
+            return
+        }
+        // Type digits for custom BPM
+        if let c = chars?.first, c >= "0" && c <= "9" {
+            bpmInput.append(c)
+            interpreter.appendLine("bpm → \(bpmInput)_", kind: .transport)
+            return
+        }
+        switch keyCode {
+        case Key.returnKey:
+            if let bpm = Int(bpmInput), bpm > 0 {
+                engine.setBPM(bpm)
+                interpreter.appendLine("bpm set → \(bpm)", kind: .transport)
+            }
+            mode = .normal
+            bpmInput = ""
+        case Key.escape, Key.b:
+            mode = .normal
+            bpmInput = ""
+            interpreter.appendLine("bpm closed", kind: .transport)
+        default:
+            break
+        }
+    }
+
+    private func handleBrowseKey(keyCode: UInt16, chars: String?) {
+        switch keyCode {
+        case Key.w:
+            browserIndex = max(0, browserIndex - 1)
+            loadBrowserSample()
+            if let name = browserFileName() {
+                interpreter.appendLine("browse → \(name)", kind: .browse)
+            }
+            return
+        case Key.s:
+            browserIndex += 1 // clamped in the view
+            loadBrowserSample()
+            if let name = browserFileName() {
+                interpreter.appendLine("browse → \(name)", kind: .browse)
+            }
+            return
+        case Key.returnKey, Key.t, Key.escape:
+            mode = .normal
+            interpreter.appendLine("browser closed", kind: .browse)
+            return
+        default:
+            // Fall through to normal key handling (space, A/D, etc.)
+            handleNormalKey(keyCode: keyCode, chars: chars)
+        }
+    }
+
+    private func handleNormalKey(keyCode: UInt16, chars: String?) {
         switch keyCode {
         case Key.space:
             if engine.transport.isPlaying {
@@ -315,8 +335,8 @@ struct ContentView: View {
             engine.toggleMetronome()
             interpreter.appendLine("metronome \(engine.metronome.isOn ? "on" : "off")", kind: .state)
         case Key.t:
-            browsingPad.toggle()
-            if browsingPad {
+            mode = mode == .browse ? .normal : .browse
+            if mode == .browse {
                 let folder = PadBank.spliceFolderNames[engine.activePadIndex]
                 interpreter.appendLine("browser open → \(folder)", kind: .browse)
                 if let name = browserFileName() {
@@ -354,7 +374,7 @@ struct ContentView: View {
             engine.clearLayer(engine.activePadIndex)
             interpreter.appendLine("pad \(engine.activePadIndex + 1) \(name) cleared", kind: .state)
         case Key.b:
-            bpmMode = true
+            mode = .bpm
             bpmInput = ""
             // Snap to nearest preset
             let currentBpm = engine.transport.bpm
