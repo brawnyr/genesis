@@ -1,5 +1,8 @@
 import SwiftUI
 import AppKit
+import os
+
+private let logger = Logger(subsystem: "com.god.app", category: "GODApp")
 
 @main
 struct GODApp: App {
@@ -8,7 +11,6 @@ struct GODApp: App {
     @State private var midiManager: MIDIManager?
 
     init() {
-        // Activate as a foreground app so the window gets focus from terminal
         NSApplication.shared.setActivationPolicy(.regular)
         NSApplication.shared.activate(ignoringOtherApps: true)
     }
@@ -18,7 +20,6 @@ struct GODApp: App {
             ContentView(engine: engine)
                 .onAppear {
                     startManagers()
-                    // Ensure window is key and front
                     NSApplication.shared.windows.first?.makeKeyAndOrderFront(nil)
                 }
         }
@@ -27,12 +28,32 @@ struct GODApp: App {
     }
 
     private func startManagers() {
+        // Create Splice folders if they don't exist
+        ensureSpliceFolders()
+
+        // Load saved pad config, then fill gaps from Splice folders
+        try? engine.padBank.loadConfig()
+        engine.padBank.loadFromSpliceFolders()
+        try? engine.padBank.save()
+
         let audio = AudioManager(engine: engine)
-        try? audio.start()
+        do {
+            try audio.start()
+        } catch {
+            logger.error("Audio engine failed to start: \(error.localizedDescription)")
+        }
         audioManager = audio
 
         let midi = MIDIManager(ringBuffer: engine.midiRingBuffer)
         midi.start()
         midiManager = midi
+    }
+
+    private func ensureSpliceFolders() {
+        let fm = FileManager.default
+        for name in PadBank.spliceFolderNames {
+            let url = PadBank.spliceBasePath.appendingPathComponent(name)
+            try? fm.createDirectory(at: url, withIntermediateDirectories: true)
+        }
     }
 }
