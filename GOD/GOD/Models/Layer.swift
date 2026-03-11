@@ -14,6 +14,7 @@ struct Layer {
     var pan: Float = 0.5            // 0.0 = left, 0.5 = center, 1.0 = right
     var hpCutoff: Float = 20.0      // Hz — 20 = no effect
     var lpCutoff: Float = 20000.0   // Hz — 20000 = no effect
+    var cut: Bool = false
     private var previousHits: [Hit]?
 
     init(index: Int, name: String) {
