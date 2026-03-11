@@ -557,15 +557,8 @@ struct SampleBrowserView: View {
 
     func loadSelectedSample() {
         guard selectedIndex < files.count else { return }
-        let url = files[selectedIndex]
         do {
-            let sample = try Sample.load(from: url)
-            engine.padBank.assign(sample: sample, toPad: padIndex)
-            engine.padBank.pads[padIndex].samplePath = url.path
-            engine.layers[padIndex].name = sample.name.uppercased()
-            engine.syncCutToPadBank()
-            try? engine.padBank.save()
-            engine.detectBPM(forPad: padIndex)
+            try engine.loadSample(from: files[selectedIndex], forPad: padIndex)
         } catch {
             logger.error("Failed to load sample: \(error.localizedDescription)")
         }
@@ -578,13 +571,7 @@ struct SampleBrowserView: View {
         panel.allowsMultipleSelection = false
         if panel.runModal() == .OK, let url = panel.url {
             do {
-                let sample = try Sample.load(from: url)
-                engine.padBank.assign(sample: sample, toPad: padIndex)
-                engine.padBank.pads[padIndex].samplePath = url.path
-                engine.layers[padIndex].name = sample.name.uppercased()
-                engine.syncCutToPadBank()
-                try? engine.padBank.save()
-                engine.detectBPM(forPad: padIndex)
+                try engine.loadSample(from: url, forPad: padIndex)
             } catch {
                 logger.error("Failed to load sample: \(error.localizedDescription)")
             }

@@ -32,8 +32,6 @@ struct GODApp: App {
         bg.setFill()
         path.fill()
 
-        let letters = Theme.godBitmap
-
         let pixelSize: CGFloat = 14
         let gap: CGFloat = 4
         let cellSize = pixelSize + gap
@@ -46,7 +44,7 @@ struct GODApp: App {
 
         let orange = NSColor(red: 0.855, green: 0.482, blue: 0.290, alpha: 1)
 
-        for (li, letter) in letters.enumerated() {
+        for (li, letter) in Theme.godBitmap.enumerated() {
             let lx = startX + CGFloat(li) * (letterW + letterSpacing)
             for (row, bits) in letter.enumerated() {
                 for (col, on) in bits.enumerated() {
@@ -70,6 +68,9 @@ struct GODApp: App {
                 .onAppear {
                     startManagers()
                     NSApplication.shared.windows.first?.makeKeyAndOrderFront(nil)
+                }
+                .onDisappear {
+                    stopManagers()
                 }
         }
         .windowStyle(.hiddenTitleBar)
@@ -114,6 +115,11 @@ struct GODApp: App {
         midi.interpreter = interpreter
         midi.start()
         midiManager = midi
+    }
+
+    private func stopManagers() {
+        audioManager?.stop()
+        midiManager?.stop()
     }
 
     private func ensureSpliceFolders() {

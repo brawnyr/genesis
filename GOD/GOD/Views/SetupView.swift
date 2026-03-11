@@ -78,10 +78,7 @@ struct SetupView: View {
 
         if panel.runModal() == .OK, let url = panel.url {
             do {
-                let sample = try Sample.load(from: url)
-                engine.padBank.assign(sample: sample, toPad: index)
-                engine.padBank.pads[index].samplePath = url.path
-                engine.layers[index].name = sample.name.uppercased()
+                try engine.loadSample(from: url, forPad: index)
             } catch {
                 logger.error("Failed to load sample from \(url.lastPathComponent): \(error.localizedDescription)")
             }

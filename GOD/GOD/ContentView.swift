@@ -166,14 +166,9 @@ struct ContentView: View {
             .sorted { $0.lastPathComponent < $1.lastPathComponent }) ?? []
         guard browserIndex < files.count else { return }
         let url = files[browserIndex]
-        if let sample = try? Sample.load(from: url) {
-            engine.padBank.assign(sample: sample, toPad: padIndex)
-            engine.padBank.pads[padIndex].samplePath = url.path
-            engine.layers[padIndex].name = sample.name.uppercased()
-            engine.syncCutToPadBank()
-            try? engine.padBank.save()
-            engine.detectBPM(forPad: padIndex)
-            interpreter.appendLine("sample loaded → \(sample.name.lowercased()) on \(folderName)", kind: .browse)
+        if let _ = try? engine.loadSample(from: url, forPad: padIndex) {
+            let name = engine.padBank.pads[padIndex].sample?.name.lowercased() ?? url.lastPathComponent
+            interpreter.appendLine("sample loaded → \(name) on \(folderName)", kind: .browse)
         }
     }
 

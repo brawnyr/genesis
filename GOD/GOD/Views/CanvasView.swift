@@ -78,8 +78,6 @@ struct GodTitleLayer: View {
     @State private var phase: Double = 0
     @State private var ambientPixels: [DriftPixel] = GodTitleLayer.generatePixels(count: 40)
 
-    private static let godBitmap = Theme.godBitmap
-
     private var isGodMode: Bool {
         capture.state == .armed || capture.state == .recording
     }
@@ -149,7 +147,7 @@ struct GodTitleLayer: View {
                     let startX = cx - totalW / 2
                     let startY = cy - totalH / 2
 
-                    for (li, letter) in Self.godBitmap.enumerated() {
+                    for (li, letter) in Theme.godBitmap.enumerated() {
                         let lx = startX + Double(li) * (letterW + letterSpacing)
                         for (row, bits) in letter.enumerated() {
                             for (col, on) in bits.enumerated() {

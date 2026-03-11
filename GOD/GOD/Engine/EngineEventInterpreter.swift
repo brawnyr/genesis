@@ -1,14 +1,18 @@
 import Foundation
 
 enum LineKind {
-    case system, transport, hit, state, capture, browse
+    case system
+    case transport
+    case hit
+    case state
+    case capture
+    case browse
 }
 
 struct TerminalLine: Identifiable {
     let id = UUID()
     let text: String
     let kind: LineKind
-    let isHighlight: Bool
     let timestamp: Date = Date()
 
     var timeString: String {
@@ -43,7 +47,7 @@ class EngineEventInterpreter: ObservableObject {
     var activePadVoices: Set<Int> = []
 
     func appendLine(_ text: String, kind: LineKind = .system) {
-        let line = TerminalLine(text: text, kind: kind, isHighlight: false)
+        let line = TerminalLine(text: text, kind: kind)
         lines.append(line)
         if lines.count > maxLines {
             lines.removeFirst(lines.count - maxLines)
@@ -52,22 +56,18 @@ class EngineEventInterpreter: ObservableObject {
 
     func processHits(_ hits: [(padIndex: Int, position: Int, velocity: Int)],
                      padBank: PadBank, loopDurationMs: Double) {
-        // Must reassign array (not mutate elements) to trigger @Published
         var intensities = padIntensities
         for hit in hits {
             let pad = padBank.pads[hit.padIndex]
             let name = pad.sample?.name ?? pad.name
             let durationMs = pad.sample?.durationMs ?? 0
 
-            // Update visual intensity
             let velNorm = Float(hit.velocity) / 127.0
             intensities[hit.padIndex] = min(1.0, velNorm)
 
-            // Track for loop summary
             loopHitCounts[hit.padIndex] += 1
             loopHitVelocities[hit.padIndex].append(hit.velocity)
 
-            // Format hit event line
             let dur = Self.formatDuration(durationMs)
             let velDesc = hit.velocity > 90 ? " — hard hit" : ""
             appendLine("\(name.lowercased()) \(dur) — vel \(hit.velocity)\(velDesc)", kind: .hit)
@@ -77,7 +77,6 @@ class EngineEventInterpreter: ObservableObject {
 
     func processStateDiff(layers: [Layer], transport: Transport, capture: GodCapture,
                           padBank: PadBank, masterVolume: Float) {
-        // Transport state changes
         if transport.isPlaying && !prevPlaying {
             let loopSec = Double(transport.loopLengthFrames) / Transport.sampleRate
             appendLine("▶ loop start — \(transport.barCount) bars @ \(transport.bpm)bpm (\(String(format: "%.1f", loopSec))s)", kind: .transport)
@@ -86,7 +85,6 @@ class EngineEventInterpreter: ObservableObject {
         }
         prevPlaying = transport.isPlaying
 
-        // Mute changes
         for i in 0..<8 {
             if layers[i].isMuted != prevMuted[i] {
                 let name = padBank.pads[i].sample?.name ?? padBank.pads[i].name
@@ -102,7 +100,6 @@ class EngineEventInterpreter: ObservableObject {
             }
         }
 
-        // CC changes — only emit when value actually changes
         for i in 0..<8 {
             if abs(layers[i].volume - prevVolumes[i]) > 0.01 {
                 appendLine("pad \(i + 1) vol → \(Int(layers[i].volume * 100))%", kind: .state)
@@ -122,7 +119,6 @@ class EngineEventInterpreter: ObservableObject {
             }
         }
 
-        // Capture state
         let captureStr: String
         switch capture.state {
         case .idle: captureStr = "idle"
@@ -145,7 +141,6 @@ class EngineEventInterpreter: ObservableObject {
     func onLoopBoundary(layers: [Layer], padBank: PadBank, loopDurationMs: Double) {
         appendLine("loop boundary — wrap", kind: .transport)
 
-        // Emit layer summaries for pads with hits
         for i in 0..<8 where loopHitCounts[i] > 0 {
             let name = padBank.pads[i].sample?.name ?? padBank.pads[i].name
             let count = loopHitCounts[i]
@@ -167,13 +162,11 @@ class EngineEventInterpreter: ObservableObject {
             }
         }
 
-        // Reset loop counters
         loopHitCounts = Array(repeating: 0, count: 8)
         loopHitVelocities = Array(repeating: [], count: 8)
     }
 
     func tickVisuals() {
-        // Must reassign array (not mutate elements) to trigger @Published
         var updated = padIntensities
         for i in 0..<8 {
             if activePadVoices.contains(i) {
