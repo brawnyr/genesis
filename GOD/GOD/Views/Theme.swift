@@ -10,7 +10,10 @@ enum Theme {
     // Claude blue — active state, playing, channels
     static let blue = Color(red: 0.384, green: 0.514, blue: 0.886)     // #6283e2
 
-    // Orange — hot state, recording, triggers
+    // Ice blue — frozen, not faded
+    static let ice = Color(red: 0.39, green: 0.75, blue: 1.0)          // #64beff
+
+    // Orange — hot state, recording, triggers, alive
     static let orange = Color(red: 0.855, green: 0.482, blue: 0.290)   // #da7b4a
 
     // Status colors
@@ -34,15 +37,6 @@ enum Theme {
 
     // Canvas
     static let canvasBg = Color(red: 0.075, green: 0.071, blue: 0.063)  // #131210
-
-    // ASCII GOD title — D clearly distinct from O
-    static let godArtIdle = """
- ██████   ██████  ██████▄
-██       ██    ██ ██    ██
-██  ████ ██    ██ ██    ██
-██    ██ ██    ██ ██    ██
- ██████   ██████  ██████▀
-"""
 
     static let godSubtitle = "GENESIS ON DISK"
 

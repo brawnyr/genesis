@@ -1,5 +1,9 @@
 // GOD/GOD/Views/PadStripView.swift
 import SwiftUI
+import UniformTypeIdentifiers
+import os
+
+private let logger = Logger(subsystem: "com.god.ui", category: "PadStrip")
 
 struct PadStripView: View {
     @ObservedObject var engine: GodEngine
@@ -8,23 +12,26 @@ struct PadStripView: View {
     var body: some View {
         HStack(spacing: 3) {
             ForEach(0..<8, id: \.self) { index in
-                PadView(
+                PadCell(
                     index: index,
                     pad: engine.padBank.pads[index],
                     layer: engine.layers[index],
                     isActive: engine.activePadIndex == index,
                     triggered: engine.channelTriggered[index],
                     signalLevel: engine.channelSignalLevels[index],
-                    intensity: interpreter.padIntensities[index]
+                    intensity: interpreter.padIntensities[index],
+                    folderName: PadBank.spliceFolderNames[index]
                 )
             }
         }
-        .padding(.horizontal, 8)
+        .padding(.horizontal, 6)
         .padding(.vertical, 6)
     }
 }
 
-struct PadView: View {
+// MARK: - Individual pad (cold → hot)
+
+struct PadCell: View {
     let index: Int
     let pad: Pad
     let layer: Layer
@@ -32,87 +39,388 @@ struct PadView: View {
     let triggered: Bool
     let signalLevel: Float
     let intensity: Float
+    let folderName: String
 
-    private var borderColor: Color {
-        if layer.isMuted { return Theme.subtle }
-        if intensity > 0.5 && (pad.sample?.durationMs ?? 0) > 1000 { return Theme.orange }
-        return Theme.blue
+    @State private var breathe: Double = 0
+
+    private var isHot: Bool { !layer.isMuted }
+    private var isCold: Bool { layer.isMuted }
+
+    private var padColor: Color {
+        if isCold { return Theme.ice }
+        if isHot { return Theme.orange }
+        return Theme.subtle
+    }
+
+    private var sampleLabel: String {
+        if let sample = pad.sample {
+            return sample.name.lowercased()
+        }
+        return "[no sample]"
     }
 
     var body: some View {
-        VStack(spacing: 3) {
-            // Pad number
-            Text("\(index + 1)")
-                .font(.system(size: 14, design: .monospaced).bold())
-                .foregroundColor(triggered ? Theme.orange : (isActive ? Theme.blue : Theme.subtle))
+        VStack(spacing: 4) {
+            // Sample name (or empty indicator)
+            Text(sampleLabel)
+                .font(.system(size: 12, design: .monospaced).bold())
+                .foregroundColor(
+                    isHot && isActive ? .white :
+                    isHot ? Theme.orange :
+                    isCold ? Theme.ice :
+                    Color(white: 0.15)
+                )
+                .shadow(color: isHot ? Theme.orange.opacity(isActive ? 0.6 : 0.3) : .clear, radius: 6)
+                .shadow(color: isCold ? Theme.ice.opacity(0.4) : .clear, radius: 6)
+                .lineLimit(1)
+                .minimumScaleFactor(0.5)
 
-            // Sample name
-            Text(pad.sample?.name.uppercased().prefix(6) ?? "—")
-                .font(Theme.monoTiny)
-                .foregroundColor(layer.isMuted ? Theme.subtle : Color(white: 0.7))
+            // Folder name
+            Text(folderName.uppercased())
+                .font(.system(size: 9, design: .monospaced))
+                .foregroundColor(
+                    isHot ? Theme.orange.opacity(isActive ? 0.9 : 0.7) :
+                    isCold ? Theme.ice.opacity(0.7) :
+                    Color(white: 0.15)
+                )
                 .lineLimit(1)
 
             // Signal meter
             GeometryReader { geo in
                 ZStack(alignment: .leading) {
                     RoundedRectangle(cornerRadius: 1)
-                        .fill(Theme.subtle.opacity(0.3))
+                        .fill(isCold ? Theme.ice.opacity(0.25) : (isHot ? Theme.orange.opacity(0.2) : Theme.subtle.opacity(0.3)))
                     RoundedRectangle(cornerRadius: 1)
-                        .fill(borderColor)
+                        .fill(isHot && isActive ? .white : padColor)
                         .frame(width: geo.size.width * CGFloat(signalLevel))
                 }
             }
             .frame(height: 3)
-
-            // CC values on active pad
-            if isActive {
-                VStack(spacing: 1) {
-                    CCLabel(name: "vol", value: "\(Int(layer.volume * 100))%", highlight: false)
-                    CCLabel(name: "pan", value: EngineEventInterpreter.formatPan(layer.pan), highlight: false)
-                    CCLabel(name: "HP", value: EngineEventInterpreter.formatFrequency(layer.hpCutoff),
-                            highlight: layer.hpCutoff > 21)
-                    CCLabel(name: "LP", value: EngineEventInterpreter.formatFrequency(layer.lpCutoff),
-                            highlight: layer.lpCutoff < 19999)
-                }
-                .transition(.opacity)
-            }
         }
-        .padding(.horizontal, 4)
-        .padding(.vertical, 8)
+        .padding(.horizontal, 8)
+        .padding(.vertical, 14)
         .frame(maxWidth: .infinity)
-        .layoutPriority(isActive ? 1.4 : 1.0)
         .background(
             RoundedRectangle(cornerRadius: 4)
-                .fill(layer.isMuted
-                      ? Color(red: 0.118, green: 0.114, blue: 0.102)
-                      : Color(red: 0.145, green: 0.137, blue: 0.125))
+                .fill(
+                    isHot && isActive ? Theme.orange.opacity(0.2) :
+                    isHot ? Theme.orange.opacity(0.08) :
+                    isCold ? Theme.ice.opacity(0.1) :
+                    Color(white: 0.02)
+                )
         )
+        // Hot glow
         .overlay(
             RoundedRectangle(cornerRadius: 4)
-                .fill(Theme.orange.opacity(triggered ? 0.15 : 0))
+                .stroke(isHot && isActive ? Theme.orange.opacity(0.3 + 0.2 * breathe) : .clear, lineWidth: 1)
         )
+        .shadow(color: isHot && isActive ? Theme.orange.opacity(0.3 + 0.15 * breathe) : .clear, radius: 10)
+        // Ice frost — full presence, not dimmed
+        .overlay(
+            RoundedRectangle(cornerRadius: 4)
+                .fill(isCold ? Theme.ice.opacity(0.05) : .clear)
+        )
+        .shadow(color: isCold ? Theme.ice.opacity(0.2) : .clear, radius: 8)
+        // Trigger flash
+        .overlay(
+            RoundedRectangle(cornerRadius: 4)
+                .fill(triggered ? Theme.orange.opacity(0.15) : .clear)
+        )
+        // Top border
         .overlay(alignment: .top) {
             Rectangle()
-                .fill(borderColor)
+                .fill(
+                    isHot && isActive ? Theme.orange :
+                    isCold ? Theme.ice.opacity(0.6) :
+                    .clear
+                )
                 .frame(height: 2)
         }
-        .shadow(color: isActive ? Theme.blue.opacity(0.25) : .clear, radius: 8)
-        .opacity(layer.isMuted ? 0.5 : 1.0)
+        .onAppear {
+            withAnimation(.easeInOut(duration: 1.5).repeatForever(autoreverses: true)) {
+                breathe = 1.0
+            }
+        }
     }
 }
 
-struct CCLabel: View {
-    let name: String
+// MARK: - Loop progress bar (above pads)
+
+struct LoopProgressBar: View {
+    @ObservedObject var engine: GodEngine
+
+    private var progress: Double {
+        let loopLen = engine.transport.loopLengthFrames
+        guard loopLen > 0 else { return 0 }
+        return Double(engine.transport.position) / Double(loopLen)
+    }
+
+    var body: some View {
+        GeometryReader { geo in
+            ZStack(alignment: .leading) {
+                Rectangle()
+                    .fill(Theme.subtle.opacity(0.15))
+                Rectangle()
+                    .fill(engine.transport.isPlaying ? Theme.blue : Theme.subtle.opacity(0.3))
+                    .frame(width: geo.size.width * progress)
+            }
+        }
+        .frame(height: 6)
+        .padding(.horizontal, 6)
+    }
+}
+
+// MARK: - Right-side panel (CC readout + sample browser)
+
+struct CCPanelView: View {
+    @ObservedObject var engine: GodEngine
+    let masterVolumeMode: Bool
+    @Binding var browsingPad: Bool
+    @Binding var browserIndex: Int
+
+    private var activeIndex: Int { engine.activePadIndex }
+    private var layer: Layer { engine.layers[activeIndex] }
+    private var pad: Pad { engine.padBank.pads[activeIndex] }
+    private var folderName: String { PadBank.spliceFolderNames[activeIndex] }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            // Master volume — big display
+            Text("MASTER")
+                .font(.system(size: 14, design: .monospaced).bold())
+                .foregroundColor(masterVolumeMode ? Theme.orange : Theme.subtle)
+            HStack(alignment: .firstTextBaseline, spacing: 1) {
+                Text("\(Int(engine.masterVolume * 100))")
+                    .font(.system(size: masterVolumeMode ? 44 : 32, design: .monospaced).bold())
+                    .foregroundColor(masterVolumeMode ? Theme.orange : Color(white: 0.6))
+                Text("%")
+                    .font(.system(size: masterVolumeMode ? 20 : 16, design: .monospaced))
+                    .foregroundColor(masterVolumeMode ? Theme.orange.opacity(0.6) : Color(white: 0.4))
+            }
+            .shadow(color: masterVolumeMode ? Theme.orange.opacity(0.3) : .clear, radius: 8)
+
+            if masterVolumeMode {
+                Text("[V] to exit")
+                    .font(.system(size: 11, design: .monospaced))
+                    .foregroundColor(Theme.orange.opacity(0.5))
+                    .padding(.top, 2)
+            }
+
+            Divider()
+                .background(Theme.subtle.opacity(0.3))
+                .padding(.vertical, 8)
+
+            if browsingPad {
+                SampleBrowserView(engine: engine, padIndex: activeIndex, isOpen: $browsingPad, selectedIndex: $browserIndex)
+            } else {
+                padReadoutView
+            }
+        }
+        .padding(14)
+        .frame(width: 190, alignment: .topLeading)
+        .background(Color(red: 0.1, green: 0.095, blue: 0.088))
+    }
+
+    private var padReadoutView: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            // Pad number + folder
+            HStack(spacing: 6) {
+                Text("\(activeIndex + 1)")
+                    .font(.system(size: 28, design: .monospaced).bold())
+                    .foregroundColor(layer.isMuted ? Theme.ice : Theme.orange)
+                Text(folderName.uppercased())
+                    .font(.system(size: 16, design: .monospaced).bold())
+                    .foregroundColor(layer.isMuted ? Theme.ice.opacity(0.7) : Theme.orange.opacity(0.7))
+            }
+            .shadow(color: (layer.isMuted ? Theme.ice : Theme.orange).opacity(0.2), radius: 6)
+            .padding(.bottom, 4)
+
+            if let sample = pad.sample {
+                Text(sample.name.lowercased())
+                    .font(.system(size: 13, design: .monospaced))
+                    .foregroundColor(Color(white: 0.55))
+                    .lineLimit(1)
+            } else {
+                Text("[no sample]")
+                    .font(.system(size: 13, design: .monospaced))
+                    .foregroundColor(Theme.subtle)
+            }
+
+            Divider()
+                .background(Theme.subtle.opacity(0.3))
+                .padding(.vertical, 8)
+
+            CCRow(label: "vol", value: "\(Int(layer.volume * 100))%", highlight: !masterVolumeMode)
+            CCRow(label: "pan", value: EngineEventInterpreter.formatPan(layer.pan), highlight: false)
+            CCRow(label: "HP", value: EngineEventInterpreter.formatFrequency(layer.hpCutoff),
+                  highlight: layer.hpCutoff > 21)
+            CCRow(label: "LP", value: EngineEventInterpreter.formatFrequency(layer.lpCutoff),
+                  highlight: layer.lpCutoff < 19999)
+
+            Spacer()
+}
+    }
+}
+
+// MARK: - Sample browser in right panel
+
+struct SampleBrowserView: View {
+    @ObservedObject var engine: GodEngine
+    let padIndex: Int
+    @Binding var isOpen: Bool
+    @Binding var selectedIndex: Int
+
+    @State private var files: [URL] = []
+
+    private var folderName: String { PadBank.spliceFolderNames[padIndex] }
+    var body: some View {
+        VStack(alignment: .leading, spacing: 4) {
+            HStack {
+                Text(folderName.uppercased())
+                    .font(.system(size: 12, design: .monospaced).bold())
+                    .foregroundColor(Theme.orange)
+                Spacer()
+                Text("[T] close")
+                    .font(.system(size: 9, design: .monospaced))
+                    .foregroundColor(Theme.subtle)
+            }
+
+            Divider()
+                .background(Theme.subtle.opacity(0.3))
+                .padding(.vertical, 2)
+
+            if files.isEmpty {
+                Text("empty folder")
+                    .font(.system(size: 10, design: .monospaced))
+                    .foregroundColor(Theme.subtle)
+                    .padding(.top, 4)
+
+                Button {
+                    loadFromFilePicker()
+                } label: {
+                    Text("OPEN FILE...")
+                        .font(.system(size: 11, design: .monospaced).bold())
+                        .foregroundColor(Theme.blue)
+                }
+                .buttonStyle(.plain)
+                .padding(.top, 8)
+            } else {
+                ScrollViewReader { proxy in
+                    ScrollView(.vertical, showsIndicators: true) {
+                        VStack(alignment: .leading, spacing: 1) {
+                            ForEach(Array(files.enumerated()), id: \.offset) { idx, file in
+                                let name = file.deletingPathExtension().lastPathComponent
+                                Text(name.lowercased().prefix(18))
+                                    .font(.system(size: 10, design: .monospaced))
+                                    .foregroundColor(idx == selectedIndex ? Theme.orange : Color(white: 0.5))
+                                    .padding(.vertical, 2)
+                                    .padding(.horizontal, 4)
+                                    .frame(maxWidth: .infinity, alignment: .leading)
+                                    .background(
+                                        idx == selectedIndex
+                                            ? Theme.orange.opacity(0.1)
+                                            : Color.clear
+                                    )
+                                    .cornerRadius(2)
+                                    .id(idx)
+                                    .onTapGesture {
+                                        selectedIndex = idx
+                                        loadSelectedSample()
+                                    }
+                            }
+                        }
+                    }
+                    .onChange(of: selectedIndex) { _, newVal in
+                        proxy.scrollTo(newVal, anchor: .center)
+                    }
+                }
+            }
+
+            Spacer()
+
+            if !files.isEmpty {
+                Divider()
+                    .background(Theme.subtle.opacity(0.3))
+
+                HStack(spacing: 8) {
+                    Text("W↑ S↓")
+                        .font(.system(size: 8, design: .monospaced))
+                        .foregroundColor(Theme.subtle)
+                    Text("⏎ close")
+                        .font(.system(size: 8, design: .monospaced))
+                        .foregroundColor(Theme.subtle)
+                }
+                .padding(.top, 4)
+            }
+        }
+        .onAppear { scanFolder() }
+        .onChange(of: padIndex) { _, _ in scanFolder() }
+        .onChange(of: selectedIndex) { _, newVal in
+            if !files.isEmpty {
+                selectedIndex = min(max(0, newVal), files.count - 1)
+            }
+        }
+    }
+
+    private func scanFolder() {
+        let folderURL = PadBank.spliceBasePath.appendingPathComponent(folderName)
+        let fm = FileManager.default
+        files = (try? fm.contentsOfDirectory(at: folderURL, includingPropertiesForKeys: nil)
+            .filter { PadBank.audioExtensions.contains($0.pathExtension.lowercased()) }
+            .sorted { $0.lastPathComponent < $1.lastPathComponent }) ?? []
+        selectedIndex = 0
+    }
+
+    func loadSelectedSample() {
+        guard selectedIndex < files.count else { return }
+        let url = files[selectedIndex]
+        do {
+            let sample = try Sample.load(from: url)
+            engine.padBank.assign(sample: sample, toPad: padIndex)
+            engine.padBank.pads[padIndex].samplePath = url.path
+            engine.layers[padIndex].name = sample.name.uppercased()
+            try? engine.padBank.save()
+        } catch {
+            logger.error("Failed to load sample: \(error.localizedDescription)")
+        }
+    }
+
+    private func loadFromFilePicker() {
+        let panel = NSOpenPanel()
+        panel.allowedContentTypes = [UTType.audio]
+        panel.canChooseDirectories = false
+        panel.allowsMultipleSelection = false
+        if panel.runModal() == .OK, let url = panel.url {
+            do {
+                let sample = try Sample.load(from: url)
+                engine.padBank.assign(sample: sample, toPad: padIndex)
+                engine.padBank.pads[padIndex].samplePath = url.path
+                engine.layers[padIndex].name = sample.name.uppercased()
+                try? engine.padBank.save()
+            } catch {
+                logger.error("Failed to load sample: \(error.localizedDescription)")
+            }
+        }
+    }
+}
+
+// MARK: - CC Row
+
+struct CCRow: View {
+    let label: String
     let value: String
     let highlight: Bool
 
     var body: some View {
-        HStack(spacing: 2) {
-            Text(name)
-                .foregroundColor(Theme.subtle)
+        HStack(spacing: 0) {
+            Text(label)
+                .foregroundColor(Color(white: 0.4))
+                .frame(width: 40, alignment: .leading)
             Text(value)
-                .foregroundColor(highlight ? Theme.orange : Color(white: 0.7))
+                .foregroundColor(highlight ? Theme.orange : Color(white: 0.75))
+                .shadow(color: highlight ? Theme.orange.opacity(0.2) : .clear, radius: 4)
         }
-        .font(.system(size: 7, design: .monospaced))
+        .font(.system(size: 14, design: .monospaced))
+        .padding(.vertical, 3)
     }
 }

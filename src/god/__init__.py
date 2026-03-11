@@ -1,1 +1,0 @@
-"""GOD — Genesis On Disk."""

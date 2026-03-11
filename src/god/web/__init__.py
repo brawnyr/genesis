@@ -1,1 +1,0 @@
-"""GOD web UI package."""
