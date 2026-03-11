@@ -13,6 +13,7 @@ class GodEngine: ObservableObject {
     @Published var masterLevel: Float = 0
     var masterVolume: Float = 1.0
     @Published var activePadIndex: Int = 0
+    var onStateChanged: (() -> Void)?
 
     // Audio thread state — never touches @Published directly
     private var audioPosition: Int = 0
@@ -349,6 +350,7 @@ class GodEngine: ObservableObject {
                     self.layers[i].hpCutoff = layerHPCutoffs[i]
                     self.layers[i].lpCutoff = layerLPCutoffs[i]
                 }
+                self.onStateChanged?()
             }
         }
 
