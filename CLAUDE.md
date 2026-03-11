@@ -26,7 +26,6 @@ A SwiftUI app for live loop-stacking driven by an Arturia MiniLab 3. Not a DAW. 
 
 ## Current State
 - **Active codebase: Swift only** — `GOD/` directory is the live project
-- `src/god/` and `tests/` are the **legacy Python v1 prototype** — do NOT modify or review
 - Branch: `god-v2-swift`
 - 12 Swift test files in `GOD/Tests/`
 - Per-layer effects (biquad filters, pan, volume, CC routing) just landed
@@ -39,7 +38,9 @@ GOD pairs well with [Splice](https://splice.com) — browse and download sounds 
 - `--uninstall` to remove, `--dry-run` to preview
 
 ## Commands
-- `god` alias: `cd ~/god/GOD && swift build && .build/arm64-apple-macosx/debug/GOD`
+- `god` alias: `cd ~/god/GOD && ./bundle.sh --run` (builds + launches as proper .app)
+- Build only: `cd ~/god/GOD && ./bundle.sh`
+- Raw binary: `cd ~/god/GOD && swift build && .build/arm64-apple-macosx/debug/GOD`
 - Tests: `cd ~/god/GOD && swift test`
 
 ## Principles

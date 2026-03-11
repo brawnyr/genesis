@@ -18,7 +18,10 @@ Thumbs.db
 
 # Project
 *.wav
+*.aif
+*.aiff
 *.mp3
+*.m4a
 *.flac
 *.ogg
 samples/
@@ -26,6 +29,7 @@ samples/
 # Swift
 .build/
 .swiftpm/
+*.app/
 
 # Test cache
 .pytest_cache/
