@@ -172,6 +172,7 @@ struct ContentView: View {
             engine.layers[padIndex].name = sample.name.uppercased()
             engine.syncCutToPadBank()
             try? engine.padBank.save()
+            engine.detectBPM(forPad: padIndex)
             interpreter.appendLine("sample loaded → \(sample.name.lowercased()) on \(folderName)", kind: .browse)
         }
     }

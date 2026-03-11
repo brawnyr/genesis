@@ -120,6 +120,9 @@ struct GODApp: App {
         try? engine.padBank.loadConfig()
         engine.padBank.loadFromSpliceFolders()
         engine.restoreCutFromPadBank()
+        for i in 0..<8 {
+            engine.detectBPM(forPad: i)
+        }
         try? engine.padBank.save()
 
         // Wire interpreter

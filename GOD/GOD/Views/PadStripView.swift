@@ -381,6 +381,7 @@ struct SampleBrowserView: View {
             engine.layers[padIndex].name = sample.name.uppercased()
             engine.syncCutToPadBank()
             try? engine.padBank.save()
+            engine.detectBPM(forPad: padIndex)
         } catch {
             logger.error("Failed to load sample: \(error.localizedDescription)")
         }
@@ -399,6 +400,7 @@ struct SampleBrowserView: View {
                 engine.layers[padIndex].name = sample.name.uppercased()
                 engine.syncCutToPadBank()
                 try? engine.padBank.save()
+                engine.detectBPM(forPad: padIndex)
             } catch {
                 logger.error("Failed to load sample: \(error.localizedDescription)")
             }

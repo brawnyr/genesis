@@ -12,6 +12,7 @@ class GodEngine: ObservableObject {
     @Published var channelTriggered: [Bool] = Array(repeating: false, count: 8)
     @Published var masterLevel: Float = 0
     @Published var masterVolume: Float = 1.0
+    @Published var detectedBPMs: [Int: Double] = [:]
     @Published var activePadIndex: Int = 0
     var interpreter: EngineEventInterpreter?
 
@@ -78,6 +79,22 @@ class GodEngine: ObservableObject {
 
     func setMasterVolume(_ value: Float) {
         masterVolume = max(0, min(1.0, value))
+    }
+
+    func detectBPM(forPad index: Int) {
+        guard let sample = padBank.pads[index].sample else {
+            detectedBPMs[index] = nil
+            return
+        }
+        let buffer = sample.left
+        let sampleRate = sample.sampleRate
+        detectedBPMs[index] = nil  // clear while detecting
+        Task.detached { [weak self] in
+            let bpm = BPMDetector.detect(buffer: buffer, sampleRate: sampleRate)
+            await MainActor.run {
+                self?.detectedBPMs[index] = bpm
+            }
+        }
     }
 
     func setLayerVolume(_ index: Int, volume: Float) {
