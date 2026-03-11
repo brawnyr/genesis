@@ -379,6 +379,7 @@ struct SampleBrowserView: View {
             engine.padBank.assign(sample: sample, toPad: padIndex)
             engine.padBank.pads[padIndex].samplePath = url.path
             engine.layers[padIndex].name = sample.name.uppercased()
+            engine.syncCutToPadBank()
             try? engine.padBank.save()
         } catch {
             logger.error("Failed to load sample: \(error.localizedDescription)")
@@ -396,6 +397,7 @@ struct SampleBrowserView: View {
                 engine.padBank.assign(sample: sample, toPad: padIndex)
                 engine.padBank.pads[padIndex].samplePath = url.path
                 engine.layers[padIndex].name = sample.name.uppercased()
+                engine.syncCutToPadBank()
                 try? engine.padBank.save()
             } catch {
                 logger.error("Failed to load sample: \(error.localizedDescription)")

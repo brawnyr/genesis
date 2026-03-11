@@ -119,6 +119,7 @@ struct GODApp: App {
 
         try? engine.padBank.loadConfig()
         engine.padBank.loadFromSpliceFolders()
+        engine.restoreCutFromPadBank()
         try? engine.padBank.save()
 
         // Wire interpreter

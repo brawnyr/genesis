@@ -101,6 +101,19 @@ class GodEngine: ObservableObject {
         audioLayers[index].cut = layers[index].cut
     }
 
+    func syncCutToPadBank() {
+        for i in 0..<8 {
+            padBank.pads[i].cut = layers[i].cut
+        }
+    }
+
+    func restoreCutFromPadBank() {
+        for i in 0..<8 {
+            layers[i].cut = padBank.pads[i].cut
+            audioLayers[i].cut = padBank.pads[i].cut
+        }
+    }
+
     func clearLayer(_ index: Int) {
         guard index >= 0, index < layers.count else { return }
         layers[index].clear()
