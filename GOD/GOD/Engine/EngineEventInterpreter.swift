@@ -16,10 +16,14 @@ struct TerminalLine: Identifiable {
     let isHighlight: Bool
     let timestamp: Date = Date()
 
-    var timeString: String {
+    private static let timeFormatter: DateFormatter = {
         let f = DateFormatter()
         f.dateFormat = "HH:mm:ss"
-        return f.string(from: timestamp)
+        return f
+    }()
+
+    var timeString: String {
+        Self.timeFormatter.string(from: timestamp)
     }
 }
 

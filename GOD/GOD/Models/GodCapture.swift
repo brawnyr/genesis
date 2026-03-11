@@ -55,10 +55,14 @@ struct GodCapture {
         }
     }
 
+    private static let filenameDateFormatter: DateFormatter = {
+        let f = DateFormatter()
+        f.dateFormat = "yyyyMMdd_HHmmss"
+        return f
+    }()
+
     private static func writeWAV(left: [Float], right: [Float]) {
-        let formatter = DateFormatter()
-        formatter.dateFormat = "yyyyMMdd_HHmmss"
-        let filename = "GOD_\(formatter.string(from: Date())).wav"
+        let filename = "GOD_\(filenameDateFormatter.string(from: Date())).wav"
 
         let dir = FileManager.default.homeDirectoryForCurrentUser
             .appendingPathComponent("recordings")
