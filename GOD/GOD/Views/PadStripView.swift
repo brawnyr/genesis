@@ -102,6 +102,68 @@ struct MarqueeText: View {
 
 // MARK: - Individual pad (cold → hot)
 
+struct PadCellOverlay: ViewModifier {
+    let isHot: Bool
+    let isCold: Bool
+    let isActive: Bool
+    let triggered: Bool
+    let hasPending: Bool
+    let pendingMute: Bool?
+    let breathe: Double
+    let pendingBlink: Bool
+
+    func body(content: Content) -> some View {
+        content
+            .overlay(
+                RoundedRectangle(cornerRadius: 4)
+                    .stroke(hotGlowStroke, lineWidth: 1)
+            )
+            .shadow(color: hotGlowShadow, radius: 10)
+            .overlay(
+                RoundedRectangle(cornerRadius: 4)
+                    .fill(isCold ? Theme.ice.opacity(0.05) : .clear)
+            )
+            .shadow(color: isCold ? Theme.ice.opacity(0.2) : .clear, radius: 8)
+            .overlay(
+                RoundedRectangle(cornerRadius: 4)
+                    .fill(triggered ? Theme.orange.opacity(0.15) : .clear)
+            )
+            .overlay(
+                RoundedRectangle(cornerRadius: 4)
+                    .stroke(pendingStroke, lineWidth: 2)
+            )
+            .overlay(alignment: .top) {
+                Rectangle()
+                    .fill(topBorderColor)
+                    .frame(height: 2)
+            }
+    }
+
+    private var hotGlowStroke: Color {
+        isHot && isActive ? Theme.orange.opacity(0.3 + 0.2 * breathe) : .clear
+    }
+
+    private var hotGlowShadow: Color {
+        isHot && isActive ? Theme.orange.opacity(0.3 + 0.15 * breathe) : .clear
+    }
+
+    private var pendingStroke: Color {
+        guard hasPending else { return .clear }
+        let color = pendingMute == true ? Theme.ice : Theme.orange
+        return color.opacity(pendingBlink ? 0.8 : 0.2)
+    }
+
+    private var topBorderColor: Color {
+        if hasPending {
+            let color = pendingMute == true ? Theme.ice : Theme.orange
+            return color.opacity(pendingBlink ? 0.9 : 0.3)
+        }
+        if isHot && isActive { return Theme.orange }
+        if isCold { return Theme.ice.opacity(0.6) }
+        return .clear
+    }
+}
+
 struct PadCell: View {
     let index: Int
     let pad: Pad
@@ -186,44 +248,16 @@ struct PadCell: View {
                     Color(white: 0.02)
                 )
         )
-        // Hot glow
-        .overlay(
-            RoundedRectangle(cornerRadius: 4)
-                .stroke(isHot && isActive ? Theme.orange.opacity(0.3 + 0.2 * breathe) : .clear, lineWidth: 1)
-        )
-        .shadow(color: isHot && isActive ? Theme.orange.opacity(0.3 + 0.15 * breathe) : .clear, radius: 10)
-        // Ice frost — full presence, not dimmed
-        .overlay(
-            RoundedRectangle(cornerRadius: 4)
-                .fill(isCold ? Theme.ice.opacity(0.05) : .clear)
-        )
-        .shadow(color: isCold ? Theme.ice.opacity(0.2) : .clear, radius: 8)
-        // Trigger flash
-        .overlay(
-            RoundedRectangle(cornerRadius: 4)
-                .fill(triggered ? Theme.orange.opacity(0.15) : .clear)
-        )
-        // Pending mute blink overlay
-        .overlay(
-            RoundedRectangle(cornerRadius: 4)
-                .stroke(
-                    hasPending
-                        ? (pendingMute == true ? Theme.ice : Theme.orange).opacity(pendingBlink ? 0.8 : 0.2)
-                        : .clear,
-                    lineWidth: 2
-                )
-        )
-        // Top border
-        .overlay(alignment: .top) {
-            Rectangle()
-                .fill(
-                    hasPending ? padColor.opacity(pendingBlink ? 0.9 : 0.3) :
-                    isHot && isActive ? Theme.orange :
-                    isCold ? Theme.ice.opacity(0.6) :
-                    .clear
-                )
-                .frame(height: 2)
-        }
+        .modifier(PadCellOverlay(
+            isHot: isHot,
+            isCold: isCold,
+            isActive: isActive,
+            triggered: triggered,
+            hasPending: hasPending,
+            pendingMute: pendingMute,
+            breathe: breathe,
+            pendingBlink: pendingBlink
+        ))
         .onAppear {
             withAnimation(.easeInOut(duration: 1.5).repeatForever(autoreverses: true)) {
                 breathe = 1.0
