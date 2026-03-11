@@ -6,14 +6,17 @@ struct Hit {
 }
 
 struct Layer {
+    static let hpBypassFrequency: Float = 20.0
+    static let lpBypassFrequency: Float = 20000.0
+
     let index: Int
     var name: String
     var hits: [Hit] = []
     var isMuted: Bool = false
     var volume: Float = 1.0
     var pan: Float = 0.5            // 0.0 = left, 0.5 = center, 1.0 = right
-    var hpCutoff: Float = 20.0      // Hz — 20 = no effect
-    var lpCutoff: Float = 20000.0   // Hz — 20000 = no effect
+    var hpCutoff: Float = Layer.hpBypassFrequency      // Hz — 20 = no effect
+    var lpCutoff: Float = Layer.lpBypassFrequency   // Hz — 20000 = no effect
     var cut: Bool = false
     private var previousHits: [Hit]?
 

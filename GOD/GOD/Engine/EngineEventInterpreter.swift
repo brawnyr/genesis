@@ -47,6 +47,8 @@ class EngineEventInterpreter: ObservableObject {
     // Decay constants
     private static let shortDecay: Float = 0.92
     private static let sustainDecay: Float = 0.98
+    private static let sustainMinIntensity: Float = 0.3
+    private static let intensityCutoff: Float = 0.01
 
     // Track which pads have active voices (set by engine)
     var activePadVoices: Set<Int> = []
@@ -181,8 +183,8 @@ class EngineEventInterpreter: ObservableObject {
         var updated = padIntensities
         for i in 0..<8 {
             if activePadVoices.contains(i) {
-                updated[i] = max(updated[i] * Self.sustainDecay, 0.3)
-            } else if updated[i] > 0.01 {
+                updated[i] = max(updated[i] * Self.sustainDecay, Self.sustainMinIntensity)
+            } else if updated[i] > Self.intensityCutoff {
                 updated[i] *= Self.shortDecay
             } else {
                 updated[i] = 0

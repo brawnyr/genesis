@@ -48,8 +48,9 @@ class GodEngine: ObservableObject {
     private var cachedHPCoeffs: [BiquadCoefficients] = Array(repeating: .bypass, count: 8)
     private var cachedLPCoeffs: [BiquadCoefficients] = Array(repeating: .bypass, count: 8)
 
-    // UI update throttle: 44100 / 1323 ≈ 33Hz (~30fps)
-    private static let uiUpdateFrameThreshold = 1323
+    // UI update throttle: ~33Hz (~30fps)
+    private static let uiUpdateHz: Double = 33.0
+    private static let uiUpdateFrameThreshold = Int(Transport.sampleRate / uiUpdateHz)
 
     private var pendingLevels: [Float] = Array(repeating: 0, count: 8)
     private var pendingTriggers: [Bool] = Array(repeating: false, count: 8)
@@ -500,7 +501,7 @@ class GodEngine: ObservableObject {
     }
 
     private var audioLoopLengthFrames: Int {
-        let beatsPerLoop = Double(audioBarCount * 4)
+        let beatsPerLoop = Double(audioBarCount * Transport.beatsPerBar)
         let secondsPerBeat = 60.0 / Double(audioBPM)
         return Int(beatsPerLoop * secondsPerBeat * Transport.sampleRate)
     }

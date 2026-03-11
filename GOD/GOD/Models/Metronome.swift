@@ -1,6 +1,13 @@
 import Foundation
 
 struct Metronome {
+    private static let clickDuration: Double = 0.02
+    private static let downbeatFreq: Double = 1500.0
+    private static let beatFreq: Double = 1000.0
+    private static let downbeatAmplitude: Float = 0.8
+    private static let beatAmplitude: Float = 0.4
+    private static let clickDecayRate: Double = 150.0
+
     var isOn: Bool = true
     var volume: Float = 0.5
 
@@ -13,15 +20,14 @@ struct Metronome {
     }
 
     static func generateClick(isDownbeat: Bool, sampleRate: Double) -> Sample {
-        let duration = 0.02 // 20ms
-        let frameCount = Int(duration * sampleRate)
-        let frequency: Double = isDownbeat ? 1500.0 : 1000.0
-        let amplitude: Float = isDownbeat ? 0.8 : 0.4
+        let frameCount = Int(clickDuration * sampleRate)
+        let frequency: Double = isDownbeat ? downbeatFreq : beatFreq
+        let amplitude: Float = isDownbeat ? downbeatAmplitude : beatAmplitude
 
         var buffer = [Float](repeating: 0, count: frameCount)
         for i in 0..<frameCount {
             let t = Double(i) / sampleRate
-            let envelope = Float(exp(-t * 150.0))
+            let envelope = Float(exp(-t * clickDecayRate))
             let sine = Float(sin(2.0 * .pi * frequency * t))
             buffer[i] = sine * envelope * amplitude
         }

@@ -2,6 +2,7 @@ import Foundation
 
 struct Transport {
     static let sampleRate: Double = 44100.0
+    static let beatsPerBar = 4
     private static let validBarCounts: Set<Int> = [1, 2, 4]
 
     var bpm: Int = 120 {
@@ -20,7 +21,7 @@ struct Transport {
     var isPlaying: Bool = false
 
     var loopLengthFrames: Int {
-        let beatsPerLoop = Double(barCount * 4)
+        let beatsPerLoop = Double(barCount * Self.beatsPerBar)
         let secondsPerBeat = 60.0 / Double(bpm)
         return Int(beatsPerLoop * secondsPerBeat * Self.sampleRate)
     }
