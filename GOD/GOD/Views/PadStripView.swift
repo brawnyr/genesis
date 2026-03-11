@@ -346,9 +346,9 @@ struct CutBadge: View {
 
     var body: some View {
         HStack(spacing: 8) {
-            Text("cut")
+            Text("retrig")
                 .foregroundColor(Color.white.opacity(0.3))
-                .frame(width: 40, alignment: .leading)
+                .frame(width: 50, alignment: .leading)
             Text(isOn ? "ON" : "OFF")
                 .font(.system(size: 11, design: .monospaced).bold())
                 .foregroundColor(isOn ? Theme.orange : Color.white.opacity(0.3))
@@ -363,11 +363,9 @@ struct CutBadge: View {
                         .stroke(isOn ? Theme.orange.opacity(0.3) : Color.white.opacity(0.1), lineWidth: 1)
                 )
                 .shadow(color: isOn ? Theme.orange.opacity(0.3) : .clear, radius: 6)
-            if isOn {
-                Text("notes chop")
-                    .font(.system(size: 9, design: .monospaced))
-                    .foregroundColor(Color.white.opacity(0.2))
-            }
+            Text(isOn ? "(kills previous)" : "(stacks)")
+                .font(.system(size: 9, design: .monospaced))
+                .foregroundColor(Color.white.opacity(0.2))
         }
         .font(.system(size: 12, design: .monospaced))
         .padding(.vertical, 1)

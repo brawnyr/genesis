@@ -118,7 +118,7 @@ struct ContentView: View {
                     KeyLabel(key: "0-9", action: "vol")
                     KeyLabel(key: "Z", action: "undo")
                     KeyLabel(key: "C", action: "clear")
-                    KeyLabel(key: "X", action: "cut")
+                    KeyLabel(key: "X", action: "retrig")
                     KeyLabel(key: "N", action: engine.toggleMode == .instant ? "instant" : "next loop")
                     KeyLabel(key: "T", action: "browse")
                     KeyLabel(key: "ESC", action: "stop")
@@ -406,9 +406,9 @@ struct ContentView: View {
             interpreter.appendLine("toggle mode → \(engine.toggleMode.rawValue)", kind: .state)
         case Key.x:
             engine.toggleCut(pad: engine.activePadIndex)
-            let cutState = engine.layers[engine.activePadIndex].cut ? "on" : "off"
+            let cutState = engine.layers[engine.activePadIndex].cut
             let name = padName(engine.activePadIndex)
-            interpreter.appendLine("pad \(engine.activePadIndex + 1) \(name) cut \(cutState)", kind: .state)
+            interpreter.appendLine("pad \(engine.activePadIndex + 1) \(name) retrig \(cutState ? "on (kills previous)" : "off (stacks)")", kind: .state)
         case Key.f:
             engine.killAllVoices()
             interpreter.appendLine("killed all voices", kind: .state)

@@ -27,7 +27,7 @@ enum KeyAction: CaseIterable {
         case .masterVolume: return "V"
         case .volume:       return "0-9"
         case .undoClear:    return "Z"
-        case .cutMode:      return "X"
+        case .cutMode:      return "X"  // retrig toggle
         case .toggleMode:   return "N"
         case .clearPad:     return "C"
         case .stop:         return "ESC"
@@ -55,7 +55,7 @@ enum KeyAction: CaseIterable {
         case .masterVolume: return "toggle master volume mode"
         case .volume:       return "volume (master or pad)"
         case .undoClear:    return "undo clear"
-        case .cutMode:      return "cut mode"
+        case .cutMode:      return "retrig (kills previous)"
         case .toggleMode:   return "toggle instant / next loop"
         case .clearPad:     return "clear active pad"
         case .stop:         return "stop"

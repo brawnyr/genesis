@@ -97,11 +97,11 @@ import Testing
 
 @Test @MainActor func engineToggleCut() {
     let engine = GodEngine()
+    #expect(engine.layers[0].cut == true)   // retrig on by default
+    engine.toggleCut(pad: 0)
     #expect(engine.layers[0].cut == false)
     engine.toggleCut(pad: 0)
     #expect(engine.layers[0].cut == true)
-    engine.toggleCut(pad: 0)
-    #expect(engine.layers[0].cut == false)
 }
 
 @Test @MainActor func engineCutModeChopsVoices() {
@@ -109,7 +109,7 @@ import Testing
     let data = [Float](repeating: 0.5, count: 44100)
     let sample = Sample(name: "808", left: data, right: data, sampleRate: 44100)
     engine.padBank.assign(sample: sample, toPad: 0)
-    engine.toggleCut(pad: 0)
+    // cut/retrig is ON by default — no toggle needed
     engine.togglePlay()
 
     // First hit — should create 1 voice
@@ -130,7 +130,7 @@ import Testing
     let data = [Float](repeating: 0.5, count: 44100)
     let sample = Sample(name: "808", left: data, right: data, sampleRate: 44100)
     engine.padBank.assign(sample: sample, toPad: 0)
-    // cut is OFF (default)
+    engine.toggleCut(pad: 0)  // turn OFF retrig so voices stack
     engine.togglePlay()
 
     engine.midiRingBuffer.write(.noteOn(note: 36, velocity: 100))

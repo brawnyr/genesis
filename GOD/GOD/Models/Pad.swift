@@ -10,7 +10,7 @@ struct Pad {
     var sample: Sample?
     var samplePath: String?
     var isOneShot: Bool = true
-    var cut: Bool = false
+    var cut: Bool = true
 }
 
 struct PadAssignment: Codable {
@@ -18,6 +18,7 @@ struct PadAssignment: Codable {
     let name: String
     var cut: Bool?
 }
+
 
 struct PadConfig: Codable {
     var assignments: [String: PadAssignment] = [:]
@@ -86,7 +87,7 @@ struct PadBank {
                 pads[index].sample = sample
                 pads[index].samplePath = assignment.path
                 pads[index].name = assignment.name
-                pads[index].cut = assignment.cut ?? false
+                pads[index].cut = assignment.cut ?? true
             } catch {
                 logger.warning("Failed to load saved sample \(assignment.path): \(error.localizedDescription)")
             }

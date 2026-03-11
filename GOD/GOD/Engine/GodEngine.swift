@@ -284,7 +284,7 @@ class GodEngine: ObservableObject {
 
     private func handleCC(number: Int, value: Int) {
         switch number {
-        case 14: // Volume
+        case 14: // Volume (per-pad)
             audio.layers[audio.activePadIndex].volume = Float(value) / 127.0
         case 15: // Pan
             audio.layers[audio.activePadIndex].pan = Float(value) / 127.0
@@ -293,7 +293,12 @@ class GodEngine: ObservableObject {
         case 17: // LP Cutoff
             audio.layers[audio.activePadIndex].lpCutoff = ccToFrequency(value)
         default:
-            break
+            // Log unmapped CCs to help identify fader assignments
+            let cc = number
+            let val = value
+            DispatchQueue.main.async {
+                self.interpreter?.appendLine("cc \(cc) → \(val)", kind: .system)
+            }
         }
     }
 
