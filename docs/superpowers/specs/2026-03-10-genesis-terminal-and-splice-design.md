@@ -128,7 +128,7 @@ The LLM receives a structured snapshot of engine state:
 
 ### Model
 
-- Local llama model via `llama.cpp` (subprocess, communicates over stdin/stdout)
+- Local llama model via `llama-server` (HTTP API on port 8421, `/v1/chat/completions`)
 - Starts on app launch, stays alive for the session, killed on app quit
 - If model binary or weights are missing, terminal shows a static message: `"no model loaded — drop a gguf into ~/.god/models/"`
 - If the subprocess crashes, terminal shows `"model disconnected"` and stops requesting — no auto-restart to avoid CPU churn
@@ -196,7 +196,7 @@ Initial implementation should have the terminal text fill the full right panel. 
 - `Sample` model needs a `durationMs` computed property (frame count / sample rate * 1000)
 - `GodEngine` needs a `loopDurationMs` computed property from transport
 - `GodEngine` needs a method to generate the state snapshot JSON for the LLM
-- `llama.cpp` binary and a suitable `.gguf` model file placed at `~/.god/models/`
+- `llama-server` binary (from `llama.cpp`, install via `brew install llama.cpp`) and a `.gguf` model file at `~/.god/models/`
 
 ## 6. Testing
 
