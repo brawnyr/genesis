@@ -38,10 +38,9 @@ struct KeyCaptureRepresentable: NSViewRepresentable {
 
 struct ContentView: View {
     @ObservedObject var engine: GodEngine
-    @ObservedObject var terminalState: TerminalState
+    @ObservedObject var interpreter: EngineEventInterpreter
     @State private var showSetup = false
     @State private var showKeyReference = false
-    @State private var showTerminal = true
 
     var body: some View {
         ZStack {
@@ -53,59 +52,42 @@ struct ContentView: View {
             .frame(maxWidth: .infinity, maxHeight: .infinity)
 
             VStack(spacing: 0) {
-                HStack(spacing: 0) {
-                    // Left: Instrument panel
-                    VStack(spacing: 20) {
-                        TransportView(engine: engine)
-                            .padding(.top, 16)
+                // Transport bar
+                TransportView(engine: engine)
 
-                        LoopBarView(engine: engine)
+                // Canvas (fills remaining space)
+                CanvasView(engine: engine, interpreter: interpreter)
 
-                        ChannelListView(engine: engine)
-                            .padding(.vertical, 8)
+                // Pad strip
+                PadStripView(engine: engine, interpreter: interpreter)
 
-                        Spacer()
-
-                        CaptureIndicatorView(engine: engine)
-                    }
-                    .padding(.horizontal, 24)
-                    .frame(maxWidth: .infinity)
-
-                    if showTerminal {
-                        // Right: Genesis Terminal
-                        GenesisTerminalView(state: terminalState)
-                            .frame(maxWidth: .infinity)
-                    }
+                // Hotkeys strip
+                HStack(spacing: 12) {
+                    KeyLabel(key: "SPC", action: "play")
+                    KeyLabel(key: "G", action: "god")
+                    KeyLabel(key: "A/D", action: "pad ←→")
+                    KeyLabel(key: "W", action: "mute")
+                    KeyLabel(key: "S", action: "—")
+                    KeyLabel(key: "M", action: "metro")
+                    KeyLabel(key: "↑↓", action: "bpm")
+                    KeyLabel(key: "[]", action: "bars")
+                    KeyLabel(key: "-+", action: "vol")
+                    KeyLabel(key: "Z", action: "undo")
+                    KeyLabel(key: "C", action: "clear")
+                    KeyLabel(key: "T", action: "setup")
+                    KeyLabel(key: "ESC", action: "stop")
+                    KeyLabel(key: "?", action: "help")
                 }
-
-                // Bottom: Tips + key strip (full width)
-                VStack(spacing: 4) {
-                    TipView()
-                        .padding(.vertical, 4)
-
-                    HStack(spacing: 14) {
-                        KeyLabel(key: "SPC", action: "play")
-                        KeyLabel(key: "G", action: "god")
-                        KeyLabel(key: "M", action: "metro")
-                        KeyLabel(key: "S", action: "setup")
-                        KeyLabel(key: "↑↓", action: "bpm")
-                        KeyLabel(key: "[]", action: "bars")
-                        KeyLabel(key: "-+", action: "vol")
-                        KeyLabel(key: "1-8", action: "mute")
-                        KeyLabel(key: "Z", action: "undo")
-                        KeyLabel(key: "T", action: "term")
-                        KeyLabel(key: "?", action: "help")
-                    }
-                    .padding(.bottom, 12)
-                }
-                .padding(.horizontal, 24)
+                .padding(.horizontal, 16)
+                .padding(.vertical, 4)
+                .background(Color(red: 0.086, green: 0.082, blue: 0.075))  // #161513
             }
 
             if showKeyReference {
                 KeyReferenceOverlay(isVisible: $showKeyReference)
             }
         }
-        .frame(minWidth: 800, minHeight: 500)
+        .frame(minWidth: 900, minHeight: 600)
         .sheet(isPresented: $showSetup) {
             SetupView(engine: engine, isPresented: $showSetup)
                 .frame(width: 500, height: 500)
@@ -115,9 +97,12 @@ struct ContentView: View {
     // macOS virtual key codes
     private enum Key {
         static let space: UInt16 = 49
+        static let a: UInt16 = 0
+        static let d: UInt16 = 2
+        static let w: UInt16 = 13
+        static let c: UInt16 = 8
         static let g: UInt16 = 5
         static let m: UInt16 = 46
-        static let s: UInt16 = 1
         static let t: UInt16 = 17
         static let z: UInt16 = 6
         static let upArrow: UInt16 = 126
@@ -135,8 +120,16 @@ struct ContentView: View {
             engine.toggleCapture()
         case Key.m:
             engine.toggleMetronome()
-        case Key.s:
+        case Key.t:
             showSetup = true
+        case Key.a:
+            engine.activePadIndex = (engine.activePadIndex - 1 + 8) % 8
+        case Key.d:
+            engine.activePadIndex = (engine.activePadIndex + 1) % 8
+        case Key.w:
+            engine.toggleMute(layer: engine.activePadIndex)
+        case Key.c:
+            engine.clearLayer(engine.activePadIndex)
         case Key.upArrow:
             engine.setBPM(engine.transport.bpm + 1)
         case Key.downArrow:
@@ -147,8 +140,6 @@ struct ContentView: View {
             engine.cycleBarCount(forward: false)
         case Key.rightBracket:
             engine.cycleBarCount(forward: true)
-        case Key.t:
-            showTerminal.toggle()
         case Key.z:
             engine.undoLastClear()
         default:
@@ -163,14 +154,6 @@ struct ContentView: View {
                 engine.adjustMasterVolume(-0.05)
             case "=", "+":
                 engine.adjustMasterVolume(0.05)
-            case "1": engine.toggleMute(layer: 0)
-            case "2": engine.toggleMute(layer: 1)
-            case "3": engine.toggleMute(layer: 2)
-            case "4": engine.toggleMute(layer: 3)
-            case "5": engine.toggleMute(layer: 4)
-            case "6": engine.toggleMute(layer: 5)
-            case "7": engine.toggleMute(layer: 6)
-            case "8": engine.toggleMute(layer: 7)
             default: break
             }
         }

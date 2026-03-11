@@ -7,7 +7,7 @@ private let logger = Logger(subsystem: "com.god.app", category: "GODApp")
 @main
 struct GODApp: App {
     @StateObject private var engine = GodEngine()
-    @StateObject private var terminalState = TerminalState()
+    @StateObject private var interpreter = EngineEventInterpreter()
     @State private var audioManager: AudioManager?
     @State private var midiManager: MIDIManager?
 
@@ -18,7 +18,7 @@ struct GODApp: App {
 
     var body: some Scene {
         WindowGroup {
-            ContentView(engine: engine, terminalState: terminalState)
+            ContentView(engine: engine, interpreter: interpreter)
                 .onAppear {
                     startManagers()
                     NSApplication.shared.windows.first?.makeKeyAndOrderFront(nil)
@@ -29,13 +29,14 @@ struct GODApp: App {
     }
 
     private func startManagers() {
-        // Create Splice folders if they don't exist
         ensureSpliceFolders()
 
-        // Load saved pad config, then fill gaps from Splice folders
         try? engine.padBank.loadConfig()
         engine.padBank.loadFromSpliceFolders()
         try? engine.padBank.save()
+
+        // Wire interpreter
+        engine.interpreter = interpreter
 
         let audio = AudioManager(engine: engine)
         do {
@@ -48,7 +49,6 @@ struct GODApp: App {
         let midi = MIDIManager(ringBuffer: engine.midiRingBuffer)
         midi.start()
         midiManager = midi
-
     }
 
     private func ensureSpliceFolders() {
