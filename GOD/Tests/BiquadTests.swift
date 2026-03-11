@@ -68,6 +68,13 @@ import Foundation
     #expect(peak < 0.05)
 }
 
+@Test func ccToFrequencyClamps() {
+    let fNeg = ccToFrequency(-10)
+    #expect(abs(fNeg - 20.0) < 1.0)
+    let fOver = ccToFrequency(200)
+    #expect(abs(fOver - 20000.0) < 100.0)
+}
+
 @Test func ccToFrequencyMapping() {
     let f0 = ccToFrequency(0)
     let f64 = ccToFrequency(64)
