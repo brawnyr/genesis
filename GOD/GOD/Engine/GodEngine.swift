@@ -156,13 +156,17 @@ class GodEngine: ObservableObject {
         audioMetronomeOn = metronome.isOn
     }
 
-    private func handlePadHit(note: Int, velocity: Int) {
+    private func handlePadHit(note: Int, velocity: Int, record: Bool) {
         guard let padIndex = padBank.padIndex(forNote: note),
               let sample = padBank.pads[padIndex].sample else { return }
 
         audioActivePadIndex = padIndex
-        audioLayers[padIndex].addHit(at: audioPosition, velocity: velocity)
-        audioLayers[padIndex].name = padBank.pads[padIndex].name
+
+        // Only record hits to layer when transport is playing
+        if record {
+            audioLayers[padIndex].addHit(at: audioPosition, velocity: velocity)
+            audioLayers[padIndex].name = padBank.pads[padIndex].name
+        }
 
         if audioLayers[padIndex].cut {
             voices.removeAll { $0.padIndex == padIndex }
@@ -198,64 +202,103 @@ class GodEngine: ObservableObject {
     func processBlock(frameCount: Int) -> (left: [Float], right: [Float]) {
         var outputL = [Float](repeating: 0, count: frameCount)
         var outputR = [Float](repeating: 0, count: frameCount)
-        guard audioIsPlaying else { return (outputL, outputR) }
 
-        let startPos = audioPosition
         let loopLen = audioLoopLengthFrames
 
-        guard loopLen > 0 else { return (outputL, outputR) }
+        // Loop replay, metronome, capture, and position advance only when playing
+        if audioIsPlaying, loopLen > 0 {
+            let startPos = audioPosition
 
-        // Check each layer for hits in this block's range (before draining MIDI,
-        // so live hits recorded this block don't retrigger via the loop path)
-        for layer in audioLayers where !layer.isMuted {
-            let endPos = startPos + frameCount
-            let hits: [Hit]
+            // Check each layer for hits in this block's range (before draining MIDI,
+            // so live hits recorded this block don't retrigger via the loop path)
+            for layer in audioLayers where !layer.isMuted {
+                let endPos = startPos + frameCount
+                let hits: [Hit]
 
-            if endPos <= loopLen {
-                hits = layer.hits(inRange: startPos..<endPos)
-            } else {
-                let beforeWrap = layer.hits(inRange: startPos..<loopLen)
-                let afterWrap = layer.hits(inRange: 0..<(endPos - loopLen))
-                hits = beforeWrap + afterWrap
-            }
+                if endPos <= loopLen {
+                    hits = layer.hits(inRange: startPos..<endPos)
+                } else {
+                    let beforeWrap = layer.hits(inRange: startPos..<loopLen)
+                    let afterWrap = layer.hits(inRange: 0..<(endPos - loopLen))
+                    hits = beforeWrap + afterWrap
+                }
 
-            for hit in hits {
-                if let sample = padBank.pads[layer.index].sample {
-                    if layer.cut {
-                        voices.removeAll { $0.padIndex == layer.index }
+                for hit in hits {
+                    if let sample = padBank.pads[layer.index].sample {
+                        if layer.cut {
+                            voices.removeAll { $0.padIndex == layer.index }
+                        }
+                        let vel = Float(hit.velocity) / 127.0 * layer.volume
+                        voices.append(Voice(sample: sample, velocity: vel, padIndex: layer.index))
                     }
-                    let vel = Float(hit.velocity) / 127.0 * layer.volume
-                    voices.append(Voice(sample: sample, velocity: vel, padIndex: layer.index))
+                }
+            }
+
+            // Drain MIDI events from ring buffer (after loop scan to avoid double-triggering)
+            midiRingBuffer.drain { event in
+                switch event {
+                case .noteOn(let note, let velocity):
+                    handlePadHit(note: note, velocity: velocity, record: true)
+                case .noteOff(let note):
+                    handleNoteOff(note: note)
+                case .cc(let number, let value):
+                    handleCC(number: number, value: value)
+                }
+            }
+
+            // Metronome
+            if audioMetronomeOn {
+                let beatLen = Metronome.beatLengthFramesStatic(bpm: audioBPM, sampleRate: Transport.sampleRate)
+                for i in 0..<frameCount {
+                    let frameInLoop = (startPos + i) % loopLen
+                    if beatLen > 0 && frameInLoop % beatLen == 0 {
+                        let isDownbeat = frameInLoop == 0
+                        let click = Metronome.generateClick(isDownbeat: isDownbeat, sampleRate: Transport.sampleRate)
+                        voices.append(Voice(sample: click, velocity: audioMetronomeVolume))
+                    }
+                }
+            }
+
+            // Advance audio position
+            audioPosition += frameCount
+            var wrapped = false
+            if audioPosition >= loopLen {
+                audioPosition -= loopLen
+                wrapped = true
+            }
+
+            // Capture
+            if audioCaptureState == .recording {
+                audioCapture.append(left: outputL, right: outputR)
+            }
+            if wrapped {
+                audioCapture.onLoopBoundary()
+                audioCaptureState = audioCapture.state
+                let captureState = audioCaptureState
+                DispatchQueue.main.async {
+                    self.capture.state = captureState
+                    self.interpreter?.onLoopBoundary(
+                        layers: self.layers,
+                        padBank: self.padBank,
+                        loopDurationMs: self.loopDurationMs
+                    )
+                }
+            }
+        } else {
+            // Transport stopped — still drain MIDI for pad auditioning (no recording)
+            midiRingBuffer.drain { event in
+                switch event {
+                case .noteOn(let note, let velocity):
+                    handlePadHit(note: note, velocity: velocity, record: false)
+                case .noteOff(let note):
+                    handleNoteOff(note: note)
+                case .cc(let number, let value):
+                    handleCC(number: number, value: value)
                 }
             }
         }
 
-        // Drain MIDI events from ring buffer (after loop scan to avoid double-triggering)
-        midiRingBuffer.drain { event in
-            switch event {
-            case .noteOn(let note, let velocity):
-                handlePadHit(note: note, velocity: velocity)
-            case .noteOff(let note):
-                handleNoteOff(note: note)
-            case .cc(let number, let value):
-                handleCC(number: number, value: value)
-            }
-        }
-
-        // Metronome
-        if audioMetronomeOn {
-            let beatLen = Metronome.beatLengthFramesStatic(bpm: audioBPM, sampleRate: Transport.sampleRate)
-            for i in 0..<frameCount {
-                let frameInLoop = (startPos + i) % loopLen
-                if beatLen > 0 && frameInLoop % beatLen == 0 {
-                    let isDownbeat = frameInLoop == 0
-                    let click = Metronome.generateClick(isDownbeat: isDownbeat, sampleRate: Transport.sampleRate)
-                    voices.append(Voice(sample: click, velocity: audioMetronomeVolume))
-                }
-            }
-        }
-
-        // Mix all active voices — track per-channel peak during fill
+        // Mix all active voices — always, even when stopped (for pad auditioning)
         voices = voices.compactMap { voice in
             var v = voice
             let layer = v.padIndex >= 0 && v.padIndex < 8 ? audioLayers[v.padIndex] : nil
@@ -282,32 +325,6 @@ class GodEngine: ObservableObject {
             peak = max(peak, abs(outputL[i]), abs(outputR[i]))
         }
 
-        // Advance audio position
-        audioPosition += frameCount
-        var wrapped = false
-        if audioPosition >= loopLen {
-            audioPosition -= loopLen
-            wrapped = true
-        }
-
-        // Capture — use audioCapture (audio-thread-safe copy), sync state back to UI
-        if audioCaptureState == .recording {
-            audioCapture.append(left: outputL, right: outputR)
-        }
-        if wrapped {
-            audioCapture.onLoopBoundary()
-            audioCaptureState = audioCapture.state
-            let captureState = audioCaptureState
-            DispatchQueue.main.async {
-                self.capture.state = captureState
-                self.interpreter?.onLoopBoundary(
-                    layers: self.layers,
-                    padBank: self.padBank,
-                    loopDurationMs: self.loopDurationMs
-                )
-            }
-        }
-
         // Throttle UI updates — sync position + levels ~30x/sec
         uiUpdateCounter += frameCount
         if uiUpdateCounter >= Self.uiUpdateFrameThreshold {
@@ -326,9 +343,11 @@ class GodEngine: ObservableObject {
             pendingLevels = Array(repeating: 0, count: 8)
             pendingTriggers = Array(repeating: false, count: 8)
             DispatchQueue.main.async {
-                for hit in hits {
-                    self.layers[hit.padIndex].addHit(at: hit.position, velocity: hit.velocity)
-                    self.layers[hit.padIndex].name = self.padBank.pads[hit.padIndex].name
+                if self.audioIsPlaying {
+                    for hit in hits {
+                        self.layers[hit.padIndex].addHit(at: hit.position, velocity: hit.velocity)
+                        self.layers[hit.padIndex].name = self.padBank.pads[hit.padIndex].name
+                    }
                 }
                 self.transport.position = pos
                 self.channelSignalLevels = levels
@@ -346,7 +365,6 @@ class GodEngine: ObservableObject {
                     self.layers[i].lpCutoff = layerLPCutoffs[i]
                 }
                 if let interp = self.interpreter {
-                    // Track active voices per pad
                     let activeVoicePads = Set(self.voices.filter { $0.padIndex >= 0 }.map(\.padIndex))
                     interp.activePadVoices = activeVoicePads
 

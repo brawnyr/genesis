@@ -1,11 +1,16 @@
 import CoreMIDI
 import Foundation
+import os
+
+private let logger = Logger(subsystem: "com.god.app", category: "MIDI")
 
 class MIDIManager: ObservableObject {
     private var midiClient: MIDIClientRef = 0
     private var inputPort: MIDIPortRef = 0
     private let ringBuffer: MIDIRingBuffer
+    private var connectedSources: Set<MIDIEndpointRef> = []
 
+    var interpreter: EngineEventInterpreter?
     @Published var connectedDevice: String = "None"
 
     init(ringBuffer: MIDIRingBuffer) {
@@ -13,11 +18,16 @@ class MIDIManager: ObservableObject {
     }
 
     func start() {
-        MIDIClientCreateWithBlock("GOD" as CFString, &midiClient) { [weak self] notification in
+        let clientStatus = MIDIClientCreateWithBlock("GOD" as CFString, &midiClient) { [weak self] notification in
             self?.handleMIDINotification(notification)
         }
+        guard clientStatus == noErr else {
+            logger.error("MIDIClientCreate failed: \(clientStatus)")
+            log("midi → client creation failed (error \(clientStatus))")
+            return
+        }
 
-        MIDIInputPortCreateWithProtocol(
+        let portStatus = MIDIInputPortCreateWithProtocol(
             midiClient,
             "GOD Input" as CFString,
             ._1_0,
@@ -25,39 +35,83 @@ class MIDIManager: ObservableObject {
         ) { [weak self] eventList, _ in
             self?.handleMIDIEvents(eventList)
         }
+        guard portStatus == noErr else {
+            logger.error("MIDIInputPortCreate failed: \(portStatus)")
+            log("midi → port creation failed (error \(portStatus))")
+            return
+        }
 
-        connectToMiniLab()
+        connectAllSources()
     }
 
-    private func connectToMiniLab() {
+    private func connectAllSources() {
         let sourceCount = MIDIGetNumberOfSources()
+
+        if sourceCount == 0 {
+            log("midi → no devices found")
+            DispatchQueue.main.async {
+                self.connectedDevice = "None"
+            }
+            return
+        }
+
+        // Prioritize MiniLab, but connect to all sources
+        var deviceNames: [String] = []
+        var primaryName: String?
+
         for i in 0..<sourceCount {
             let source = MIDIGetSource(i)
-            var name: Unmanaged<CFString>?
-            MIDIObjectGetStringProperty(source, kMIDIPropertyDisplayName, &name)
+            guard !connectedSources.contains(source) else { continue }
 
-            if let deviceName = name?.takeRetainedValue() as String? {
-                let lower = deviceName.lowercased()
-                if lower.contains("minilab") {
-                    MIDIPortConnectSource(inputPort, source, nil)
-                    DispatchQueue.main.async {
-                        self.connectedDevice = deviceName
-                    }
-                    return
+            let deviceName = self.sourceName(source)
+            let connectStatus = MIDIPortConnectSource(inputPort, source, nil)
+
+            if connectStatus == noErr {
+                connectedSources.insert(source)
+                deviceNames.append(deviceName)
+                log("midi → \(deviceName.lowercased()) connected")
+
+                if deviceName.lowercased().contains("minilab") {
+                    primaryName = deviceName
                 }
+            } else {
+                logger.error("MIDIPortConnectSource failed for \(deviceName): \(connectStatus)")
+                log("midi → failed to connect \(deviceName.lowercased()) (error \(connectStatus))")
             }
         }
 
-        if sourceCount > 0 {
-            let source = MIDIGetSource(0)
-            MIDIPortConnectSource(inputPort, source, nil)
-            var name: Unmanaged<CFString>?
-            MIDIObjectGetStringProperty(source, kMIDIPropertyDisplayName, &name)
-            let deviceName = (name?.takeRetainedValue() as String?) ?? "Unknown"
+        let displayName = primaryName ?? deviceNames.first ?? "Unknown"
+        DispatchQueue.main.async {
+            self.connectedDevice = displayName
+        }
+    }
+
+    private func disconnectRemovedSources() {
+        // Check which connected sources are still valid
+        let currentSources = Set((0..<MIDIGetNumberOfSources()).map { MIDIGetSource($0) })
+        let removed = connectedSources.subtracting(currentSources)
+
+        for source in removed {
+            let name = sourceName(source)
+            MIDIPortDisconnectSource(inputPort, source)
+            connectedSources.remove(source)
+            log("midi → \(name.lowercased()) disconnected")
+        }
+
+        if connectedSources.isEmpty {
             DispatchQueue.main.async {
-                self.connectedDevice = deviceName
+                self.connectedDevice = "None"
             }
         }
+    }
+
+    private func sourceName(_ source: MIDIEndpointRef) -> String {
+        var name: Unmanaged<CFString>?
+        let status = MIDIObjectGetStringProperty(source, kMIDIPropertyDisplayName, &name)
+        if status == noErr, let cfName = name?.takeRetainedValue() {
+            return cfName as String
+        }
+        return "Unknown"
     }
 
     private func handleMIDIEvents(_ eventList: UnsafePointer<MIDIEventList>) {
@@ -66,6 +120,15 @@ class MIDIManager: ObservableObject {
 
         for _ in 0..<list.numPackets {
             let word = packet.words.0
+            let messageType = (word >> 28) & 0xF
+
+            // Only process MIDI 1.0 Channel Voice messages (type 0x2)
+            guard messageType == 0x2 else {
+                var current = packet
+                packet = MIDIEventPacketNext(&current).pointee
+                continue
+            }
+
             let status = (word >> 16) & 0xF0
             let data1 = Int((word >> 8) & 0x7F)
             let data2 = Int(word & 0x7F)
@@ -87,12 +150,28 @@ class MIDIManager: ObservableObject {
     }
 
     private func handleMIDINotification(_ notification: UnsafePointer<MIDINotification>) {
-        if notification.pointee.messageID == .msgObjectAdded {
-            connectToMiniLab()
+        switch notification.pointee.messageID {
+        case .msgObjectAdded, .msgSetupChanged:
+            connectAllSources()
+        case .msgObjectRemoved:
+            disconnectRemovedSources()
+        default:
+            break
+        }
+    }
+
+    private func log(_ message: String) {
+        let interp = interpreter
+        DispatchQueue.main.async {
+            interp?.appendLine(message, kind: .system)
         }
     }
 
     func stop() {
+        for source in connectedSources {
+            MIDIPortDisconnectSource(inputPort, source)
+        }
+        connectedSources.removeAll()
         MIDIPortDispose(inputPort)
         MIDIClientDispose(midiClient)
     }

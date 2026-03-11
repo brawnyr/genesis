@@ -149,6 +149,7 @@ struct GODApp: App {
         audioManager = audio
 
         let midi = MIDIManager(ringBuffer: engine.midiRingBuffer)
+        midi.interpreter = interpreter
         midi.start()
         midiManager = midi
     }
