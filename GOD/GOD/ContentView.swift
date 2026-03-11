@@ -110,6 +110,7 @@ struct ContentView: View {
                     KeyLabel(key: "0-9", action: "vol")
                     KeyLabel(key: "Z", action: "undo")
                     KeyLabel(key: "C", action: "clear")
+                    KeyLabel(key: "X", action: "cut")
                     KeyLabel(key: "T", action: "browse")
                     KeyLabel(key: "ESC", action: "stop")
                     KeyLabel(key: "?", action: "help")
@@ -142,6 +143,7 @@ struct ContentView: View {
         static let v: UInt16 = 9
         static let b: UInt16 = 11
         static let z: UInt16 = 6
+        static let x: UInt16 = 7
         static let returnKey: UInt16 = 36
         static let upArrow: UInt16 = 126
         static let downArrow: UInt16 = 125
@@ -356,6 +358,11 @@ struct ContentView: View {
         case Key.z:
             engine.undoLastClear()
             interpreter.appendLine("undo clear → pad \(engine.activePadIndex + 1)")
+        case Key.x:
+            engine.toggleCut(pad: engine.activePadIndex)
+            let cutState = engine.layers[engine.activePadIndex].cut ? "on" : "off"
+            let name = padName(engine.activePadIndex)
+            interpreter.appendLine("pad \(engine.activePadIndex + 1) \(name) cut \(cutState)", kind: .state)
         default:
             break
         }
