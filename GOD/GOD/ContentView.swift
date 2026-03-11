@@ -175,9 +175,12 @@ struct ContentView: View {
             .sorted { $0.lastPathComponent < $1.lastPathComponent }) ?? []
         guard browserIndex < files.count else { return }
         let url = files[browserIndex]
-        if let _ = try? engine.loadSample(from: url, forPad: padIndex) {
+        do {
+            try engine.loadSample(from: url, forPad: padIndex)
             let name = engine.padBank.pads[padIndex].sample?.name.lowercased() ?? url.lastPathComponent
             interpreter.appendLine("sample loaded → \(name) on \(folderName)", kind: .browse)
+        } catch {
+            interpreter.appendLine("failed to load sample: \(error.localizedDescription)", kind: .system)
         }
     }
 

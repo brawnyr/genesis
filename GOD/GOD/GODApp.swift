@@ -80,13 +80,21 @@ struct GODApp: App {
     private func startManagers() {
         ensureSpliceFolders()
 
-        try? engine.padBank.loadConfig()
+        do {
+            try engine.padBank.loadConfig()
+        } catch {
+            logger.info("No saved pad config (or error loading): \(error.localizedDescription)")
+        }
         engine.padBank.loadFromSpliceFolders()
         engine.restoreCutFromPadBank()
         for i in 0..<PadBank.padCount {
             engine.detectBPM(forPad: i)
         }
-        try? engine.padBank.save()
+        do {
+            try engine.padBank.save()
+        } catch {
+            logger.error("Failed to save pad config: \(error.localizedDescription)")
+        }
 
         // Wire interpreter
         engine.interpreter = interpreter

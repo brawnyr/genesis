@@ -1,4 +1,7 @@
 import Foundation
+import os
+
+private let logger = Logger(subsystem: "com.god.pads", category: "PadBank")
 
 struct Pad {
     let index: Int
@@ -78,11 +81,14 @@ struct PadBank {
         for (key, assignment) in cfg.assignments {
             guard let index = Int(key), index >= 0, index < Self.padCount else { continue }
             let url = URL(fileURLWithPath: assignment.path)
-            if let sample = try? Sample.load(from: url) {
+            do {
+                let sample = try Sample.load(from: url)
                 pads[index].sample = sample
                 pads[index].samplePath = assignment.path
                 pads[index].name = assignment.name
                 pads[index].cut = assignment.cut ?? false
+            } catch {
+                logger.warning("Failed to load saved sample \(assignment.path): \(error.localizedDescription)")
             }
         }
     }
@@ -100,12 +106,15 @@ struct PadBank {
                     .sorted(by: { $0.lastPathComponent < $1.lastPathComponent })
             else { continue }
 
-            guard let firstFile = contents.first,
-                  let sample = try? Sample.load(from: firstFile) else { continue }
-
-            pads[index].sample = sample
-            pads[index].samplePath = firstFile.path
-            pads[index].name = sample.name.uppercased()
+            guard let firstFile = contents.first else { continue }
+            do {
+                let sample = try Sample.load(from: firstFile)
+                pads[index].sample = sample
+                pads[index].samplePath = firstFile.path
+                pads[index].name = sample.name.uppercased()
+            } catch {
+                logger.warning("Failed to load Splice sample \(firstFile.lastPathComponent): \(error.localizedDescription)")
+            }
         }
     }
 }

@@ -236,7 +236,11 @@ class GodEngine: ObservableObject {
         padBank.pads[index].samplePath = url.path
         layers[index].name = sample.name.uppercased()
         syncCutToPadBank()
-        try? padBank.save()
+        do {
+            try padBank.save()
+        } catch {
+            // Non-fatal: config save failure doesn't affect playback
+        }
         detectBPM(forPad: index)
     }
 
