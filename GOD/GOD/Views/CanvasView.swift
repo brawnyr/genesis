@@ -82,12 +82,6 @@ struct GodTitleLayer: View {
         capture.state == .armed || capture.state == .recording
     }
 
-    private var currentBeat: Int {
-        let beatLength = metronome.beatLengthFrames(bpm: transport.bpm, sampleRate: Transport.sampleRate)
-        guard beatLength > 0 else { return 1 }
-        return (transport.position / beatLength) % (transport.barCount * 4) + 1
-    }
-
     private static func generatePixels(count: Int) -> [DriftPixel] {
         (0..<count).map { _ in
             DriftPixel(
@@ -257,7 +251,7 @@ struct GodTitleLayer: View {
                     .font(.system(size: 16, design: .monospaced))
 
                 if isPlaying {
-                    Text("beat \(currentBeat)")
+                    Text("beat \(transport.currentBeat)")
                         .foregroundColor(Theme.orange)
                         .font(.system(size: 16, design: .monospaced))
                 }

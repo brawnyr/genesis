@@ -26,6 +26,12 @@ struct Transport {
         return Int(beatsPerLoop * secondsPerBeat * Self.sampleRate)
     }
 
+    var currentBeat: Int {
+        let beatLengthFrames = Int(60.0 / Double(bpm) * Self.sampleRate)
+        guard beatLengthFrames > 0 else { return 1 }
+        return (position / beatLengthFrames) % (barCount * Self.beatsPerBar) + 1
+    }
+
     mutating func advance(frames: Int) -> Bool {
         position += frames
         if position >= loopLengthFrames {

@@ -3,15 +3,6 @@ import SwiftUI
 struct TransportView: View {
     @ObservedObject var engine: GodEngine
 
-    private var currentBeat: Int {
-        let beatLength = engine.metronome.beatLengthFrames(
-            bpm: engine.transport.bpm,
-            sampleRate: Transport.sampleRate
-        )
-        guard beatLength > 0 else { return 1 }
-        return (engine.transport.position / beatLength) % (engine.transport.barCount * 4) + 1
-    }
-
     var body: some View {
         HStack(spacing: 16) {
             // Play state
@@ -43,7 +34,7 @@ struct TransportView: View {
 
             // Beat counter
             if engine.transport.isPlaying {
-                Text("beat \(currentBeat)")
+                Text("beat \(engine.transport.currentBeat)")
                     .foregroundColor(Theme.blue)
                     .font(Theme.monoSmall)
             }

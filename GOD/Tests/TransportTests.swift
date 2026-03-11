@@ -46,3 +46,20 @@ import Testing
     transport.barCount = 3
     #expect(transport.barCount == 2) // unchanged, 3 is invalid
 }
+
+@Test func transportCurrentBeat() {
+    var t = Transport()
+    t.bpm = 120
+    t.barCount = 4
+    t.isPlaying = true
+    t.position = 0
+    #expect(t.currentBeat == 1)
+
+    // At exactly 1 beat in (0.5s at 120bpm = 22050 frames)
+    t.position = 22050
+    #expect(t.currentBeat == 2)
+
+    // At 4 beats in
+    t.position = 88200
+    #expect(t.currentBeat == 5)
+}
