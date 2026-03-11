@@ -2,6 +2,9 @@
 
 Native macOS loop-stacking instrument.
 
+## Codebase Cache
+**Read `CODEBASE.md` before reading any source files.** It contains complete type signatures, architecture, and patterns for every file in the project. Only open individual `.swift` files when you need to make edits or see exact implementation details. This saves significant context window space.
+
 ## What This Is
 A SwiftUI app for live loop-stacking driven by an Arturia MiniLab 3. Not a DAW. A performance instrument. Play pads, stack layers, capture output.
 
