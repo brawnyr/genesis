@@ -1,32 +1,69 @@
 import SwiftUI
 
+enum KeyAction: CaseIterable {
+    case play, capture, padLeft, padRight, padJump
+    case cool, hot, browse, browseNav, closeBrowser
+    case metronome, bpmMode, fewerBars, moreBars
+    case masterVolume, volume, undoClear, cutMode
+    case toggleMode, clearPad, stop, help
+
+    var key: String {
+        switch self {
+        case .play:         return "SPC"
+        case .capture:      return "G"
+        case .padLeft:      return "A"
+        case .padRight:     return "D"
+        case .padJump:      return "⇧1-8"
+        case .cool:         return "Q"
+        case .hot:          return "E"
+        case .browse:       return "T"
+        case .browseNav:    return "W/S"
+        case .closeBrowser: return "⏎/T/ESC"
+        case .metronome:    return "M"
+        case .bpmMode:      return "B"
+        case .fewerBars:    return "["
+        case .moreBars:     return "]"
+        case .masterVolume: return "V"
+        case .volume:       return "0-9"
+        case .undoClear:    return "Z"
+        case .cutMode:      return "X"
+        case .toggleMode:   return "N"
+        case .clearPad:     return "C"
+        case .stop:         return "ESC"
+        case .help:         return "?"
+        }
+    }
+
+    var action: String {
+        switch self {
+        case .play:         return "play / stop"
+        case .capture:      return "god capture"
+        case .padLeft:      return "select pad left"
+        case .padRight:     return "select pad right"
+        case .padJump:      return "jump to pad 1-8"
+        case .cool:         return "cool (mute) active pad"
+        case .hot:          return "hot (unmute) active pad"
+        case .browse:       return "browse samples for pad"
+        case .browseNav:    return "browse + auto-load sample"
+        case .closeBrowser: return "close browser"
+        case .metronome:    return "metronome"
+        case .bpmMode:      return "bpm mode (W/S presets or type)"
+        case .fewerBars:    return "fewer bars"
+        case .moreBars:     return "more bars"
+        case .masterVolume: return "toggle master volume mode"
+        case .volume:       return "volume (master or pad)"
+        case .undoClear:    return "undo clear"
+        case .cutMode:      return "cut mode"
+        case .toggleMode:   return "toggle instant / next loop"
+        case .clearPad:     return "clear active pad"
+        case .stop:         return "stop"
+        case .help:         return "this help"
+        }
+    }
+}
+
 struct KeyReferenceOverlay: View {
     @Binding var isVisible: Bool
-
-    private let shortcuts: [(key: String, action: String)] = [
-        ("SPC", "play / stop"),
-        ("G", "god capture"),
-        ("A", "select pad left"),
-        ("D", "select pad right"),
-        ("⇧1-8", "jump to pad 1-8"),
-        ("Q", "cool (mute) active pad"),
-        ("E", "hot (unmute) active pad"),
-        ("T", "browse samples for pad"),
-        ("W/S", "browse + auto-load sample"),
-        ("⏎/T/ESC", "close browser"),
-        ("M", "metronome"),
-        ("B", "bpm mode (W/S presets or type)"),
-        ("[", "fewer bars"),
-        ("]", "more bars"),
-        ("V", "toggle master volume mode"),
-        ("0-9", "volume (master or pad)"),
-        ("Z", "undo clear"),
-        ("X", "cut mode"),
-        ("N", "toggle instant / next loop"),
-        ("C", "clear active pad"),
-        ("ESC", "stop"),
-        ("?", "this help"),
-    ]
 
     var body: some View {
         VStack(spacing: 16) {
@@ -35,12 +72,12 @@ struct KeyReferenceOverlay: View {
                 .foregroundColor(Theme.text)
 
             VStack(alignment: .leading, spacing: 8) {
-                ForEach(shortcuts, id: \.key) { shortcut in
+                ForEach(KeyAction.allCases, id: \.self) { action in
                     HStack(spacing: 20) {
-                        Text(shortcut.key)
+                        Text(action.key)
                             .foregroundColor(Theme.blue)
                             .frame(width: 60, alignment: .trailing)
-                        Text(shortcut.action)
+                        Text(action.action)
                             .foregroundColor(Theme.text)
                     }
                 }
