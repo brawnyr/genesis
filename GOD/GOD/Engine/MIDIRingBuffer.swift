@@ -21,15 +21,17 @@ final class MIDIRingBuffer {
         // Memory barrier: ensure buffer write is visible before index update
         OSMemoryBarrier()
         _writeIndex = wi + 1
-        if _writeIndex - _readIndex > 256 {
-            _readIndex = _writeIndex - 256
-        }
     }
 
     func drain(_ handler: (MIDIEvent) -> Void) {
         // Memory barrier: ensure we see latest _writeIndex
         OSMemoryBarrier()
-        while _readIndex < _writeIndex {
+        let wi = _writeIndex
+        // If producer lapped us, skip to oldest available data
+        if wi - _readIndex > 256 {
+            _readIndex = wi - 256
+        }
+        while _readIndex < wi {
             if let event = buffer[_readIndex % 256] {
                 handler(event)
             }

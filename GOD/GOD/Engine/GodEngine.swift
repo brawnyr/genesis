@@ -205,7 +205,8 @@ class GodEngine: ObservableObject {
 
         let loopLen = audioLoopLengthFrames
 
-        // Loop replay, metronome, capture, and position advance only when playing
+        // Loop replay, metronome, and position advance only when playing
+        var wrapped = false
         if audioIsPlaying, loopLen > 0 {
             let startPos = audioPosition
 
@@ -261,29 +262,11 @@ class GodEngine: ObservableObject {
 
             // Advance audio position
             audioPosition += frameCount
-            var wrapped = false
             if audioPosition >= loopLen {
                 audioPosition -= loopLen
                 wrapped = true
             }
 
-            // Capture
-            if audioCaptureState == .recording {
-                audioCapture.append(left: outputL, right: outputR)
-            }
-            if wrapped {
-                audioCapture.onLoopBoundary()
-                audioCaptureState = audioCapture.state
-                let captureState = audioCaptureState
-                DispatchQueue.main.async {
-                    self.capture.state = captureState
-                    self.interpreter?.onLoopBoundary(
-                        layers: self.layers,
-                        padBank: self.padBank,
-                        loopDurationMs: self.loopDurationMs
-                    )
-                }
-            }
         } else {
             // Transport stopped — still drain MIDI for pad auditioning (no recording)
             midiRingBuffer.drain { event in
@@ -323,6 +306,24 @@ class GodEngine: ObservableObject {
             outputL[i] *= masterVolume
             outputR[i] *= masterVolume
             peak = max(peak, abs(outputL[i]), abs(outputR[i]))
+        }
+
+        // Capture master output (after mixing and master volume)
+        if audioCaptureState == .recording {
+            audioCapture.append(left: outputL, right: outputR)
+        }
+        if wrapped {
+            audioCapture.onLoopBoundary()
+            audioCaptureState = audioCapture.state
+            let captureState = audioCaptureState
+            DispatchQueue.main.async {
+                self.capture.state = captureState
+                self.interpreter?.onLoopBoundary(
+                    layers: self.layers,
+                    padBank: self.padBank,
+                    loopDurationMs: self.loopDurationMs
+                )
+            }
         }
 
         // Throttle UI updates — sync position + levels ~30x/sec

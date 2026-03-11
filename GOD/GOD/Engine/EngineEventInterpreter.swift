@@ -1,8 +1,18 @@
 import Foundation
 
+enum LineKind {
+    case system
+    case transport
+    case hit
+    case state
+    case capture
+    case browse
+}
+
 struct TerminalLine: Identifiable {
     let id = UUID()
     let text: String
+    let kind: LineKind
     let isHighlight: Bool
     let timestamp: Date = Date()
 }
@@ -31,8 +41,8 @@ class EngineEventInterpreter: ObservableObject {
     // Track which pads have active voices (set by engine)
     var activePadVoices: Set<Int> = []
 
-    func appendLine(_ text: String) {
-        let line = TerminalLine(text: text, isHighlight: false)
+    func appendLine(_ text: String, kind: LineKind = .hit) {
+        let line = TerminalLine(text: text, kind: kind, isHighlight: false)
         lines.append(line)
         if lines.count > maxLines {
             lines.removeFirst(lines.count - maxLines)
@@ -69,9 +79,9 @@ class EngineEventInterpreter: ObservableObject {
         // Transport state changes
         if transport.isPlaying && !prevPlaying {
             let loopSec = Double(transport.loopLengthFrames) / Transport.sampleRate
-            appendLine("▶ loop start — \(transport.barCount) bars @ \(transport.bpm)bpm (\(String(format: "%.1f", loopSec))s)")
+            appendLine("▶ loop start — \(transport.barCount) bars @ \(transport.bpm)bpm (\(String(format: "%.1f", loopSec))s)", kind: .transport)
         } else if !transport.isPlaying && prevPlaying {
-            appendLine("■ stopped")
+            appendLine("■ stopped", kind: .transport)
         }
         prevPlaying = transport.isPlaying
 
@@ -80,12 +90,12 @@ class EngineEventInterpreter: ObservableObject {
             if layers[i].isMuted != prevMuted[i] {
                 let name = padBank.pads[i].sample?.name ?? padBank.pads[i].name
                 if layers[i].isMuted {
-                    appendLine("pad \(i + 1) \(name.lowercased()) muted ○")
+                    appendLine("pad \(i + 1) \(name.lowercased()) muted ○", kind: .state)
                     var intensities = padIntensities
                     intensities[i] = 0
                     padIntensities = intensities
                 } else {
-                    appendLine("pad \(i + 1) \(name.lowercased()) unmuted ●")
+                    appendLine("pad \(i + 1) \(name.lowercased()) unmuted ●", kind: .state)
                 }
                 prevMuted[i] = layers[i].isMuted
             }
@@ -94,19 +104,19 @@ class EngineEventInterpreter: ObservableObject {
         // CC changes — only emit when value actually changes
         for i in 0..<8 {
             if abs(layers[i].volume - prevVolumes[i]) > 0.01 {
-                appendLine("pad \(i + 1) vol → \(Int(layers[i].volume * 100))%")
+                appendLine("pad \(i + 1) vol → \(Int(layers[i].volume * 100))%", kind: .state)
                 prevVolumes[i] = layers[i].volume
             }
             if abs(layers[i].pan - prevPans[i]) > 0.01 {
-                appendLine("pad \(i + 1) pan → \(Self.formatPan(layers[i].pan))")
+                appendLine("pad \(i + 1) pan → \(Self.formatPan(layers[i].pan))", kind: .state)
                 prevPans[i] = layers[i].pan
             }
             if abs(layers[i].hpCutoff - prevHP[i]) > 1 {
-                appendLine("pad \(i + 1) HP → \(Self.formatFrequency(layers[i].hpCutoff))")
+                appendLine("pad \(i + 1) HP → \(Self.formatFrequency(layers[i].hpCutoff))", kind: .state)
                 prevHP[i] = layers[i].hpCutoff
             }
             if abs(layers[i].lpCutoff - prevLP[i]) > 1 {
-                appendLine("pad \(i + 1) LP → \(Self.formatFrequency(layers[i].lpCutoff))")
+                appendLine("pad \(i + 1) LP → \(Self.formatFrequency(layers[i].lpCutoff))", kind: .state)
                 prevLP[i] = layers[i].lpCutoff
             }
         }
@@ -120,11 +130,11 @@ class EngineEventInterpreter: ObservableObject {
         }
         if captureStr != prevCaptureState {
             switch capture.state {
-            case .armed: appendLine("capture armed — next loop boundary")
-            case .recording: appendLine("capture recording ◉")
+            case .armed: appendLine("capture armed — next loop boundary", kind: .capture)
+            case .recording: appendLine("capture recording ◉", kind: .capture)
             case .idle:
                 if prevCaptureState == "recording" {
-                    appendLine("capture saved")
+                    appendLine("capture saved", kind: .capture)
                 }
             }
             prevCaptureState = captureStr
@@ -132,7 +142,7 @@ class EngineEventInterpreter: ObservableObject {
     }
 
     func onLoopBoundary(layers: [Layer], padBank: PadBank, loopDurationMs: Double) {
-        appendLine("loop boundary — wrap")
+        appendLine("loop boundary — wrap", kind: .transport)
 
         // Emit layer summaries for pads with hits
         for i in 0..<8 where loopHitCounts[i] > 0 {
