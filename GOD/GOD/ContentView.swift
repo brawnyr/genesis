@@ -324,10 +324,10 @@ struct ContentView: View {
                 }
             }
         case Key.a:
-            engine.activePadIndex = (engine.activePadIndex - 1 + 8) % 8
+            engine.activePadIndex = (engine.activePadIndex - 1 + PadBank.padCount) % PadBank.padCount
             interpreter.appendLine("pad \(engine.activePadIndex + 1) → \(padName(engine.activePadIndex))", kind: .state)
         case Key.d:
-            engine.activePadIndex = (engine.activePadIndex + 1) % 8
+            engine.activePadIndex = (engine.activePadIndex + 1) % PadBank.padCount
             interpreter.appendLine("pad \(engine.activePadIndex + 1) → \(padName(engine.activePadIndex))", kind: .state)
         case Key.q:
             let effective = engine.effectiveMuteState(layer: engine.activePadIndex)

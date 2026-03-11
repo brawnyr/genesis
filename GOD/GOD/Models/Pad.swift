@@ -34,7 +34,7 @@ struct PadBank {
 
     static let audioExtensions: Set<String> = ["wav", "aif", "aiff", "mp3", "m4a", "flac", "ogg"]
 
-    var pads: [Pad] = (0..<8).map { i in
+    var pads: [Pad] = (0..<padCount).map { i in
         Pad(index: i, midiNote: baseNote + i, name: "PAD \(i + 1)")
     }
 

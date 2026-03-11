@@ -11,7 +11,7 @@ struct PadStripView: View {
 
     var body: some View {
         HStack(spacing: 3) {
-            ForEach(0..<8, id: \.self) { index in
+            ForEach(0..<PadBank.padCount, id: \.self) { index in
                 PadCell(
                     index: index,
                     pad: engine.padBank.pads[index],

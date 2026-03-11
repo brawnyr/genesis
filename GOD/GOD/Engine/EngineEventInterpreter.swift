@@ -29,20 +29,20 @@ struct TerminalLine: Identifiable {
 
 class EngineEventInterpreter: ObservableObject {
     @Published var lines: [TerminalLine] = []
-    @Published var padIntensities: [Float] = Array(repeating: 0, count: 8)
+    @Published var padIntensities: [Float] = Array(repeating: 0, count: PadBank.padCount)
 
     private let maxLines = 30
 
     // Previous state for diffing
-    private var prevMuted: [Bool] = Array(repeating: false, count: 8)
-    private var prevVolumes: [Float] = Array(repeating: 1.0, count: 8)
-    private var prevPans: [Float] = Array(repeating: 0.5, count: 8)
-    private var prevHP: [Float] = Array(repeating: 20.0, count: 8)
-    private var prevLP: [Float] = Array(repeating: 20000.0, count: 8)
+    private var prevMuted: [Bool] = Array(repeating: false, count: PadBank.padCount)
+    private var prevVolumes: [Float] = Array(repeating: 1.0, count: PadBank.padCount)
+    private var prevPans: [Float] = Array(repeating: 0.5, count: PadBank.padCount)
+    private var prevHP: [Float] = Array(repeating: Layer.hpBypassFrequency, count: PadBank.padCount)
+    private var prevLP: [Float] = Array(repeating: Layer.lpBypassFrequency, count: PadBank.padCount)
     private var prevPlaying: Bool = false
     private var prevCaptureState: String = "idle"
-    private var loopHitCounts: [Int] = Array(repeating: 0, count: 8)
-    private var loopHitVelocities: [[Int]] = Array(repeating: [], count: 8)
+    private var loopHitCounts: [Int] = Array(repeating: 0, count: PadBank.padCount)
+    private var loopHitVelocities: [[Int]] = Array(repeating: [], count: PadBank.padCount)
 
     // Decay constants
     private static let shortDecay: Float = 0.92
@@ -92,7 +92,7 @@ class EngineEventInterpreter: ObservableObject {
         }
         prevPlaying = transport.isPlaying
 
-        for i in 0..<8 {
+        for i in 0..<PadBank.padCount {
             if layers[i].isMuted != prevMuted[i] {
                 let name = padBank.pads[i].sample?.name ?? padBank.pads[i].name
                 if layers[i].isMuted {
@@ -108,7 +108,7 @@ class EngineEventInterpreter: ObservableObject {
         }
 
         // CC changes from MIDI knobs — only emit when value actually changes
-        for i in 0..<8 {
+        for i in 0..<PadBank.padCount {
             if abs(layers[i].volume - prevVolumes[i]) > 0.05 {
                 let volDb = formatDb(linearToDb(layers[i].volume))
                 appendLine("pad \(i + 1) vol → \(Int(layers[i].volume * 100))% (\(volDb))", kind: .state)
@@ -154,7 +154,7 @@ class EngineEventInterpreter: ObservableObject {
         loopCount += 1
         appendLine("▶ loop \(loopCount) — wrap", kind: .transport)
 
-        for i in 0..<8 where loopHitCounts[i] > 0 {
+        for i in 0..<PadBank.padCount where loopHitCounts[i] > 0 {
             let name = padBank.pads[i].sample?.name ?? padBank.pads[i].name
             let count = loopHitCounts[i]
             let vels = loopHitVelocities[i]
@@ -166,7 +166,7 @@ class EngineEventInterpreter: ObservableObject {
 
             if sampleMs > loopDurationMs {
                 let dur = Self.formatDuration(sampleMs)
-                let others = (0..<8).filter { $0 != i && loopHitCounts[$0] > 0 }
+                let others = (0..<PadBank.padCount).filter { $0 != i && loopHitCounts[$0] > 0 }
                     .map { padBank.pads[$0].sample?.name.lowercased() ?? padBank.pads[$0].name.lowercased() }
                 let onTop = others.isEmpty ? "" : " on top of \(others.joined(separator: ", "))"
                 appendLine("\(name.lowercased()) loop int \(dur)\(onTop) (\(count) hits, \(spreadDesc) vel)", kind: .hit)
@@ -175,13 +175,13 @@ class EngineEventInterpreter: ObservableObject {
             }
         }
 
-        loopHitCounts = Array(repeating: 0, count: 8)
-        loopHitVelocities = Array(repeating: [], count: 8)
+        loopHitCounts = Array(repeating: 0, count: PadBank.padCount)
+        loopHitVelocities = Array(repeating: [], count: PadBank.padCount)
     }
 
     func tickVisuals() {
         var updated = padIntensities
-        for i in 0..<8 {
+        for i in 0..<PadBank.padCount {
             if activePadVoices.contains(i) {
                 updated[i] = max(updated[i] * Self.sustainDecay, Self.sustainMinIntensity)
             } else if updated[i] > Self.intensityCutoff {

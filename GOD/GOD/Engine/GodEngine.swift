@@ -9,15 +9,15 @@ enum ToggleMode: String {
 class GodEngine: ObservableObject {
     // UI state — only mutated on main thread
     @Published var transport = Transport()
-    @Published var layers: [Layer] = (0..<8).map { Layer(index: $0, name: "PAD \($0 + 1)") }
+    @Published var layers: [Layer] = (0..<PadBank.padCount).map { Layer(index: $0, name: "PAD \($0 + 1)") }
     @Published var padBank = PadBank()
     @Published var metronome = Metronome()
     @Published var capture = GodCapture()
-    @Published var channelSignalLevels: [Float] = Array(repeating: 0, count: 8)
-    @Published var channelTriggered: [Bool] = Array(repeating: false, count: 8)
+    @Published var channelSignalLevels: [Float] = Array(repeating: 0, count: PadBank.padCount)
+    @Published var channelTriggered: [Bool] = Array(repeating: false, count: PadBank.padCount)
     @Published var masterLevel: Float = 0
     @Published var masterLevelDb: Float = -.infinity
-    @Published var channelLevelDb: [Float] = Array(repeating: -.infinity, count: 8)
+    @Published var channelLevelDb: [Float] = Array(repeating: -.infinity, count: PadBank.padCount)
     @Published var masterVolume: Float = 1.0
     @Published var detectedBPMs: [Int: Double] = [:]
     @Published var activePadIndex: Int = 0
@@ -32,7 +32,7 @@ class GodEngine: ObservableObject {
     private var audioBarCount: Int = 4
     private var audioMetronomeOn: Bool = true
     private var audioMetronomeVolume: Float = 0.5
-    private var audioLayers: [Layer] = (0..<8).map { Layer(index: $0, name: "PAD \($0 + 1)") }
+    private var audioLayers: [Layer] = (0..<PadBank.padCount).map { Layer(index: $0, name: "PAD \($0 + 1)") }
     private var audioCaptureState: GodCapture.State = .idle
     private var audioCapture = GodCapture()
     private(set) var voices: [Voice] = []
@@ -43,17 +43,17 @@ class GodEngine: ObservableObject {
     private var outputBufferR = [Float](repeating: 0, count: 4096)
 
     // Cached biquad coefficients per layer (recalculated only when cutoff changes)
-    private var cachedHPCutoffs: [Float] = Array(repeating: 20.0, count: 8)
-    private var cachedLPCutoffs: [Float] = Array(repeating: 20000.0, count: 8)
-    private var cachedHPCoeffs: [BiquadCoefficients] = Array(repeating: .bypass, count: 8)
-    private var cachedLPCoeffs: [BiquadCoefficients] = Array(repeating: .bypass, count: 8)
+    private var cachedHPCutoffs: [Float] = Array(repeating: Layer.hpBypassFrequency, count: PadBank.padCount)
+    private var cachedLPCutoffs: [Float] = Array(repeating: Layer.lpBypassFrequency, count: PadBank.padCount)
+    private var cachedHPCoeffs: [BiquadCoefficients] = Array(repeating: .bypass, count: PadBank.padCount)
+    private var cachedLPCoeffs: [BiquadCoefficients] = Array(repeating: .bypass, count: PadBank.padCount)
 
     // UI update throttle: ~33Hz (~30fps)
     private static let uiUpdateHz: Double = 33.0
     private static let uiUpdateFrameThreshold = Int(Transport.sampleRate / uiUpdateHz)
 
-    private var pendingLevels: [Float] = Array(repeating: 0, count: 8)
-    private var pendingTriggers: [Bool] = Array(repeating: false, count: 8)
+    private var pendingLevels: [Float] = Array(repeating: 0, count: PadBank.padCount)
+    private var pendingTriggers: [Bool] = Array(repeating: false, count: PadBank.padCount)
     private var pendingHits: [(padIndex: Int, position: Int, velocity: Int)] = []
     private var uiUpdateCounter = 0
     private var lastClearedLayerIndex: Int?
@@ -174,13 +174,13 @@ class GodEngine: ObservableObject {
     }
 
     func syncCutToPadBank() {
-        for i in 0..<8 {
+        for i in 0..<PadBank.padCount {
             padBank.pads[i].cut = layers[i].cut
         }
     }
 
     func restoreCutFromPadBank() {
-        for i in 0..<8 {
+        for i in 0..<PadBank.padCount {
             layers[i].cut = padBank.pads[i].cut
             audioLayers[i].cut = padBank.pads[i].cut
         }
@@ -269,7 +269,7 @@ class GodEngine: ObservableObject {
 
     private func updateCachedCoefficients() {
         let sr = Float(Transport.sampleRate)
-        for i in 0..<8 {
+        for i in 0..<PadBank.padCount {
             let hp = audioLayers[i].hpCutoff
             if hp != cachedHPCutoffs[i] {
                 cachedHPCutoffs[i] = hp
@@ -380,13 +380,13 @@ class GodEngine: ObservableObject {
         voices = voices.compactMap { voice in
             var v = voice
             let padIdx = v.padIndex
-            let hpCoeffs = padIdx >= 0 && padIdx < 8 ? cachedHPCoeffs[padIdx] : .bypass
-            let lpCoeffs = padIdx >= 0 && padIdx < 8 ? cachedLPCoeffs[padIdx] : .bypass
-            let pan = padIdx >= 0 && padIdx < 8 ? audioLayers[padIdx].pan : 0.5
-            let volume = padIdx >= 0 && padIdx < 8 ? audioLayers[padIdx].volume : 1.0
+            let hpCoeffs = padIdx >= 0 && padIdx < PadBank.padCount ? cachedHPCoeffs[padIdx] : .bypass
+            let lpCoeffs = padIdx >= 0 && padIdx < PadBank.padCount ? cachedLPCoeffs[padIdx] : .bypass
+            let pan = padIdx >= 0 && padIdx < PadBank.padCount ? audioLayers[padIdx].pan : 0.5
+            let volume = padIdx >= 0 && padIdx < PadBank.padCount ? audioLayers[padIdx].volume : 1.0
             let (done, peak) = v.fill(intoLeft: &outputBufferL, right: &outputBufferR, count: frameCount,
                                        pan: pan, volume: volume, hpCoeffs: hpCoeffs, lpCoeffs: lpCoeffs)
-            if padIdx >= 0 && padIdx < 8 {
+            if padIdx >= 0 && padIdx < PadBank.padCount {
                 pendingLevels[padIdx] = max(pendingLevels[padIdx], peak)
             }
             return done ? nil : v
@@ -451,8 +451,8 @@ class GodEngine: ObservableObject {
             let layerLPCutoffs = audioLayers.map { $0.lpCutoff }
             let hits = pendingHits
             pendingHits.removeAll()
-            pendingLevels = Array(repeating: 0, count: 8)
-            pendingTriggers = Array(repeating: false, count: 8)
+            pendingLevels = Array(repeating: 0, count: PadBank.padCount)
+            pendingTriggers = Array(repeating: false, count: PadBank.padCount)
             DispatchQueue.main.async {
                 // Sync active pad index from main → audio thread (safe direction)
                 self.audioActivePadIndex = self.activePadIndex
@@ -468,7 +468,7 @@ class GodEngine: ObservableObject {
                 self.masterLevel = masterPeak
                 self.masterLevelDb = linearToDb(masterPeak)
                 self.channelLevelDb = levels.map { linearToDb($0) }
-                for i in 0..<8 {
+                for i in 0..<PadBank.padCount {
                     if triggers[i] {
                         self.channelTriggered[i] = true
                         DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {

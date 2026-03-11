@@ -13,7 +13,7 @@ struct CanvasView: View {
             PadVisualsLayer(
                 interpreter: interpreter,
                 isMuted: engine.layers.map(\.isMuted),
-                isSustained: (0..<8).map { i in
+                isSustained: (0..<PadBank.padCount).map { i in
                     (engine.padBank.pads[i].sample?.durationMs ?? 0) > engine.loopDurationMs
                 }
             )
@@ -42,7 +42,7 @@ struct PadVisualsLayer: View {
     var body: some View {
         GeometryReader { geo in
             HStack(spacing: 0) {
-                ForEach(0..<8, id: \.self) { i in
+                ForEach(0..<PadBank.padCount, id: \.self) { i in
                     ZStack(alignment: .bottom) {
                         if !isMuted[i] && interpreter.padIntensities[i] > 0.01 {
                             let intensity = CGFloat(interpreter.padIntensities[i])
