@@ -1,6 +1,11 @@
 import Foundation
 import Combine
 
+enum ToggleMode: String {
+    case instant = "instant"
+    case nextLoop = "next loop"
+}
+
 class GodEngine: ObservableObject {
     // UI state — only mutated on main thread
     @Published var transport = Transport()
@@ -16,6 +21,8 @@ class GodEngine: ObservableObject {
     @Published var masterVolume: Float = 1.0
     @Published var detectedBPMs: [Int: Double] = [:]
     @Published var activePadIndex: Int = 0
+    @Published var toggleMode: ToggleMode = .instant
+    @Published var pendingMutes: [Int: Bool] = [:]  // pad index -> target mute state
     var interpreter: EngineEventInterpreter?
 
     // Audio thread state — never touches @Published directly
@@ -40,6 +47,8 @@ class GodEngine: ObservableObject {
     private var uiUpdateCounter = 0
     private var lastClearedLayerIndex: Int?
     private var audioActivePadIndex: Int = 0
+    private var audioToggleMode: ToggleMode = .instant
+    private var audioPendingMutes: [Int: Bool] = [:]
 
     func togglePlay() {
         transport.isPlaying.toggle()
@@ -110,8 +119,41 @@ class GodEngine: ObservableObject {
 
     func toggleMute(layer index: Int) {
         guard index >= 0, index < layers.count else { return }
-        layers[index].isMuted.toggle()
-        audioLayers[index].isMuted = layers[index].isMuted
+        if toggleMode == .instant {
+            layers[index].isMuted.toggle()
+            audioLayers[index].isMuted = layers[index].isMuted
+        } else {
+            // Next loop mode: queue the change
+            let currentEffective = pendingMutes[index] ?? layers[index].isMuted
+            let newState = !currentEffective
+            if newState == layers[index].isMuted {
+                // Toggling back to current state = cancel pending
+                pendingMutes.removeValue(forKey: index)
+                audioPendingMutes.removeValue(forKey: index)
+            } else {
+                pendingMutes[index] = newState
+                audioPendingMutes[index] = newState
+            }
+        }
+    }
+
+    /// The effective mute state accounting for pending changes
+    func effectiveMuteState(layer index: Int) -> Bool {
+        pendingMutes[index] ?? layers[index].isMuted
+    }
+
+    func cycleToggleMode() {
+        toggleMode = toggleMode == .instant ? .nextLoop : .instant
+        audioToggleMode = toggleMode
+        if toggleMode == .instant {
+            // Apply any pending mutes immediately when switching to instant
+            for (index, muteState) in pendingMutes {
+                layers[index].isMuted = muteState
+                audioLayers[index].isMuted = muteState
+            }
+            pendingMutes.removeAll()
+            audioPendingMutes.removeAll()
+        }
     }
 
     func toggleCut(pad index: Int) {
@@ -316,6 +358,21 @@ class GodEngine: ObservableObject {
             audioCapture.append(left: outputL, right: outputR)
         }
         if wrapped {
+            // Apply pending mute changes at loop boundary
+            if !audioPendingMutes.isEmpty {
+                let applied = audioPendingMutes
+                for (index, muteState) in applied {
+                    audioLayers[index].isMuted = muteState
+                }
+                audioPendingMutes.removeAll()
+                DispatchQueue.main.async {
+                    for (index, muteState) in applied {
+                        self.layers[index].isMuted = muteState
+                    }
+                    self.pendingMutes.removeAll()
+                }
+            }
+
             audioCapture.onLoopBoundary()
             audioCaptureState = audioCapture.state
             let captureState = audioCaptureState

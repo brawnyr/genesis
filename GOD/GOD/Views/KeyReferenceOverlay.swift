@@ -21,6 +21,8 @@ struct KeyReferenceOverlay: View {
         ("V", "toggle master volume mode"),
         ("0-9", "volume (master or pad)"),
         ("Z", "undo clear"),
+        ("X", "cut mode"),
+        ("N", "toggle instant / next loop"),
         ("C", "clear active pad"),
         ("ESC", "stop"),
         ("?", "this help"),

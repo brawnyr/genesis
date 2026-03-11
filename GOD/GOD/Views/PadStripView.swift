@@ -20,7 +20,8 @@ struct PadStripView: View {
                     triggered: engine.channelTriggered[index],
                     signalLevel: engine.channelSignalLevels[index],
                     intensity: interpreter.padIntensities[index],
-                    folderName: PadBank.spliceFolderNames[index]
+                    folderName: PadBank.spliceFolderNames[index],
+                    pendingMute: engine.pendingMutes[index]
                 )
             }
         }
@@ -110,13 +111,20 @@ struct PadCell: View {
     let signalLevel: Float
     let intensity: Float
     let folderName: String
+    let pendingMute: Bool?  // nil = no pending change
 
     @State private var breathe: Double = 0
+    @State private var pendingBlink: Bool = false
 
+    private var hasPending: Bool { pendingMute != nil }
     private var isHot: Bool { !layer.isMuted }
     private var isCold: Bool { layer.isMuted }
 
     private var padColor: Color {
+        if hasPending {
+            // Show the target state color, pulsing
+            return pendingMute == true ? Theme.ice : Theme.orange
+        }
         if isCold { return Theme.ice }
         if isHot { return Theme.orange }
         return Theme.subtle
@@ -195,10 +203,21 @@ struct PadCell: View {
             RoundedRectangle(cornerRadius: 4)
                 .fill(triggered ? Theme.orange.opacity(0.15) : .clear)
         )
+        // Pending mute blink overlay
+        .overlay(
+            RoundedRectangle(cornerRadius: 4)
+                .stroke(
+                    hasPending
+                        ? (pendingMute == true ? Theme.ice : Theme.orange).opacity(pendingBlink ? 0.8 : 0.2)
+                        : .clear,
+                    lineWidth: 2
+                )
+        )
         // Top border
         .overlay(alignment: .top) {
             Rectangle()
                 .fill(
+                    hasPending ? padColor.opacity(pendingBlink ? 0.9 : 0.3) :
                     isHot && isActive ? Theme.orange :
                     isCold ? Theme.ice.opacity(0.6) :
                     .clear
@@ -208,6 +227,9 @@ struct PadCell: View {
         .onAppear {
             withAnimation(.easeInOut(duration: 1.5).repeatForever(autoreverses: true)) {
                 breathe = 1.0
+            }
+            withAnimation(.easeInOut(duration: 0.5).repeatForever(autoreverses: true)) {
+                pendingBlink = true
             }
         }
     }
@@ -312,6 +334,36 @@ struct CutBadge: View {
                     .font(.system(size: 9, design: .monospaced))
                     .foregroundColor(Color.white.opacity(0.2))
             }
+        }
+        .font(.system(size: 12, design: .monospaced))
+        .padding(.vertical, 1)
+    }
+}
+
+struct ToggleModeBadge: View {
+    let mode: ToggleMode
+
+    private var isNextLoop: Bool { mode == .nextLoop }
+
+    var body: some View {
+        HStack(spacing: 8) {
+            Text("sync")
+                .foregroundColor(Color.white.opacity(0.3))
+                .frame(width: 40, alignment: .leading)
+            Text(mode.rawValue.uppercased())
+                .font(.system(size: 11, design: .monospaced).bold())
+                .foregroundColor(isNextLoop ? Theme.blue : Color.white.opacity(0.3))
+                .padding(.horizontal, 8)
+                .padding(.vertical, 1)
+                .background(
+                    RoundedRectangle(cornerRadius: 3)
+                        .fill(isNextLoop ? Theme.blue.opacity(0.15) : Color.clear)
+                )
+                .overlay(
+                    RoundedRectangle(cornerRadius: 3)
+                        .stroke(isNextLoop ? Theme.blue.opacity(0.3) : Color.white.opacity(0.1), lineWidth: 1)
+                )
+                .shadow(color: isNextLoop ? Theme.blue.opacity(0.3) : .clear, radius: 6)
         }
         .font(.system(size: 12, design: .monospaced))
         .padding(.vertical, 1)
@@ -445,6 +497,10 @@ struct CCPanelView: View {
 
             CutBadge(isOn: layer.cut)
                 .padding(.leading, 16)
+
+            ToggleModeBadge(mode: engine.toggleMode)
+                .padding(.leading, 16)
+                .padding(.top, 4)
 
             Spacer()
         }
