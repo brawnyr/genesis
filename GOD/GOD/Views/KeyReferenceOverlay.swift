@@ -4,7 +4,7 @@ enum KeyAction: CaseIterable {
     case play, capture, padLeft, padRight, padJump
     case killAll, cool, hot, browse, browseNav, closeBrowser
     case metronome, bpmMode, fewerBars, moreBars
-    case masterVolume, volume, undoClear, cutMode
+    case volume, velocityMode, undoClear, cutMode
     case toggleMode, clearPad, stop, help
 
     var key: String {
@@ -24,8 +24,8 @@ enum KeyAction: CaseIterable {
         case .bpmMode:      return "B"
         case .fewerBars:    return "["
         case .moreBars:     return "]"
-        case .masterVolume: return "V"
         case .volume:       return "0-9"
+        case .velocityMode: return "P"
         case .undoClear:    return "Z"
         case .cutMode:      return "X"  // retrig toggle
         case .toggleMode:   return "N"
@@ -52,8 +52,8 @@ enum KeyAction: CaseIterable {
         case .bpmMode:      return "bpm mode (W/S presets or type)"
         case .fewerBars:    return "fewer bars"
         case .moreBars:     return "more bars"
-        case .masterVolume: return "toggle master volume mode"
-        case .volume:       return "volume (master or pad)"
+        case .volume:       return "pad volume"
+        case .velocityMode: return "pressure / full velocity"
         case .undoClear:    return "undo clear"
         case .cutMode:      return "retrig (kills previous)"
         case .toggleMode:   return "toggle instant / next loop"

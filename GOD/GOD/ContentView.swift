@@ -40,7 +40,6 @@ struct ContentView: View {
     @ObservedObject var engine: GodEngine
     @ObservedObject var interpreter: EngineEventInterpreter
     @State private var showKeyReference = false
-    @State private var masterVolumeMode = false
     private enum EditMode {
         case normal
         case bpm
@@ -88,7 +87,6 @@ struct ContentView: View {
                     CanvasView(engine: engine, interpreter: interpreter)
                     CCPanelView(
                         engine: engine,
-                        masterVolumeMode: masterVolumeMode,
                         browsingPad: Binding(
                             get: { mode == .browse },
                             set: { mode = $0 ? .browse : .normal }
@@ -114,8 +112,8 @@ struct ContentView: View {
                     KeyLabel(key: "M", action: "metro")
                     KeyLabel(key: "B", action: "bpm")
                     KeyLabel(key: "[]", action: "bars")
-                    KeyLabel(key: "V", action: masterVolumeMode ? "master focused" : "master unfocused")
                     KeyLabel(key: "0-9", action: "vol")
+                    KeyLabel(key: "P", action: engine.velocityMode == .pressure ? "pressure" : "full vel")
                     KeyLabel(key: "Z", action: "undo")
                     KeyLabel(key: "C", action: "clear")
                     KeyLabel(key: "X", action: "retrig")
@@ -154,6 +152,7 @@ struct ContentView: View {
         static let z: UInt16 = 6
         static let x: UInt16 = 7
         static let f: UInt16 = 3
+        static let p: UInt16 = 35
         static let n: UInt16 = 45
         static let returnKey: UInt16 = 36
         static let upArrow: UInt16 = 126
@@ -396,8 +395,9 @@ struct ContentView: View {
         case Key.rightBracket:
             engine.cycleBarCount(forward: true)
             interpreter.appendLine("bars → \(engine.transport.barCount)", kind: .transport)
-        case Key.v:
-            masterVolumeMode.toggle()
+        case Key.p:
+            engine.cycleVelocityMode()
+            interpreter.appendLine("velocity → \(engine.velocityMode.rawValue)", kind: .state)
         case Key.z:
             engine.undoLastClear()
             interpreter.appendLine("undo clear → pad \(engine.activePadIndex + 1)", kind: .state)
@@ -422,15 +422,9 @@ struct ContentView: View {
                 showKeyReference.toggle()
             case "0"..."9":
                 let digit = Float(c.asciiValue! - Character("0").asciiValue!)
-                if masterVolumeMode {
-                    engine.setMasterVolume(digit / 9.0)
-                    let mDb = formatDb(linearToDb(engine.masterVolume))
-                    interpreter.appendLine("master vol → \(Int(engine.masterVolume * 100))% (\(mDb))", kind: .state)
-                } else {
-                    engine.setLayerVolume(engine.activePadIndex, volume: digit / 9.0)
-                    let pDb = formatDb(linearToDb(digit / 9.0))
-                    interpreter.appendLine("pad \(engine.activePadIndex + 1) vol → \(Int(digit / 9.0 * 100))% (\(pDb))", kind: .state)
-                }
+                engine.setLayerVolume(engine.activePadIndex, volume: digit / 9.0)
+                let pDb = formatDb(linearToDb(digit / 9.0))
+                interpreter.appendLine("pad \(engine.activePadIndex + 1) vol → \(Int(digit / 9.0 * 100))% (\(pDb))", kind: .state)
             default: break
             }
         }

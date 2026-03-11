@@ -23,7 +23,8 @@ struct CanvasView: View {
                 isPlaying: engine.transport.isPlaying,
                 capture: engine.capture,
                 transport: engine.transport,
-                metronome: engine.metronome
+                metronome: engine.metronome,
+                masterVolume: engine.masterVolume
             )
 
             // Layer 3: Terminal text (foreground, always visible)
@@ -74,6 +75,7 @@ struct GodTitleLayer: View {
     let capture: GodCapture
     let transport: Transport
     let metronome: Metronome
+    let masterVolume: Float
 
     @State private var phase: Double = 0
     @State private var ambientPixels: [DriftPixel] = GodTitleLayer.generatePixels(count: 40)
@@ -232,6 +234,22 @@ struct GodTitleLayer: View {
                     .font(.system(size: 10, design: .monospaced))
                     .foregroundColor(Color.white.opacity(0.2))
             }
+
+            // Master volume ring
+            ZStack {
+                Circle()
+                    .stroke(Color.white.opacity(0.08), lineWidth: 3)
+                    .frame(width: 36, height: 36)
+                Circle()
+                    .trim(from: 0, to: CGFloat(masterVolume))
+                    .stroke(Theme.orange.opacity(0.7), style: StrokeStyle(lineWidth: 3, lineCap: .round))
+                    .frame(width: 36, height: 36)
+                    .rotationEffect(.degrees(-90))
+                Text("\(Int(masterVolume * 100))")
+                    .font(.system(size: 10, design: .monospaced))
+                    .foregroundColor(Color.white.opacity(0.5))
+            }
+            .padding(.top, 6)
 
             // Transport info
             HStack(spacing: 16) {

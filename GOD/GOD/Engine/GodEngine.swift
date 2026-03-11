@@ -6,6 +6,11 @@ enum ToggleMode: String {
     case nextLoop = "next loop"
 }
 
+enum VelocityMode: String {
+    case pressure = "pressure"
+    case full = "full"
+}
+
 /// All state owned exclusively by the audio thread.
 /// Never access @Published properties from here. Sync to main thread via DispatchQueue.main.async.
 struct AudioState {
@@ -48,6 +53,7 @@ class GodEngine: ObservableObject {
         didSet { audio.activePadIndex = activePadIndex }
     }
     @Published var toggleMode: ToggleMode = .instant
+    @Published var velocityMode: VelocityMode = .pressure
     @Published var pendingMutes: [Int: Bool] = [:]  // pad index -> target mute state
     var interpreter: EngineEventInterpreter?
 
@@ -193,6 +199,10 @@ class GodEngine: ObservableObject {
         }
     }
 
+    func cycleVelocityMode() {
+        velocityMode = velocityMode == .pressure ? .full : .pressure
+    }
+
     func toggleCut(pad index: Int) {
         guard index >= 0, index < layers.count else { return }
         layers[index].cut.toggle()
@@ -269,7 +279,7 @@ class GodEngine: ObservableObject {
         if audio.layers[padIndex].cut {
             voices.removeAll { $0.padIndex == padIndex }
         }
-        let vel = Float(velocity) / 127.0
+        let vel = velocityMode == .full ? Float(1.0) : Float(velocity) / 127.0
         voices.append(Voice(sample: sample, velocity: vel, padIndex: padIndex))
 
         pendingHits.append((padIndex: padIndex, position: audio.position, velocity: velocity))
@@ -284,6 +294,8 @@ class GodEngine: ObservableObject {
 
     private func handleCC(number: Int, value: Int) {
         switch number {
+        case 82: // Master volume (MiniLab fader 1)
+            masterVolume = Float(value) / 127.0
         case 14: // Volume (per-pad)
             audio.layers[audio.activePadIndex].volume = Float(value) / 127.0
         case 15: // Pan
@@ -293,12 +305,7 @@ class GodEngine: ObservableObject {
         case 17: // LP Cutoff
             audio.layers[audio.activePadIndex].lpCutoff = ccToFrequency(value)
         default:
-            // Log unmapped CCs to help identify fader assignments
-            let cc = number
-            let val = value
-            DispatchQueue.main.async {
-                self.interpreter?.appendLine("cc \(cc) → \(val)", kind: .system)
-            }
+            break
         }
     }
 
@@ -356,7 +363,7 @@ class GodEngine: ObservableObject {
                         if layer.cut {
                             voices.removeAll { $0.padIndex == layer.index }
                         }
-                        let vel = Float(hit.velocity) / 127.0
+                        let vel = velocityMode == .full ? Float(1.0) : Float(hit.velocity) / 127.0
                         voices.append(Voice(sample: sample, velocity: vel, padIndex: layer.index))
                     }
                 }

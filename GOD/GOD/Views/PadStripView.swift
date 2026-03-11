@@ -304,12 +304,12 @@ struct InspectorSectionHeader: View {
     var body: some View {
         HStack(spacing: 6) {
             Text("▶")
-                .font(.system(size: 10, design: .monospaced))
+                .font(.system(size: 12, design: .monospaced))
                 .foregroundColor(color)
             Text(title)
-                .font(.system(size: 10, design: .monospaced))
+                .font(.system(size: 12, design: .monospaced))
                 .foregroundColor(Color.white.opacity(0.3))
-                .tracking(0.5)
+                .tracking(1)
         }
     }
 }
@@ -320,7 +320,7 @@ struct InspectorRow: View {
     let highlight: Bool
     let labelWidth: CGFloat
 
-    init(label: String, value: String, highlight: Bool = false, labelWidth: CGFloat = 40) {
+    init(label: String, value: String, highlight: Bool = false, labelWidth: CGFloat = 45) {
         self.label = label
         self.value = value
         self.highlight = highlight
@@ -336,8 +336,8 @@ struct InspectorRow: View {
                 .foregroundColor(highlight ? Theme.orange : Color.white.opacity(0.6))
                 .shadow(color: highlight ? Theme.orange.opacity(0.2) : .clear, radius: 4)
         }
-        .font(.system(size: 12, design: .monospaced))
-        .padding(.vertical, 1)
+        .font(.system(size: 14, design: .monospaced))
+        .padding(.vertical, 2)
     }
 }
 
@@ -350,10 +350,10 @@ struct CutBadge: View {
                 .foregroundColor(Color.white.opacity(0.3))
                 .frame(width: 50, alignment: .leading)
             Text(isOn ? "ON" : "OFF")
-                .font(.system(size: 11, design: .monospaced).bold())
+                .font(.system(size: 13, design: .monospaced).bold())
                 .foregroundColor(isOn ? Theme.orange : Color.white.opacity(0.3))
                 .padding(.horizontal, 8)
-                .padding(.vertical, 1)
+                .padding(.vertical, 2)
                 .background(
                     RoundedRectangle(cornerRadius: 3)
                         .fill(isOn ? Theme.orange.opacity(0.15) : Color.clear)
@@ -364,11 +364,11 @@ struct CutBadge: View {
                 )
                 .shadow(color: isOn ? Theme.orange.opacity(0.3) : .clear, radius: 6)
             Text(isOn ? "(kills previous)" : "(stacks)")
-                .font(.system(size: 9, design: .monospaced))
+                .font(.system(size: 10, design: .monospaced))
                 .foregroundColor(Color.white.opacity(0.2))
         }
-        .font(.system(size: 12, design: .monospaced))
-        .padding(.vertical, 1)
+        .font(.system(size: 14, design: .monospaced))
+        .padding(.vertical, 2)
     }
 }
 
@@ -381,12 +381,12 @@ struct ToggleModeBadge: View {
         HStack(spacing: 8) {
             Text("sync")
                 .foregroundColor(Color.white.opacity(0.3))
-                .frame(width: 40, alignment: .leading)
+                .frame(width: 50, alignment: .leading)
             Text(mode.rawValue.uppercased())
-                .font(.system(size: 11, design: .monospaced).bold())
+                .font(.system(size: 13, design: .monospaced).bold())
                 .foregroundColor(isNextLoop ? Theme.blue : Color.white.opacity(0.3))
                 .padding(.horizontal, 8)
-                .padding(.vertical, 1)
+                .padding(.vertical, 2)
                 .background(
                     RoundedRectangle(cornerRadius: 3)
                         .fill(isNextLoop ? Theme.blue.opacity(0.15) : Color.clear)
@@ -397,8 +397,8 @@ struct ToggleModeBadge: View {
                 )
                 .shadow(color: isNextLoop ? Theme.blue.opacity(0.3) : .clear, radius: 6)
         }
-        .font(.system(size: 12, design: .monospaced))
-        .padding(.vertical, 1)
+        .font(.system(size: 14, design: .monospaced))
+        .padding(.vertical, 2)
     }
 }
 
@@ -406,7 +406,6 @@ struct ToggleModeBadge: View {
 
 struct CCPanelView: View {
     @ObservedObject var engine: GodEngine
-    let masterVolumeMode: Bool
     @Binding var browsingPad: Bool
     @Binding var browserIndex: Int
 
@@ -417,52 +416,14 @@ struct CCPanelView: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
-            // Master section — log style
-            HStack(spacing: 4) {
-                Text("~")
-                    .font(.system(size: 11, design: .monospaced))
-                    .foregroundColor(Theme.orange.opacity(0.4))
-                Text("MASTER")
-                    .font(.system(size: 11, design: .monospaced))
-                    .foregroundColor(Color.white.opacity(0.35))
-                    .tracking(1)
-            }
-            HStack(alignment: .firstTextBaseline, spacing: 2) {
-                Text("\(Int(engine.masterVolume * 100))")
-                    .font(.system(size: 36, design: .monospaced).bold())
-                    .foregroundColor(masterVolumeMode ? Theme.orange : Color(white: 0.7))
-                Text("%")
-                    .font(.system(size: 14, design: .monospaced))
-                    .foregroundColor(masterVolumeMode ? Theme.orange.opacity(0.6) : Color(white: 0.3))
-            }
-            .shadow(color: Theme.orange.opacity(masterVolumeMode ? 0.3 : 0.15), radius: 20)
-            .padding(.top, 6)
-
-            Text(formatDb(engine.masterLevelDb))
-                .font(.system(size: 11, design: .monospaced))
-                .foregroundColor(engine.masterLevelDb > 0 ? Theme.orange : Color(white: 0.4))
-                .shadow(color: engine.masterLevelDb > 0 ? Theme.orange.opacity(0.4) : .clear, radius: 4)
-
-            if masterVolumeMode {
-                Text("[V] to exit")
-                    .font(.system(size: 10, design: .monospaced))
-                    .foregroundColor(Theme.orange.opacity(0.5))
-                    .padding(.top, 2)
-            }
-
-            Rectangle()
-                .fill(Color.white.opacity(0.04))
-                .frame(height: 1)
-                .padding(.vertical, 8)
-
             if browsingPad {
                 SampleBrowserView(engine: engine, padIndex: activeIndex, isOpen: $browsingPad, selectedIndex: $browserIndex)
             } else {
                 padReadoutView
             }
         }
-        .padding(14)
-        .frame(width: 190, alignment: .topLeading)
+        .padding(16)
+        .frame(width: 220, alignment: .topLeading)
         .background(Color(red: 0.071, green: 0.067, blue: 0.059))
     }
 
@@ -470,7 +431,7 @@ struct CCPanelView: View {
         VStack(alignment: .leading, spacing: 0) {
             // Channel name — hero
             Text(folderName.uppercased())
-                .font(.system(size: 22, design: .monospaced).bold())
+                .font(.system(size: 26, design: .monospaced).bold())
                 .foregroundColor(layer.isMuted ? Theme.ice : Theme.orange)
                 .tracking(2)
                 .shadow(color: (layer.isMuted ? Theme.ice : Theme.orange).opacity(0.4), radius: 25)
@@ -486,15 +447,15 @@ struct CCPanelView: View {
 
             VStack(alignment: .leading, spacing: 0) {
                 if let sample = pad.sample {
-                    InspectorRow(label: "file", value: sample.name.lowercased(), labelWidth: 40)
-                    InspectorRow(label: "dur", value: String(format: "%.2fs", sample.durationMs / 1000.0), labelWidth: 40)
+                    InspectorRow(label: "file", value: sample.name.lowercased(), labelWidth: 45)
+                    InspectorRow(label: "dur", value: String(format: "%.2fs", sample.durationMs / 1000.0), labelWidth: 45)
                     if let bpm = engine.detectedBPMs[activeIndex] {
-                        InspectorRow(label: "bpm", value: "\(Int(bpm))", highlight: true, labelWidth: 40)
+                        InspectorRow(label: "bpm", value: "\(Int(bpm))", highlight: true, labelWidth: 45)
                     } else {
-                        InspectorRow(label: "bpm", value: "--", labelWidth: 40)
+                        InspectorRow(label: "bpm", value: "--", labelWidth: 45)
                     }
                 } else {
-                    InspectorRow(label: "file", value: "--", labelWidth: 40)
+                    InspectorRow(label: "file", value: "--", labelWidth: 45)
                 }
             }
             .padding(.leading, 16)
@@ -509,7 +470,7 @@ struct CCPanelView: View {
                 .padding(.bottom, 6)
 
             VStack(alignment: .leading, spacing: 0) {
-                InspectorRow(label: "vol", value: "\(Int(layer.volume * 100))% \(formatDb(engine.channelLevelDb[activeIndex]))", highlight: !masterVolumeMode)
+                InspectorRow(label: "vol", value: "\(Int(layer.volume * 100))%")
                 InspectorRow(label: "pan", value: EngineEventInterpreter.formatPan(layer.pan))
                 InspectorRow(label: "HP", value: EngineEventInterpreter.formatFrequency(layer.hpCutoff),
                              highlight: layer.hpCutoff > 21)
