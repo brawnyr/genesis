@@ -10,7 +10,6 @@ struct GODApp: App {
     @StateObject private var terminalState = TerminalState()
     @State private var audioManager: AudioManager?
     @State private var midiManager: MIDIManager?
-    @State private var llmManager: LLMManager?
 
     init() {
         NSApplication.shared.setActivationPolicy(.regular)
@@ -50,15 +49,6 @@ struct GODApp: App {
         midi.start()
         midiManager = midi
 
-        let llm = LLMManager(terminalState: terminalState)
-        llm.start()
-        llmManager = llm
-
-        engine.onStateChanged = { [weak engine, weak llm] in
-            guard let engine = engine, let llm = llm else { return }
-            let snapshot = engine.stateSnapshot(peakLevels: engine.channelSignalLevels)
-            llm.requestInference(snapshot: snapshot)
-        }
     }
 
     private func ensureSpliceFolders() {

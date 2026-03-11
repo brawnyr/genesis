@@ -13,7 +13,7 @@ class GodEngine: ObservableObject {
     @Published var masterLevel: Float = 0
     var masterVolume: Float = 1.0
     @Published var activePadIndex: Int = 0
-    var onStateChanged: (() -> Void)?
+    var interpreter: EngineEventInterpreter?
 
     // Audio thread state — never touches @Published directly
     private var audioPosition: Int = 0
@@ -95,50 +95,6 @@ class GodEngine: ObservableObject {
 
     var loopDurationMs: Double {
         Double(transport.loopLengthFrames) / Transport.sampleRate * 1000.0
-    }
-
-    func stateSnapshot(peakLevels: [Float]) -> StateSnapshot {
-        let loopMs = loopDurationMs
-        let beatLenFrames = transport.loopLengthFrames / (transport.barCount * 4)
-        let currentBeat = beatLenFrames > 0 ? (transport.position / beatLenFrames) + 1 : 1
-
-        let captureStr: String
-        switch capture.state {
-        case .idle: captureStr = "idle"
-        case .armed: captureStr = "armed"
-        case .recording: captureStr = "recording"
-        }
-
-        let channels = (0..<8).map { i -> StateSnapshot.Channel in
-            let pad = padBank.pads[i]
-            let layer = layers[i]
-            let sampleMs = pad.sample?.durationMs ?? 0
-            let peak = i < peakLevels.count ? peakLevels[i] : -100
-            let peakDb = peak > 0 ? 20.0 * log10(peak) : -100.0
-
-            return StateSnapshot.Channel(
-                ch: i + 1,
-                sample: pad.sample?.name ?? "—",
-                sampleDurationMs: sampleMs,
-                loopDurationMs: loopMs,
-                hits: layer.hits.count,
-                muted: layer.isMuted,
-                volume: layer.volume,
-                pan: layer.pan,
-                hpHz: layer.hpCutoff,
-                lpHz: layer.lpCutoff,
-                peakDb: Float(peakDb)
-            )
-        }
-
-        return StateSnapshot(
-            bpm: transport.bpm,
-            bars: transport.barCount,
-            beat: currentBeat,
-            playing: transport.isPlaying,
-            capture: captureStr,
-            channels: channels
-        )
     }
 
     func toggleMute(layer index: Int) {
@@ -309,6 +265,11 @@ class GodEngine: ObservableObject {
             let captureState = audioCaptureState
             DispatchQueue.main.async {
                 self.capture.state = captureState
+                self.interpreter?.onLoopBoundary(
+                    layers: self.layers,
+                    padBank: self.padBank,
+                    loopDurationMs: self.loopDurationMs
+                )
             }
         }
 
@@ -321,7 +282,7 @@ class GodEngine: ObservableObject {
             let masterPeak = peak
             let triggers = pendingTriggers
             let layerVolumes = audioLayers.map { $0.volume }
-            let activePad = audioActivePadIndex
+            audioActivePadIndex = activePadIndex
             let layerPans = audioLayers.map { $0.pan }
             let layerHPCutoffs = audioLayers.map { $0.hpCutoff }
             let layerLPCutoffs = audioLayers.map { $0.lpCutoff }
@@ -337,7 +298,6 @@ class GodEngine: ObservableObject {
                 self.transport.position = pos
                 self.channelSignalLevels = levels
                 self.masterLevel = masterPeak
-                self.activePadIndex = activePad
                 for i in 0..<8 {
                     if triggers[i] {
                         self.channelTriggered[i] = true
@@ -350,7 +310,21 @@ class GodEngine: ObservableObject {
                     self.layers[i].hpCutoff = layerHPCutoffs[i]
                     self.layers[i].lpCutoff = layerLPCutoffs[i]
                 }
-                self.onStateChanged?()
+                if let interp = self.interpreter {
+                    // Track active voices per pad
+                    let activeVoicePads = Set(self.voices.filter { $0.padIndex >= 0 }.map(\.padIndex))
+                    interp.activePadVoices = activeVoicePads
+
+                    interp.processHits(hits, padBank: self.padBank, loopDurationMs: self.loopDurationMs)
+                    interp.processStateDiff(
+                        layers: self.layers,
+                        transport: self.transport,
+                        capture: self.capture,
+                        padBank: self.padBank,
+                        masterVolume: self.masterVolume
+                    )
+                    interp.tickVisuals()
+                }
             }
         }
 

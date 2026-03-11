@@ -1,5 +1,49 @@
 import SwiftUI
 
+struct TipDeck {
+    private var queue: [Int] = []
+
+    static let allTips: [String] = [
+        "sidechain compression is basically the kick telling everything else to duck",
+        "most hip-hop drums sit between 80-100 BPM in half-time feel",
+        "layering a clap with a snare adds body without losing the crack",
+        "high-passing your kicks around 30hz removes sub-rumble you can't hear anyway",
+        "a loop that sounds boring solo might be exactly what the mix needs",
+        "the MPC was designed so you could play drums like a keyboard player",
+        "J Dilla's secret was making quantized beats feel drunk",
+        "vinyl crackle is just noise but it makes everything feel warmer",
+        "the 808 kick is actually a sine wave with a pitch envelope",
+        "reverb on a snare: a little adds space, a lot adds vibe",
+        "swing is just delaying every other note by a few milliseconds",
+        "four-on-the-floor kick + offbeat hi-hat = instant house music",
+        "the TR-808 was a commercial failure before hip-hop saved it",
+        "sampling a sound and pitching it down makes everything sound heavier",
+        "sometimes the best production move is deleting something",
+    ]
+
+    mutating func next() -> String {
+        if queue.isEmpty {
+            queue = Array(0..<Self.allTips.count)
+            queue.shuffle()
+        }
+        return Self.allTips[queue.removeLast()]
+    }
+}
+
+struct TypewriterState {
+    let text: String
+    let charInterval: Double
+
+    func visibleText(elapsed: Double) -> String {
+        let charCount = min(Int(elapsed / charInterval), text.count)
+        return String(text.prefix(charCount))
+    }
+
+    var totalDuration: Double {
+        Double(text.count) * charInterval
+    }
+}
+
 struct TipView: View {
     @State private var tipDeck = TipDeck()
     @State private var currentTip = ""
