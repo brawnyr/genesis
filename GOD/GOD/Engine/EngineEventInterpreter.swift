@@ -1,12 +1,12 @@
 import Foundation
 
 enum LineKind {
-    case system
-    case transport
-    case hit
-    case state
-    case capture
-    case browse
+    case system    // startup, init
+    case transport // play, pause, stop, loop wrap
+    case hit       // pad hits, velocity
+    case state     // mute, unmute, volume, pan, CC
+    case capture   // armed, recording, saved
+    case browse    // sample browser events
 }
 
 struct TerminalLine: Identifiable {
@@ -101,12 +101,13 @@ class EngineEventInterpreter: ObservableObject {
             }
         }
 
+        // CC changes from MIDI knobs — only emit when value actually changes
         for i in 0..<8 {
-            if abs(layers[i].volume - prevVolumes[i]) > 0.01 {
+            if abs(layers[i].volume - prevVolumes[i]) > 0.05 {
                 let volDb = formatDb(linearToDb(layers[i].volume))
                 appendLine("pad \(i + 1) vol → \(Int(layers[i].volume * 100))% (\(volDb))", kind: .state)
-                prevVolumes[i] = layers[i].volume
             }
+            prevVolumes[i] = layers[i].volume
             if abs(layers[i].pan - prevPans[i]) > 0.01 {
                 appendLine("pad \(i + 1) pan → \(Self.formatPan(layers[i].pan))", kind: .state)
                 prevPans[i] = layers[i].pan
@@ -121,6 +122,7 @@ class EngineEventInterpreter: ObservableObject {
             }
         }
 
+        // Capture state from audio thread
         let captureStr: String
         switch capture.state {
         case .idle: captureStr = "idle"
@@ -140,8 +142,11 @@ class EngineEventInterpreter: ObservableObject {
         }
     }
 
+    private var loopCount: Int = 0
+
     func onLoopBoundary(layers: [Layer], padBank: PadBank, loopDurationMs: Double) {
-        appendLine("loop boundary — wrap", kind: .transport)
+        loopCount += 1
+        appendLine("▶ loop \(loopCount) — wrap", kind: .transport)
 
         for i in 0..<8 where loopHitCounts[i] > 0 {
             let name = padBank.pads[i].sample?.name ?? padBank.pads[i].name

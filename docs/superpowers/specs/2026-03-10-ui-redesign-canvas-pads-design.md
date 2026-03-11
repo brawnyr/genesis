@@ -50,31 +50,31 @@ One unified zone. Two layers composited:
 
 ### 3. Pad Strip (bottom, above hotkeys)
 
-8 pads laid out horizontally, equal width (except active pad slightly wider).
+8 pads laid out horizontally, equal width.
 
 **Each pad shows:**
-- Pad number (1-8), bold and colored when active/triggered
-- Sample name (short, e.g. `KICK`, `SNARE`)
+- Category art symbol (◉ kicks, ╳ snares, ▽ hats, ◇ perc, ≈ bass, ♪ keys, ◠ vox, ✦ fx)
+- Folder name (KICKS, SNARES, etc.) — replaces pad numbers
 - Signal meter (thin 3px bar showing current level)
-- Top border colored by state: blue (active), orange (hot/sustaining), dim grey (muted)
+- Top border colored by temperature state
+
+**Temperature model (cold → hot):**
+- **Cold (muted):** icy blue tint (`#8cb8e0`), dimmed opacity 0.55, frosty overlay
+- **Warm (loaded, idle):** Claude blue (`#6283e2`)
+- **Hot (active/playing):** Claude orange (`#da7b4a`) — alive, breathing
+- Color transitions smoothly based on pad intensity
 
 **Active pad (selected via A/D navigation):**
-- Slightly wider than other pads (`flex: 1.4` vs `flex: 1`)
-- Glow/box-shadow to distinguish
-- Shows CC parameter values inline:
-  - `vol 72%`
-  - `pan C` (or `L30`, `R45`, etc.)
-  - `HP 20` (Hz, dim when at 20 = no effect)
-  - `LP 4.2k` (Hz, highlighted orange when filter is engaged, dim at 20k = no effect)
-- CC values update in real time as MiniLab knobs are turned
+- Highlighted background, blue top border
+- CC parameter values shown in right-side panel (not inline)
 
-**Muted pads:**
-- Dimmed (opacity 0.5)
-- Border color grey
-- No signal meter activity
+**Right-side panel:**
+- Shows master volume (big, prominent), active pad name/sample, CC values (vol/pan/HP/LP)
+- `T` opens sample browser for active pad's Splice folder
+- Master volume mode toggled with `V` — keypad 0-9 routes to master or pad volume
 
 **Trigger animation:**
-- On MIDI note-on: pad number flashes orange briefly, background pulses
+- On MIDI note-on: art symbol and name flash orange briefly, background pulses
 
 ### 4. Hotkeys Strip (very bottom)
 
@@ -86,22 +86,29 @@ Full-width bar with all keyboard shortcuts:
 | `G` | toggle GOD capture |
 | `A` | select pad left |
 | `D` | select pad right |
-| `W` | toggle mute on active pad |
-| `S` | TBD (reserved) |
+| `Q` | cool (mute) active pad |
+| `E` | hot (unmute) active pad |
+| `T` | browse samples for active pad (opens right panel browser) |
+| `W` | navigate browser up (when browsing) |
+| `S` | navigate browser down (when browsing) |
+| `⏎` | load selected sample (when browsing) |
 | `M` | toggle metronome |
+| `V` | toggle master volume mode |
+| `0-9` | set volume (master when V active, pad otherwise; 0=mute, 9=max) |
 | `↑` | BPM + 1 |
 | `↓` | BPM - 1 |
 | `[` | fewer bars |
 | `]` | more bars |
-| `-` | master volume down |
-| `+` | master volume up |
 | `Z` | undo last clear |
 | `C` | clear active pad layer |
-| `T` | open setup (sample loader) |
-| `ESC` | stop playback |
+| `ESC` | stop playback / close browser |
 | `?` | show help overlay |
 
-**WASD replaces 1-8 for mute.** Muting is now `W` on the active pad (navigated with A/D). The old 1-8 mute shortcuts are removed.
+**Temperature model:** Pads use a cold→hot visual metaphor. Muted pads are "cold" (icy blue tint, `#8cb8e0`). Active/playing pads are "hot" (Claude orange, `#da7b4a`). `Q` cools (mutes) and `E` heats (unmutes) the active pad.
+
+**Sample browsing:** `T` opens the Splice folder browser in the right-side panel for the active pad's category. `W`/`S` navigate the file list, `⏎` loads the selected sample. `T` or `ESC` closes the browser. The old modal SetupView is removed.
+
+**Volume control:** `V` toggles master volume mode. When active, `0-9` sets master volume. When inactive, `0-9` sets the active pad's layer volume. Master volume displays prominently on the right panel.
 
 ### 5. Idle vs Playing States
 

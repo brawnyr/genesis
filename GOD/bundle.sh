@@ -53,6 +53,8 @@ cat > "$CONTENTS/Info.plist" << 'PLIST'
     <string>2.0</string>
     <key>LSMinimumSystemVersion</key>
     <string>14.0</string>
+    <key>CFBundleIconFile</key>
+    <string>AppIcon</string>
     <key>NSHighResolutionCapable</key>
     <true/>
     <key>NSMicrophoneUsageDescription</key>
@@ -62,6 +64,91 @@ cat > "$CONTENTS/Info.plist" << 'PLIST'
 </dict>
 </plist>
 PLIST
+
+# Generate .icns from the app's programmatic icon
+ICON_SCRIPT=$(cat << 'SWIFT'
+import AppKit
+
+let size: CGFloat = 512
+let image = NSImage(size: NSSize(width: size, height: size))
+image.lockFocus()
+
+let bg = NSColor(red: 0.102, green: 0.098, blue: 0.090, alpha: 1)
+let path = NSBezierPath(roundedRect: NSRect(x: 0, y: 0, width: size, height: size), xRadius: 100, yRadius: 100)
+bg.setFill()
+path.fill()
+
+let letters: [[[Bool]]] = [
+    [[false,true,true,true,true,true,false],[true,true,false,false,false,true,true],[true,true,false,false,false,false,false],[true,true,false,false,false,false,false],[true,true,false,true,true,true,false],[true,true,false,false,false,true,true],[true,true,false,false,false,true,true],[true,true,false,false,false,true,true],[false,true,true,true,true,true,false]],
+    [[false,true,true,true,true,true,false],[true,true,false,false,false,true,true],[true,true,false,false,false,true,true],[true,true,false,false,false,true,true],[true,true,false,false,false,true,true],[true,true,false,false,false,true,true],[true,true,false,false,false,true,true],[true,true,false,false,false,true,true],[false,true,true,true,true,true,false]],
+    [[true,true,true,true,true,false,false],[true,true,false,false,true,true,false],[true,true,false,false,false,true,true],[true,true,false,false,false,true,true],[true,true,false,false,false,true,true],[true,true,false,false,false,true,true],[true,true,false,false,false,true,true],[true,true,false,false,true,true,false],[true,true,true,true,true,false,false]]
+]
+
+let pixelSize: CGFloat = 14
+let gap: CGFloat = 4
+let cellSize = pixelSize + gap
+let letterW = 7 * cellSize
+let letterSpacing: CGFloat = 28
+let totalW = 3 * letterW + 2 * letterSpacing
+let totalH = 9 * cellSize
+let startX = (size - totalW) / 2
+let startY = (size - totalH) / 2
+let orange = NSColor(red: 0.855, green: 0.482, blue: 0.290, alpha: 1)
+
+for (li, letter) in letters.enumerated() {
+    let lx = startX + CGFloat(li) * (letterW + letterSpacing)
+    for (row, bits) in letter.enumerated() {
+        for (col, on) in bits.enumerated() {
+            guard on else { continue }
+            let x = lx + CGFloat(col) * cellSize
+            let y = startY + CGFloat(8 - row) * cellSize
+            orange.setFill()
+            NSRect(x: x, y: y, width: pixelSize, height: pixelSize).fill()
+        }
+    }
+}
+
+image.unlockFocus()
+
+// Write PNG then convert to icns via iconutil
+let tiffData = image.tiffRepresentation!
+let bitmap = NSBitmapImageRep(data: tiffData)!
+let pngData = bitmap.representation(using: .png, properties: [:])!
+
+let tmpDir = FileManager.default.temporaryDirectory.appendingPathComponent("god-icon-\(ProcessInfo.processInfo.processIdentifier)")
+let iconsetDir = tmpDir.appendingPathComponent("AppIcon.iconset")
+try! FileManager.default.createDirectory(at: iconsetDir, withIntermediateDirectories: true)
+
+// Write all required sizes
+let sizes: [(String, Int)] = [
+    ("icon_16x16", 16), ("icon_16x16@2x", 32),
+    ("icon_32x32", 32), ("icon_32x32@2x", 64),
+    ("icon_128x128", 128), ("icon_128x128@2x", 256),
+    ("icon_256x256", 256), ("icon_256x256@2x", 512),
+    ("icon_512x512", 512)
+]
+for (name, px) in sizes {
+    let resized = NSImage(size: NSSize(width: px, height: px))
+    resized.lockFocus()
+    image.draw(in: NSRect(x: 0, y: 0, width: px, height: px))
+    resized.unlockFocus()
+    let tiff = resized.tiffRepresentation!
+    let bmp = NSBitmapImageRep(data: tiff)!
+    let png = bmp.representation(using: .png, properties: [:])!
+    try! png.write(to: iconsetDir.appendingPathComponent("\(name).png"))
+}
+
+// Print iconset path for the shell to use
+print(iconsetDir.path)
+SWIFT
+)
+
+ICONSET_DIR=$(echo "$ICON_SCRIPT" | swift -)
+if [ -d "$ICONSET_DIR" ]; then
+    iconutil -c icns "$ICONSET_DIR" -o "$RESOURCES/AppIcon.icns"
+    rm -rf "$(dirname "$ICONSET_DIR")"
+    echo "icon → AppIcon.icns"
+fi
 
 echo "bundled → $BUNDLE_DIR"
 

@@ -220,10 +220,7 @@ struct GodCapture {
 ### TransportView.swift — 112 lines
 - Horizontal bar: play state, BPM, bar count, metronome, beat counter, capture status, master volume, loop progress
 
-### SetupView.swift — 90 lines
-- Pad assignment dialog with file picker (NSOpenPanel)
-
-### KeyReferenceOverlay.swift — 56 lines
+### KeyReferenceOverlay.swift — 58 lines
 - Help overlay listing all keyboard shortcuts
 
 ## App Entry (GODApp.swift) — 164 lines

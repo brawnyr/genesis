@@ -24,17 +24,12 @@ A SwiftUI app for live loop-stacking driven by an Arturia MiniLab 3. Not a DAW. 
 - macOS 14+
 
 ## Project Structure
-- `GOD/GOD/Models/` — Transport, Sample, Voice, Layer, Pad, Metronome, GodCapture, Tips
-- `GOD/GOD/Engine/` — GodEngine, AudioManager, MIDIManager
-- `GOD/GOD/Views/` — SwiftUI views (Theme, Transport, LoopBar, PadGrid, LayerList, Tips, etc.)
-- `GOD/Tests/` — Swift Testing unit tests
-
-## Current State
-- **Active codebase: Swift only** — `GOD/` directory is the live project
-- Branch: `god-v2-swift`
-- 12 Swift test files in `GOD/Tests/`
-- Per-layer effects (biquad filters, pan, volume, CC routing) just landed
-- Design docs and plans live in `docs/`
+- `GOD/GOD/Models/` — Transport, Sample, Voice, Layer, Pad, Biquad, Metronome, GodCapture
+- `GOD/GOD/Engine/` — GodEngine, AudioManager, MIDIManager, MIDIRingBuffer, BPMDetector, EngineEventInterpreter
+- `GOD/GOD/Views/` — Theme, ContentView, CanvasView, PadStripView, TransportView, KeyReferenceOverlay
+- `GOD/Tests/` — Swift Testing unit tests (13 files)
+- `tools/` — Splice download sorter (optional)
+- `docs/` — Design specs and implementation plans
 
 ## Splice Integration
 GOD pairs well with [Splice](https://splice.com) — browse and download sounds from Splice, and they auto-sort into ready-to-play category folders for your pads.

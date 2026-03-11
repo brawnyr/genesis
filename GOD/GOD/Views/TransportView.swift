@@ -12,29 +12,6 @@ struct TransportView: View {
         return (engine.transport.position / beatLength) % (engine.transport.barCount * 4) + 1
     }
 
-    private var loopProgress: Double {
-        let loopLen = engine.transport.loopLengthFrames
-        guard loopLen > 0 else { return 0 }
-        return Double(engine.transport.position) / Double(loopLen)
-    }
-
-    private var captureText: String {
-        switch engine.capture.state {
-        case .idle: return "○ GOD"
-        case .armed: return "◉ GOD — armed"
-        case .recording: return "◉ GOD — recording"
-        }
-    }
-
-    private var captureColor: Color {
-        switch engine.capture.state {
-        case .idle: return Theme.text
-        case .armed, .recording: return Theme.orange
-        }
-    }
-
-    @State private var captureOpacity: Double = 1.0
-
     var body: some View {
         HStack(spacing: 16) {
             // Play state
@@ -72,42 +49,6 @@ struct TransportView: View {
             }
 
             Spacer()
-
-            // Capture status
-            Text(captureText)
-                .foregroundColor(captureColor)
-                .font(Theme.monoSmall)
-                .opacity(engine.capture.state == .recording ? captureOpacity : 1.0)
-                .animation(
-                    engine.capture.state == .recording
-                        ? .easeInOut(duration: 0.5).repeatForever(autoreverses: true)
-                        : .default,
-                    value: engine.capture.state == .recording
-                )
-                .onChange(of: engine.capture.state == .recording) { _, isRecording in
-                    captureOpacity = isRecording ? 0.5 : 1.0
-                }
-
-            // Master volume + level
-            HStack(spacing: 4) {
-                Text("master \(Int(engine.masterVolume * 100))%")
-                    .foregroundColor(Theme.subtle)
-                Text(formatDb(engine.masterLevelDb))
-                    .foregroundColor(engine.masterLevelDb > 0 ? Theme.orange : Theme.subtle)
-            }
-            .font(Theme.monoSmall)
-
-            // Inline loop progress bar
-            GeometryReader { _ in
-                ZStack(alignment: .leading) {
-                    RoundedRectangle(cornerRadius: 2)
-                        .fill(Theme.subtle.opacity(0.3))
-                    RoundedRectangle(cornerRadius: 2)
-                        .fill(Theme.blue)
-                        .frame(width: 80 * loopProgress)
-                }
-            }
-            .frame(width: 80, height: 3)
         }
         .padding(.horizontal, 16)
         .padding(.vertical, 10)

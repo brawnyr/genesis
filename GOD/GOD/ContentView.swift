@@ -200,6 +200,16 @@ struct ContentView: View {
                 interpreter.appendLine("pad \(padIndex + 1) → \(padName(padIndex))", kind: .state)
                 return
             }
+            // Numpad: Shift+numpad still produces "1"-"8"
+            let numpadDigitMap: [Character: Int] = [
+                "1": 0, "2": 1, "3": 2, "4": 3,
+                "5": 4, "6": 5, "7": 6, "8": 7
+            ]
+            if let padIndex = numpadDigitMap[c] {
+                engine.activePadIndex = padIndex
+                interpreter.appendLine("pad \(padIndex + 1) → \(padName(padIndex))", kind: .state)
+                return
+            }
         }
 
         // BPM mode: W/S scroll presets, type digits for custom, ⏎ confirm, ESC cancel

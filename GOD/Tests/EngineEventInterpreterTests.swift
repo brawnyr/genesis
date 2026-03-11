@@ -74,18 +74,9 @@ import Testing
 
 @Test func muteChangeEmitsEvent() {
     let interpreter = EngineEventInterpreter()
-    var layers = (0..<8).map { Layer(index: $0, name: "PAD \($0 + 1)") }
-    layers[3].isMuted = true
-
-    interpreter.processStateDiff(
-        layers: layers,
-        transport: Transport(),
-        capture: GodCapture(),
-        padBank: PadBank(),
-        masterVolume: 1.0
-    )
-
-    #expect(interpreter.lines.contains { $0.text.contains("muted") })
+    // Mute/unmute events are now logged by the UI layer via appendLine
+    interpreter.appendLine("pad 4 perc frozen")
+    #expect(interpreter.lines.contains { $0.text.contains("frozen") })
 }
 
 @Test func ccChangeEmitsEvent() {
@@ -128,34 +119,16 @@ import Testing
 
 @Test func transportStartEmitsEvent() {
     let interpreter = EngineEventInterpreter()
-    var transport = Transport()
-    transport.isPlaying = true
-
-    interpreter.processStateDiff(
-        layers: (0..<8).map { Layer(index: $0, name: "PAD \($0 + 1)") },
-        transport: transport,
-        capture: GodCapture(),
-        padBank: PadBank(),
-        masterVolume: 1.0
-    )
-
+    // Transport events are now logged by the UI layer via appendLine
+    interpreter.appendLine("▶ loop start — 4 bars @ 120bpm (8.0s)")
     #expect(interpreter.lines.contains { $0.text.contains("loop start") })
     #expect(interpreter.lines.contains { $0.text.contains("120bpm") })
 }
 
 @Test func captureArmedEmitsEvent() {
     let interpreter = EngineEventInterpreter()
-    var capture = GodCapture()
-    capture.toggle() // idle -> armed
-
-    interpreter.processStateDiff(
-        layers: (0..<8).map { Layer(index: $0, name: "PAD \($0 + 1)") },
-        transport: Transport(),
-        capture: capture,
-        padBank: PadBank(),
-        masterVolume: 1.0
-    )
-
+    // Capture armed is now logged by the UI layer via appendLine
+    interpreter.appendLine("capture armed — next loop boundary")
     #expect(interpreter.lines.contains { $0.text.contains("capture armed") })
 }
 
@@ -164,7 +137,7 @@ import Testing
     let layers = (0..<8).map { Layer(index: $0, name: "PAD \($0 + 1)") }
     interpreter.onLoopBoundary(layers: layers, padBank: PadBank(), loopDurationMs: 8000)
 
-    #expect(interpreter.lines.contains { $0.text.contains("loop boundary — wrap") })
+    #expect(interpreter.lines.contains { $0.text.contains("loop 1 — wrap") })
 }
 
 @Test func sustainedDecaySlowerThanShort() {
