@@ -13,6 +13,7 @@ struct TerminalLine: Identifiable {
     let id = UUID()
     let text: String
     let kind: LineKind
+    let isHighlight: Bool
     let timestamp: Date = Date()
 
     var timeString: String {
@@ -47,7 +48,7 @@ class EngineEventInterpreter: ObservableObject {
     var activePadVoices: Set<Int> = []
 
     func appendLine(_ text: String, kind: LineKind = .system) {
-        let line = TerminalLine(text: text, kind: kind)
+        let line = TerminalLine(text: text, kind: kind, isHighlight: false)
         lines.append(line)
         if lines.count > maxLines {
             lines.removeFirst(lines.count - maxLines)
@@ -102,7 +103,8 @@ class EngineEventInterpreter: ObservableObject {
 
         for i in 0..<8 {
             if abs(layers[i].volume - prevVolumes[i]) > 0.01 {
-                appendLine("pad \(i + 1) vol → \(Int(layers[i].volume * 100))%", kind: .state)
+                let volDb = formatDb(linearToDb(layers[i].volume))
+                appendLine("pad \(i + 1) vol → \(Int(layers[i].volume * 100))% (\(volDb))", kind: .state)
                 prevVolumes[i] = layers[i].volume
             }
             if abs(layers[i].pan - prevPans[i]) > 0.01 {

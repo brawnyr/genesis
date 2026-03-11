@@ -15,18 +15,19 @@ struct Voice {
     /// Mixes this voice into stereo buffers with filtering and panning.
     /// Returns (finished, peak).
     mutating func fill(intoLeft left: inout [Float], right: inout [Float], count: Int,
-                       pan: Float, hpCoeffs: BiquadCoefficients, lpCoeffs: BiquadCoefficients
+                       pan: Float, volume: Float, hpCoeffs: BiquadCoefficients, lpCoeffs: BiquadCoefficients
     ) -> (finished: Bool, peak: Float) {
         let remaining = sample.frameCount - position
         let toWrite = min(count, remaining)
         var peak: Float = 0
 
+        let gain = velocity * volume
         let panL = cos(pan * .pi / 2.0)
         let panR = sin(pan * .pi / 2.0)
 
         for i in 0..<toWrite {
-            var l = sample.left[position + i] * velocity
-            var r = sample.right[position + i] * velocity
+            var l = sample.left[position + i] * gain
+            var r = sample.right[position + i] * gain
 
             // HP filter
             l = biquadProcessSample(l, coeffs: hpCoeffs, state: &hpStateL)

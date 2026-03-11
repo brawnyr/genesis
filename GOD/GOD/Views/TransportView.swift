@@ -88,10 +88,14 @@ struct TransportView: View {
                     captureOpacity = isRecording ? 0.5 : 1.0
                 }
 
-            // Master volume
-            Text("master \(Int(engine.masterVolume * 100))%")
-                .foregroundColor(Theme.subtle)
-                .font(Theme.monoSmall)
+            // Master volume + level
+            HStack(spacing: 4) {
+                Text("master \(Int(engine.masterVolume * 100))%")
+                    .foregroundColor(Theme.subtle)
+                Text(formatDb(engine.masterLevelDb))
+                    .foregroundColor(engine.masterLevelDb > 0 ? Theme.orange : Theme.subtle)
+            }
+            .font(Theme.monoSmall)
 
             // Inline loop progress bar
             GeometryReader { _ in

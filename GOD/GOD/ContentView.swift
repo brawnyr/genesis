@@ -111,6 +111,7 @@ struct ContentView: View {
                     KeyLabel(key: "Z", action: "undo")
                     KeyLabel(key: "C", action: "clear")
                     KeyLabel(key: "X", action: "cut")
+                    KeyLabel(key: "N", action: engine.toggleMode == .instant ? "instant" : "next loop")
                     KeyLabel(key: "T", action: "browse")
                     KeyLabel(key: "ESC", action: "stop")
                     KeyLabel(key: "?", action: "help")
@@ -144,6 +145,7 @@ struct ContentView: View {
         static let b: UInt16 = 11
         static let z: UInt16 = 6
         static let x: UInt16 = 7
+        static let n: UInt16 = 45
         static let returnKey: UInt16 = 36
         static let upArrow: UInt16 = 126
         static let downArrow: UInt16 = 125
@@ -318,14 +320,24 @@ struct ContentView: View {
             engine.activePadIndex = (engine.activePadIndex + 1) % 8
             interpreter.appendLine("pad \(engine.activePadIndex + 1) → \(padName(engine.activePadIndex))", kind: .state)
         case Key.q:
-            if !engine.layers[engine.activePadIndex].isMuted {
+            let effective = engine.effectiveMuteState(layer: engine.activePadIndex)
+            if !effective {
                 engine.toggleMute(layer: engine.activePadIndex)
-                interpreter.appendLine("pad \(engine.activePadIndex + 1) \(padName(engine.activePadIndex)) frozen", kind: .state)
+                if engine.toggleMode == .nextLoop {
+                    interpreter.appendLine("pad \(engine.activePadIndex + 1) \(padName(engine.activePadIndex)) → freeze next loop", kind: .state)
+                } else {
+                    interpreter.appendLine("pad \(engine.activePadIndex + 1) \(padName(engine.activePadIndex)) frozen", kind: .state)
+                }
             }
         case Key.e:
-            if engine.layers[engine.activePadIndex].isMuted {
+            let effective = engine.effectiveMuteState(layer: engine.activePadIndex)
+            if effective {
                 engine.toggleMute(layer: engine.activePadIndex)
-                interpreter.appendLine("pad \(engine.activePadIndex + 1) \(padName(engine.activePadIndex)) hot", kind: .state)
+                if engine.toggleMode == .nextLoop {
+                    interpreter.appendLine("pad \(engine.activePadIndex + 1) \(padName(engine.activePadIndex)) → hot next loop", kind: .state)
+                } else {
+                    interpreter.appendLine("pad \(engine.activePadIndex + 1) \(padName(engine.activePadIndex)) hot", kind: .state)
+                }
             }
         case Key.c:
             let name = padName(engine.activePadIndex)
@@ -354,6 +366,9 @@ struct ContentView: View {
         case Key.z:
             engine.undoLastClear()
             interpreter.appendLine("undo clear → pad \(engine.activePadIndex + 1)", kind: .state)
+        case Key.n:
+            engine.cycleToggleMode()
+            interpreter.appendLine("toggle mode → \(engine.toggleMode.rawValue)", kind: .state)
         case Key.x:
             engine.toggleCut(pad: engine.activePadIndex)
             let cutState = engine.layers[engine.activePadIndex].cut ? "on" : "off"
@@ -371,10 +386,12 @@ struct ContentView: View {
                 let digit = Float(c.asciiValue! - Character("0").asciiValue!)
                 if masterVolumeMode {
                     engine.setMasterVolume(digit / 9.0)
-                    interpreter.appendLine("master vol → \(Int(engine.masterVolume * 100))%", kind: .state)
+                    let mDb = formatDb(linearToDb(engine.masterVolume))
+                    interpreter.appendLine("master vol → \(Int(engine.masterVolume * 100))% (\(mDb))", kind: .state)
                 } else {
                     engine.setLayerVolume(engine.activePadIndex, volume: digit / 9.0)
-                    interpreter.appendLine("pad \(engine.activePadIndex + 1) vol → \(Int(digit / 9.0 * 100))%", kind: .state)
+                    let pDb = formatDb(linearToDb(digit / 9.0))
+                    interpreter.appendLine("pad \(engine.activePadIndex + 1) vol → \(Int(digit / 9.0 * 100))% (\(pDb))", kind: .state)
                 }
             default: break
             }

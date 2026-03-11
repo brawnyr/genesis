@@ -10,7 +10,7 @@ import Testing
     var left = [Float](repeating: 0, count: 3)
     var right = [Float](repeating: 0, count: 3)
     let (finished, _) = voice.fill(intoLeft: &left, right: &right, count: 3,
-                                    pan: 0.5, hpCoeffs: .bypass, lpCoeffs: .bypass)
+                                    pan: 0.5, volume: 1.0, hpCoeffs: .bypass, lpCoeffs: .bypass)
     #expect(finished == false)
     let scale: Float = cos(0.5 * .pi / 2.0)
     #expect(abs(left[0] - 0.1 * scale) < 0.001)
@@ -26,7 +26,7 @@ import Testing
     var left = [Float](repeating: 0, count: 4)
     var right = [Float](repeating: 0, count: 4)
     let (finished, _) = voice.fill(intoLeft: &left, right: &right, count: 4,
-                                    pan: 0.5, hpCoeffs: .bypass, lpCoeffs: .bypass)
+                                    pan: 0.5, volume: 1.0, hpCoeffs: .bypass, lpCoeffs: .bypass)
     #expect(finished == true)
     #expect(left[2] == 0)
     #expect(left[3] == 0)
@@ -40,7 +40,7 @@ import Testing
     var left = [Float](repeating: 0, count: 2)
     var right = [Float](repeating: 0, count: 2)
     let (_, peak) = voice.fill(intoLeft: &left, right: &right, count: 2,
-                                pan: 0.5, hpCoeffs: .bypass, lpCoeffs: .bypass)
+                                pan: 0.5, volume: 1.0, hpCoeffs: .bypass, lpCoeffs: .bypass)
     let scale: Float = cos(0.5 * .pi / 2.0)
     #expect(abs(left[0] - 0.5 * scale) < 0.001)
     #expect(abs(peak - 0.5 * scale) < 0.001)
@@ -55,7 +55,7 @@ import Testing
     var left = [Float](repeating: 0, count: 2)
     var right = [Float](repeating: 0, count: 2)
     let (finished, _) = voice.fill(intoLeft: &left, right: &right, count: 2,
-                                    pan: 0.5, hpCoeffs: .bypass, lpCoeffs: .bypass)
+                                    pan: 0.5, volume: 1.0, hpCoeffs: .bypass, lpCoeffs: .bypass)
     #expect(finished == true)
     let scale: Float = cos(0.5 * .pi / 2.0)
     #expect(abs(left[0] - 1.0 * scale) < 0.001)
@@ -70,7 +70,7 @@ import Testing
     var left = [Float](repeating: 0, count: 2)
     var right = [Float](repeating: 0, count: 2)
     let (_, _) = voice.fill(intoLeft: &left, right: &right, count: 2,
-                             pan: 0.0, hpCoeffs: .bypass, lpCoeffs: .bypass)
+                             pan: 0.0, volume: 1.0, hpCoeffs: .bypass, lpCoeffs: .bypass)
     #expect(left[0] > 0.9)
     #expect(right[0] < 0.1)
 }
@@ -83,7 +83,7 @@ import Testing
     var left = [Float](repeating: 0, count: 2)
     var right = [Float](repeating: 0, count: 2)
     let (_, _) = voice.fill(intoLeft: &left, right: &right, count: 2,
-                             pan: 0.5, hpCoeffs: .bypass, lpCoeffs: .bypass)
+                             pan: 0.5, volume: 1.0, hpCoeffs: .bypass, lpCoeffs: .bypass)
     #expect(abs(left[0] - right[0]) < 0.01)
     #expect(left[0] > 0.6)
 }
@@ -96,7 +96,7 @@ import Testing
     var left = [Float](repeating: 0, count: 2)
     var right = [Float](repeating: 0, count: 2)
     let (_, _) = voice.fill(intoLeft: &left, right: &right, count: 2,
-                             pan: 1.0, hpCoeffs: .bypass, lpCoeffs: .bypass)
+                             pan: 1.0, volume: 1.0, hpCoeffs: .bypass, lpCoeffs: .bypass)
     #expect(left[0] < 0.1)
     #expect(right[0] > 0.9)
 }
@@ -115,6 +115,6 @@ import Testing
     var right = [Float](repeating: 0, count: frameCount)
     let lpCoeffs = BiquadCoefficients.lowPass(cutoff: 100, sampleRate: sampleRate)
     let (_, peak) = voice.fill(intoLeft: &left, right: &right, count: frameCount,
-                                pan: 0.5, hpCoeffs: .bypass, lpCoeffs: lpCoeffs)
+                                pan: 0.5, volume: 1.0, hpCoeffs: .bypass, lpCoeffs: lpCoeffs)
     #expect(peak < 0.1)
 }

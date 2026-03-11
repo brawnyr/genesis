@@ -23,14 +23,16 @@ final class MIDIRingBuffer {
         buffer[Int(wi) & Self.mask] = event
         OSMemoryBarrier()
         _writeIndex = wi &+ 1
-        if _writeIndex &- _readIndex > UInt64(Self.capacity) {
-            _readIndex = _writeIndex &- UInt64(Self.capacity)
-        }
     }
 
     func drain(_ handler: (MIDIEvent) -> Void) {
         OSMemoryBarrier()
-        while _readIndex < _writeIndex {
+        let wi = _writeIndex
+        // If producer lapped us, skip to oldest available data
+        if wi &- _readIndex > UInt64(Self.capacity) {
+            _readIndex = wi &- UInt64(Self.capacity)
+        }
+        while _readIndex < wi {
             if let event = buffer[Int(_readIndex) & Self.mask] {
                 handler(event)
             }

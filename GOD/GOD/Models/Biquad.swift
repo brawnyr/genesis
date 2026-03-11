@@ -82,3 +82,16 @@ func ccToFrequency(_ cc: Int) -> Float {
     let normalized = Float(cc) / 127.0
     return 20.0 * pow(1000.0, normalized)
 }
+
+/// Converts linear amplitude (0.0–∞) to dBFS.
+/// Returns -∞ for silence, 0dB for amplitude 1.0, positive for clipping.
+func linearToDb(_ amplitude: Float) -> Float {
+    guard amplitude > 0 else { return -.infinity }
+    return 20.0 * log10(amplitude)
+}
+
+/// Formats a dBFS value for display. Returns "−∞" for silence.
+func formatDb(_ db: Float) -> String {
+    if db == -.infinity || db < -60 { return "−∞" }
+    return String(format: "%+.1fdB", db)
+}
