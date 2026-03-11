@@ -32,45 +32,7 @@ struct GODApp: App {
         bg.setFill()
         path.fill()
 
-        // Pixel grid for G, O, D — 7 wide x 9 tall each
-        let letters: [[[Bool]]] = [
-            // G
-            [
-                [false,true,true,true,true,true,false],
-                [true,true,false,false,false,true,true],
-                [true,true,false,false,false,false,false],
-                [true,true,false,false,false,false,false],
-                [true,true,false,true,true,true,false],
-                [true,true,false,false,false,true,true],
-                [true,true,false,false,false,true,true],
-                [true,true,false,false,false,true,true],
-                [false,true,true,true,true,true,false],
-            ],
-            // O
-            [
-                [false,true,true,true,true,true,false],
-                [true,true,false,false,false,true,true],
-                [true,true,false,false,false,true,true],
-                [true,true,false,false,false,true,true],
-                [true,true,false,false,false,true,true],
-                [true,true,false,false,false,true,true],
-                [true,true,false,false,false,true,true],
-                [true,true,false,false,false,true,true],
-                [false,true,true,true,true,true,false],
-            ],
-            // D
-            [
-                [true,true,true,true,true,false,false],
-                [true,true,false,false,true,true,false],
-                [true,true,false,false,false,true,true],
-                [true,true,false,false,false,true,true],
-                [true,true,false,false,false,true,true],
-                [true,true,false,false,false,true,true],
-                [true,true,false,false,false,true,true],
-                [true,true,false,false,true,true,false],
-                [true,true,true,true,true,false,false],
-            ],
-        ]
+        let letters = Theme.godBitmap
 
         let pixelSize: CGFloat = 14
         let gap: CGFloat = 4

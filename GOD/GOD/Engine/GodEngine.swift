@@ -302,12 +302,14 @@ class GodEngine: ObservableObject {
         voices = voices.compactMap { voice in
             var v = voice
             let layer = v.padIndex >= 0 && v.padIndex < 8 ? audioLayers[v.padIndex] : nil
-            let hpCoeffs = (layer?.hpCutoff ?? 20) <= 21
+            let hpCutoff = layer?.hpCutoff ?? 20
+            let lpCutoff = layer?.lpCutoff ?? 20000
+            let hpCoeffs = hpCutoff <= 21
                 ? BiquadCoefficients.bypass
-                : BiquadCoefficients.highPass(cutoff: layer!.hpCutoff, sampleRate: Float(Transport.sampleRate))
-            let lpCoeffs = (layer?.lpCutoff ?? 20000) >= 19999
+                : BiquadCoefficients.highPass(cutoff: hpCutoff, sampleRate: Float(Transport.sampleRate))
+            let lpCoeffs = lpCutoff >= 19999
                 ? BiquadCoefficients.bypass
-                : BiquadCoefficients.lowPass(cutoff: layer!.lpCutoff, sampleRate: Float(Transport.sampleRate))
+                : BiquadCoefficients.lowPass(cutoff: lpCutoff, sampleRate: Float(Transport.sampleRate))
             let pan = layer?.pan ?? 0.5
             let (done, peak) = v.fill(intoLeft: &outputL, right: &outputR, count: frameCount,
                                        pan: pan, hpCoeffs: hpCoeffs, lpCoeffs: lpCoeffs)

@@ -358,7 +358,7 @@ struct ContentView: View {
             masterVolumeMode.toggle()
         case Key.z:
             engine.undoLastClear()
-            interpreter.appendLine("undo clear → pad \(engine.activePadIndex + 1)")
+            interpreter.appendLine("undo clear → pad \(engine.activePadIndex + 1)", kind: .state)
         case Key.x:
             engine.toggleCut(pad: engine.activePadIndex)
             let cutState = engine.layers[engine.activePadIndex].cut ? "on" : "off"

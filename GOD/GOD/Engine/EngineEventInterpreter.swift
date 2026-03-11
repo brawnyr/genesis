@@ -1,10 +1,21 @@
 import Foundation
 
+enum LineKind {
+    case system, transport, hit, state, capture, browse
+}
+
 struct TerminalLine: Identifiable {
     let id = UUID()
     let text: String
+    let kind: LineKind
     let isHighlight: Bool
     let timestamp: Date = Date()
+
+    var timeString: String {
+        let f = DateFormatter()
+        f.dateFormat = "HH:mm:ss"
+        return f.string(from: timestamp)
+    }
 }
 
 class EngineEventInterpreter: ObservableObject {
@@ -31,8 +42,8 @@ class EngineEventInterpreter: ObservableObject {
     // Track which pads have active voices (set by engine)
     var activePadVoices: Set<Int> = []
 
-    func appendLine(_ text: String) {
-        let line = TerminalLine(text: text, isHighlight: false)
+    func appendLine(_ text: String, kind: LineKind = .system) {
+        let line = TerminalLine(text: text, kind: kind, isHighlight: false)
         lines.append(line)
         if lines.count > maxLines {
             lines.removeFirst(lines.count - maxLines)
@@ -59,7 +70,7 @@ class EngineEventInterpreter: ObservableObject {
             // Format hit event line
             let dur = Self.formatDuration(durationMs)
             let velDesc = hit.velocity > 90 ? " — hard hit" : ""
-            appendLine("\(name.lowercased()) \(dur) — vel \(hit.velocity)\(velDesc)")
+            appendLine("\(name.lowercased()) \(dur) — vel \(hit.velocity)\(velDesc)", kind: .hit)
         }
         padIntensities = intensities
     }
@@ -69,9 +80,9 @@ class EngineEventInterpreter: ObservableObject {
         // Transport state changes
         if transport.isPlaying && !prevPlaying {
             let loopSec = Double(transport.loopLengthFrames) / Transport.sampleRate
-            appendLine("▶ loop start — \(transport.barCount) bars @ \(transport.bpm)bpm (\(String(format: "%.1f", loopSec))s)")
+            appendLine("▶ loop start — \(transport.barCount) bars @ \(transport.bpm)bpm (\(String(format: "%.1f", loopSec))s)", kind: .transport)
         } else if !transport.isPlaying && prevPlaying {
-            appendLine("■ stopped")
+            appendLine("■ stopped", kind: .transport)
         }
         prevPlaying = transport.isPlaying
 
@@ -80,12 +91,12 @@ class EngineEventInterpreter: ObservableObject {
             if layers[i].isMuted != prevMuted[i] {
                 let name = padBank.pads[i].sample?.name ?? padBank.pads[i].name
                 if layers[i].isMuted {
-                    appendLine("pad \(i + 1) \(name.lowercased()) muted ○")
+                    appendLine("pad \(i + 1) \(name.lowercased()) muted ○", kind: .state)
                     var intensities = padIntensities
                     intensities[i] = 0
                     padIntensities = intensities
                 } else {
-                    appendLine("pad \(i + 1) \(name.lowercased()) unmuted ●")
+                    appendLine("pad \(i + 1) \(name.lowercased()) unmuted ●", kind: .state)
                 }
                 prevMuted[i] = layers[i].isMuted
             }
@@ -94,19 +105,19 @@ class EngineEventInterpreter: ObservableObject {
         // CC changes — only emit when value actually changes
         for i in 0..<8 {
             if abs(layers[i].volume - prevVolumes[i]) > 0.01 {
-                appendLine("pad \(i + 1) vol → \(Int(layers[i].volume * 100))%")
+                appendLine("pad \(i + 1) vol → \(Int(layers[i].volume * 100))%", kind: .state)
                 prevVolumes[i] = layers[i].volume
             }
             if abs(layers[i].pan - prevPans[i]) > 0.01 {
-                appendLine("pad \(i + 1) pan → \(Self.formatPan(layers[i].pan))")
+                appendLine("pad \(i + 1) pan → \(Self.formatPan(layers[i].pan))", kind: .state)
                 prevPans[i] = layers[i].pan
             }
             if abs(layers[i].hpCutoff - prevHP[i]) > 1 {
-                appendLine("pad \(i + 1) HP → \(Self.formatFrequency(layers[i].hpCutoff))")
+                appendLine("pad \(i + 1) HP → \(Self.formatFrequency(layers[i].hpCutoff))", kind: .state)
                 prevHP[i] = layers[i].hpCutoff
             }
             if abs(layers[i].lpCutoff - prevLP[i]) > 1 {
-                appendLine("pad \(i + 1) LP → \(Self.formatFrequency(layers[i].lpCutoff))")
+                appendLine("pad \(i + 1) LP → \(Self.formatFrequency(layers[i].lpCutoff))", kind: .state)
                 prevLP[i] = layers[i].lpCutoff
             }
         }
@@ -120,11 +131,11 @@ class EngineEventInterpreter: ObservableObject {
         }
         if captureStr != prevCaptureState {
             switch capture.state {
-            case .armed: appendLine("capture armed — next loop boundary")
-            case .recording: appendLine("capture recording ◉")
+            case .armed: appendLine("capture armed — next loop boundary", kind: .capture)
+            case .recording: appendLine("capture recording ◉", kind: .capture)
             case .idle:
                 if prevCaptureState == "recording" {
-                    appendLine("capture saved")
+                    appendLine("capture saved", kind: .capture)
                 }
             }
             prevCaptureState = captureStr
@@ -132,7 +143,7 @@ class EngineEventInterpreter: ObservableObject {
     }
 
     func onLoopBoundary(layers: [Layer], padBank: PadBank, loopDurationMs: Double) {
-        appendLine("loop boundary — wrap")
+        appendLine("loop boundary — wrap", kind: .transport)
 
         // Emit layer summaries for pads with hits
         for i in 0..<8 where loopHitCounts[i] > 0 {
@@ -150,9 +161,9 @@ class EngineEventInterpreter: ObservableObject {
                 let others = (0..<8).filter { $0 != i && loopHitCounts[$0] > 0 }
                     .map { padBank.pads[$0].sample?.name.lowercased() ?? padBank.pads[$0].name.lowercased() }
                 let onTop = others.isEmpty ? "" : " on top of \(others.joined(separator: ", "))"
-                appendLine("\(name.lowercased()) loop int \(dur)\(onTop) (\(count) hits, \(spreadDesc) vel)")
+                appendLine("\(name.lowercased()) loop int \(dur)\(onTop) (\(count) hits, \(spreadDesc) vel)", kind: .hit)
             } else {
-                appendLine("\(name.lowercased()) (\(count) hits, \(spreadDesc) vel \(velMin)-\(velMax))")
+                appendLine("\(name.lowercased()) (\(count) hits, \(spreadDesc) vel \(velMin)-\(velMax))", kind: .hit)
             }
         }
 

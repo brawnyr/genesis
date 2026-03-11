@@ -42,4 +42,40 @@ enum Theme {
 
     // Charcoal for idle title
     static let charcoal = Color(red: 0.165, green: 0.157, blue: 0.145)  // #2a2825
+
+    // Pixel bitmaps for G, O, D — each letter is 7 wide x 9 tall
+    static let letterG: [[Bool]] = [
+        [false,true,true,true,true,true,false],
+        [true,true,false,false,false,true,true],
+        [true,true,false,false,false,false,false],
+        [true,true,false,false,false,false,false],
+        [true,true,false,true,true,true,false],
+        [true,true,false,false,false,true,true],
+        [true,true,false,false,false,true,true],
+        [true,true,false,false,false,true,true],
+        [false,true,true,true,true,true,false],
+    ]
+    static let letterO: [[Bool]] = [
+        [false,true,true,true,true,true,false],
+        [true,true,false,false,false,true,true],
+        [true,true,false,false,false,true,true],
+        [true,true,false,false,false,true,true],
+        [true,true,false,false,false,true,true],
+        [true,true,false,false,false,true,true],
+        [true,true,false,false,false,true,true],
+        [true,true,false,false,false,true,true],
+        [false,true,true,true,true,true,false],
+    ]
+    static let letterD: [[Bool]] = [
+        [true,true,true,true,true,false,false],
+        [true,true,false,false,true,true,false],
+        [true,true,false,false,false,true,true],
+        [true,true,false,false,false,true,true],
+        [true,true,false,false,false,true,true],
+        [true,true,false,false,false,true,true],
+        [true,true,false,false,false,true,true],
+        [true,true,false,false,true,true,false],
+        [true,true,true,true,true,false,false],
+    ]
+    static let godBitmap: [[[Bool]]] = [letterG, letterO, letterD]
 }

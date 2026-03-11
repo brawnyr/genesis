@@ -78,42 +78,7 @@ struct GodTitleLayer: View {
     @State private var phase: Double = 0
     @State private var ambientPixels: [DriftPixel] = GodTitleLayer.generatePixels(count: 40)
 
-    // Pixel bitmap for G, O, D — each letter is 7 wide x 9 tall
-    private static let letterG: [[Bool]] = [
-        [false,true,true,true,true,true,false],
-        [true,true,false,false,false,true,true],
-        [true,true,false,false,false,false,false],
-        [true,true,false,false,false,false,false],
-        [true,true,false,true,true,true,false],
-        [true,true,false,false,false,true,true],
-        [true,true,false,false,false,true,true],
-        [true,true,false,false,false,true,true],
-        [false,true,true,true,true,true,false],
-    ]
-    private static let letterO: [[Bool]] = [
-        [false,true,true,true,true,true,false],
-        [true,true,false,false,false,true,true],
-        [true,true,false,false,false,true,true],
-        [true,true,false,false,false,true,true],
-        [true,true,false,false,false,true,true],
-        [true,true,false,false,false,true,true],
-        [true,true,false,false,false,true,true],
-        [true,true,false,false,false,true,true],
-        [false,true,true,true,true,true,false],
-    ]
-    private static let letterD: [[Bool]] = [
-        [true,true,true,true,true,false,false],
-        [true,true,false,false,true,true,false],
-        [true,true,false,false,false,true,true],
-        [true,true,false,false,false,true,true],
-        [true,true,false,false,false,true,true],
-        [true,true,false,false,false,true,true],
-        [true,true,false,false,false,true,true],
-        [true,true,false,false,true,true,false],
-        [true,true,true,true,true,false,false],
-    ]
-
-    private static let godBitmap: [[[Bool]]] = [letterG, letterO, letterD]
+    private static let godBitmap = Theme.godBitmap
 
     private var isGodMode: Bool {
         capture.state == .armed || capture.state == .recording
