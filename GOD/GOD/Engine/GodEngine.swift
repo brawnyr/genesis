@@ -44,7 +44,9 @@ class GodEngine: ObservableObject {
     @Published var channelLevelDb: [Float] = Array(repeating: -.infinity, count: PadBank.padCount)
     @Published var masterVolume: Float = 1.0
     @Published var detectedBPMs: [Int: Double] = [:]
-    @Published var activePadIndex: Int = 0
+    @Published var activePadIndex: Int = 0 {
+        didSet { audio.activePadIndex = activePadIndex }
+    }
     @Published var toggleMode: ToggleMode = .instant
     @Published var pendingMutes: [Int: Bool] = [:]  // pad index -> target mute state
     var interpreter: EngineEventInterpreter?
@@ -481,12 +483,13 @@ class GodEngine: ObservableObject {
             let layerHPCutoffs = audio.layers.map { $0.hpCutoff }
             let layerLPCutoffs = audio.layers.map { $0.lpCutoff }
             let hits = pendingHits
+            let activeIdx = audio.activePadIndex
             pendingHits.removeAll()
             pendingLevels = Array(repeating: 0, count: PadBank.padCount)
             pendingTriggers = Array(repeating: false, count: PadBank.padCount)
             DispatchQueue.main.async {
-                // Sync active pad index from main → audio thread (safe direction)
-                self.audio.activePadIndex = self.activePadIndex
+                // Sync active pad index: audio → main (MIDI hits select pads)
+                self.activePadIndex = activeIdx
 
                 if self.audio.isPlaying {
                     for hit in hits {
