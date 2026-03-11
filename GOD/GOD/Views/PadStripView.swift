@@ -268,29 +268,37 @@ struct CCPanelView: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
-            // Master volume — big display
-            Text("MASTER")
-                .font(.system(size: 14, design: .monospaced).bold())
-                .foregroundColor(masterVolumeMode ? Theme.orange : Theme.subtle)
-            HStack(alignment: .firstTextBaseline, spacing: 1) {
-                Text("\(Int(engine.masterVolume * 100))")
-                    .font(.system(size: masterVolumeMode ? 44 : 32, design: .monospaced).bold())
-                    .foregroundColor(masterVolumeMode ? Theme.orange : Color(white: 0.6))
-                Text("%")
-                    .font(.system(size: masterVolumeMode ? 20 : 16, design: .monospaced))
-                    .foregroundColor(masterVolumeMode ? Theme.orange.opacity(0.6) : Color(white: 0.4))
+            // Master section — log style
+            HStack(spacing: 4) {
+                Text("~")
+                    .font(.system(size: 11, design: .monospaced))
+                    .foregroundColor(Theme.orange.opacity(0.4))
+                Text("MASTER")
+                    .font(.system(size: 11, design: .monospaced))
+                    .foregroundColor(Color.white.opacity(0.35))
+                    .tracking(1)
             }
-            .shadow(color: masterVolumeMode ? Theme.orange.opacity(0.3) : .clear, radius: 8)
+            HStack(alignment: .firstTextBaseline, spacing: 2) {
+                Text("\(Int(engine.masterVolume * 100))")
+                    .font(.system(size: 36, design: .monospaced).bold())
+                    .foregroundColor(masterVolumeMode ? Theme.orange : Color(white: 0.7))
+                Text("%")
+                    .font(.system(size: 14, design: .monospaced))
+                    .foregroundColor(masterVolumeMode ? Theme.orange.opacity(0.6) : Color(white: 0.3))
+            }
+            .shadow(color: Theme.orange.opacity(masterVolumeMode ? 0.3 : 0.15), radius: 20)
+            .padding(.top, 6)
 
             if masterVolumeMode {
                 Text("[V] to exit")
-                    .font(.system(size: 11, design: .monospaced))
+                    .font(.system(size: 10, design: .monospaced))
                     .foregroundColor(Theme.orange.opacity(0.5))
                     .padding(.top, 2)
             }
 
-            Divider()
-                .background(Theme.subtle.opacity(0.3))
+            Rectangle()
+                .fill(Color.white.opacity(0.04))
+                .frame(height: 1)
                 .padding(.vertical, 8)
 
             if browsingPad {
@@ -301,7 +309,7 @@ struct CCPanelView: View {
         }
         .padding(14)
         .frame(width: 190, alignment: .topLeading)
-        .background(Color(red: 0.1, green: 0.095, blue: 0.088))
+        .background(Color(red: 0.071, green: 0.067, blue: 0.059))
     }
 
     private var padReadoutView: some View {
