@@ -7,11 +7,13 @@ struct Pad {
     var sample: Sample?
     var samplePath: String?
     var isOneShot: Bool = true
+    var cut: Bool = false
 }
 
 struct PadAssignment: Codable {
     let path: String
     let name: String
+    var cut: Bool?
 }
 
 struct PadConfig: Codable {
@@ -30,7 +32,7 @@ struct PadBank {
             .appendingPathComponent("sounds")
     }()
 
-    private static let audioExtensions: Set<String> = ["wav", "aif", "aiff", "mp3", "m4a", "flac", "ogg"]
+    static let audioExtensions: Set<String> = ["wav", "aif", "aiff", "mp3", "m4a", "flac", "ogg"]
 
     var pads: [Pad] = (0..<8).map { i in
         Pad(index: i, midiNote: baseNote + i, name: "PAD \(i + 1)")
@@ -52,7 +54,7 @@ struct PadBank {
         var cfg = PadConfig()
         for pad in pads {
             if let path = pad.samplePath {
-                cfg.assignments[String(pad.index)] = PadAssignment(path: path, name: pad.name)
+                cfg.assignments[String(pad.index)] = PadAssignment(path: path, name: pad.name, cut: pad.cut)
             }
         }
         return cfg
@@ -80,6 +82,7 @@ struct PadBank {
                 pads[index].sample = sample
                 pads[index].samplePath = assignment.path
                 pads[index].name = assignment.name
+                pads[index].cut = assignment.cut ?? false
             }
         }
     }
