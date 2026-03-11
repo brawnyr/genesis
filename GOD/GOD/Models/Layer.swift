@@ -17,7 +17,7 @@ struct Layer {
     var pan: Float = 0.5            // 0.0 = left, 0.5 = center, 1.0 = right
     var hpCutoff: Float = Layer.hpBypassFrequency      // Hz — 20 = no effect
     var lpCutoff: Float = Layer.lpBypassFrequency   // Hz — 20000 = no effect
-    var cut: Bool = true
+    var tcps: Bool = true
     private var previousHits: [Hit]?
 
     init(index: Int, name: String) {

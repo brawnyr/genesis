@@ -26,21 +26,21 @@ import Foundation
     #expect(decoded.assignments["0"]?.path == "/path/to/kick.wav")
 }
 
-@Test func padCutSerializationRoundTrip() {
+@Test func padTcpsSerializationRoundTrip() {
     var pads = PadBank()
     pads.pads[0].samplePath = "/path/to/kick.wav"
     pads.pads[0].name = "KICK"
-    pads.pads[0].cut = true
+    pads.pads[0].tcps = true
     let data = try! JSONEncoder().encode(pads.config)
     let decoded = try! JSONDecoder().decode(PadConfig.self, from: data)
-    #expect(decoded.assignments["0"]?.cut == true)
+    #expect(decoded.assignments["0"]?.tcps == true)
 }
 
-@Test func padCutBackwardsCompat() {
+@Test func padTcpsBackwardsCompat() {
     let json = """
     {"assignments":{"0":{"path":"/kick.wav","name":"KICK"}}}
     """
     let data = json.data(using: .utf8)!
     let decoded = try! JSONDecoder().decode(PadConfig.self, from: data)
-    #expect(decoded.assignments["0"]?.cut == nil)
+    #expect(decoded.assignments["0"]?.tcps == nil)
 }

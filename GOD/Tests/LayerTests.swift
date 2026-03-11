@@ -75,7 +75,7 @@ import Testing
     #expect(layer.lpCutoff == 8000.0)
 }
 
-@Test func layerCutDefaultsTrue() {
+@Test func layerTcpsDefaultsTrue() {
     let layer = Layer(index: 0, name: "KICK")
-    #expect(layer.cut == true)
+    #expect(layer.tcps == true)
 }

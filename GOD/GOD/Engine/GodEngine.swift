@@ -203,22 +203,23 @@ class GodEngine: ObservableObject {
         velocityMode = velocityMode == .pressure ? .full : .pressure
     }
 
-    func toggleCut(pad index: Int) {
+    func toggleTcps(pad index: Int) {
         guard index >= 0, index < layers.count else { return }
-        layers[index].cut.toggle()
-        audio.layers[index].cut = layers[index].cut
+        layers[index].tcps.toggle()
+        audio.layers[index].tcps = layers[index].tcps
     }
 
-    func syncCutToPadBank() {
+    func syncTcpsToPadBank() {
         for i in 0..<PadBank.padCount {
-            padBank.pads[i].cut = layers[i].cut
+            padBank.pads[i].tcps = layers[i].tcps
         }
     }
 
-    func restoreCutFromPadBank() {
+    func restoreTcpsFromPadBank() {
+        // TCPS (this cuts previous sound) defaults to ON for all pads.
         for i in 0..<PadBank.padCount {
-            layers[i].cut = padBank.pads[i].cut
-            audio.layers[i].cut = padBank.pads[i].cut
+            layers[i].tcps = true
+            audio.layers[i].tcps = true
         }
     }
 
@@ -254,7 +255,7 @@ class GodEngine: ObservableObject {
         padBank.assign(sample: sample, toPad: index)
         padBank.pads[index].samplePath = url.path
         layers[index].name = sample.name.uppercased()
-        syncCutToPadBank()
+        syncTcpsToPadBank()
         do {
             try padBank.save()
         } catch {
@@ -276,7 +277,7 @@ class GodEngine: ObservableObject {
             audio.layers[padIndex].name = padBank.pads[padIndex].name
         }
 
-        if audio.layers[padIndex].cut {
+        if audio.layers[padIndex].tcps {
             voices.removeAll { $0.padIndex == padIndex }
         }
         let vel = velocityMode == .full ? Float(1.0) : Float(velocity) / 127.0
@@ -360,7 +361,7 @@ class GodEngine: ObservableObject {
 
                 for hit in hits {
                     if let sample = padBank.pads[layer.index].sample {
-                        if layer.cut {
+                        if layer.tcps {
                             voices.removeAll { $0.padIndex == layer.index }
                         }
                         let vel = velocityMode == .full ? Float(1.0) : Float(hit.velocity) / 127.0

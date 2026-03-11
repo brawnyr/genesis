@@ -95,21 +95,21 @@ import Testing
     }
 }
 
-@Test @MainActor func engineToggleCut() {
+@Test @MainActor func engineToggleTcps() {
     let engine = GodEngine()
-    #expect(engine.layers[0].cut == true)   // retrig on by default
-    engine.toggleCut(pad: 0)
-    #expect(engine.layers[0].cut == false)
-    engine.toggleCut(pad: 0)
-    #expect(engine.layers[0].cut == true)
+    #expect(engine.layers[0].tcps == true)   // tcps on by default
+    engine.toggleTcps(pad: 0)
+    #expect(engine.layers[0].tcps == false)
+    engine.toggleTcps(pad: 0)
+    #expect(engine.layers[0].tcps == true)
 }
 
-@Test @MainActor func engineCutModeChopsVoices() {
+@Test @MainActor func engineTcpsChopsVoices() {
     let engine = GodEngine()
     let data = [Float](repeating: 0.5, count: 44100)
     let sample = Sample(name: "808", left: data, right: data, sampleRate: 44100)
     engine.padBank.assign(sample: sample, toPad: 0)
-    // cut/retrig is ON by default — no toggle needed
+    // tcps is ON by default — no toggle needed
     engine.togglePlay()
 
     // First hit — should create 1 voice
@@ -118,19 +118,19 @@ import Testing
     let voicesAfterFirst = engine.voices.filter { $0.padIndex == 0 }.count
     #expect(voicesAfterFirst == 1)
 
-    // Second hit — cut should remove first, add new = still 1 voice
+    // Second hit — tcps should remove first, add new = still 1 voice
     engine.midiRingBuffer.write(.noteOn(note: 36, velocity: 100))
     let _ = engine.processBlock(frameCount: 512)
     let voicesAfterSecond = engine.voices.filter { $0.padIndex == 0 }.count
     #expect(voicesAfterSecond == 1)
 }
 
-@Test @MainActor func engineNoCutModeStacksVoices() {
+@Test @MainActor func engineNoTcpsStacksVoices() {
     let engine = GodEngine()
     let data = [Float](repeating: 0.5, count: 44100)
     let sample = Sample(name: "808", left: data, right: data, sampleRate: 44100)
     engine.padBank.assign(sample: sample, toPad: 0)
-    engine.toggleCut(pad: 0)  // turn OFF retrig so voices stack
+    engine.toggleTcps(pad: 0)  // turn OFF tcps so voices stack
     engine.togglePlay()
 
     engine.midiRingBuffer.write(.noteOn(note: 36, velocity: 100))

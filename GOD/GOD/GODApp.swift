@@ -86,7 +86,7 @@ struct GODApp: App {
             logger.info("No saved pad config (or error loading): \(error.localizedDescription)")
         }
         engine.padBank.loadFromSpliceFolders()
-        engine.restoreCutFromPadBank()
+        engine.restoreTcpsFromPadBank()
         for i in 0..<PadBank.padCount {
             engine.detectBPM(forPad: i)
         }

@@ -10,13 +10,13 @@ struct Pad {
     var sample: Sample?
     var samplePath: String?
     var isOneShot: Bool = true
-    var cut: Bool = true
+    var tcps: Bool = true
 }
 
 struct PadAssignment: Codable {
     let path: String
     let name: String
-    var cut: Bool?
+    var tcps: Bool?
 }
 
 
@@ -58,7 +58,7 @@ struct PadBank {
         var cfg = PadConfig()
         for pad in pads {
             if let path = pad.samplePath {
-                cfg.assignments[String(pad.index)] = PadAssignment(path: path, name: pad.name, cut: pad.cut)
+                cfg.assignments[String(pad.index)] = PadAssignment(path: path, name: pad.name, tcps: pad.tcps)
             }
         }
         return cfg
@@ -87,7 +87,7 @@ struct PadBank {
                 pads[index].sample = sample
                 pads[index].samplePath = assignment.path
                 pads[index].name = assignment.name
-                pads[index].cut = assignment.cut ?? true
+                pads[index].tcps = assignment.tcps ?? true
             } catch {
                 logger.warning("Failed to load saved sample \(assignment.path): \(error.localizedDescription)")
             }
