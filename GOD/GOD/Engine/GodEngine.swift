@@ -29,6 +29,16 @@ class GodEngine: ObservableObject {
     private(set) var voices: [Voice] = []
     let midiRingBuffer = MIDIRingBuffer()
 
+    // Pre-allocated audio buffers (avoid heap allocs on the audio thread)
+    private var outputBufferL = [Float](repeating: 0, count: 4096)
+    private var outputBufferR = [Float](repeating: 0, count: 4096)
+
+    // Cached biquad coefficients per layer (recalculated only when cutoff changes)
+    private var cachedHPCutoffs: [Float] = Array(repeating: 20.0, count: 8)
+    private var cachedLPCutoffs: [Float] = Array(repeating: 20000.0, count: 8)
+    private var cachedHPCoeffs: [BiquadCoefficients] = Array(repeating: .bypass, count: 8)
+    private var cachedLPCoeffs: [BiquadCoefficients] = Array(repeating: .bypass, count: 8)
+
     // UI update throttle: 44100 / 1323 ≈ 33Hz (~30fps)
     private static let uiUpdateFrameThreshold = 1323
 
@@ -88,7 +98,7 @@ class GodEngine: ObservableObject {
         }
         let buffer = sample.left
         let sampleRate = sample.sampleRate
-        detectedBPMs[index] = nil  // clear while detecting
+        detectedBPMs[index] = nil
         Task.detached { [weak self] in
             let bpm = BPMDetector.detect(buffer: buffer, sampleRate: sampleRate)
             await MainActor.run {
@@ -156,13 +166,26 @@ class GodEngine: ObservableObject {
         audioMetronomeOn = metronome.isOn
     }
 
+    // MARK: - Centralized sample loading (single source of truth)
+
+    func loadSample(from url: URL, forPad index: Int) throws {
+        let sample = try Sample.load(from: url)
+        padBank.assign(sample: sample, toPad: index)
+        padBank.pads[index].samplePath = url.path
+        layers[index].name = sample.name.uppercased()
+        syncCutToPadBank()
+        try? padBank.save()
+        detectBPM(forPad: index)
+    }
+
+    // MARK: - Audio thread
+
     private func handlePadHit(note: Int, velocity: Int, record: Bool) {
         guard let padIndex = padBank.padIndex(forNote: note),
               let sample = padBank.pads[padIndex].sample else { return }
 
         audioActivePadIndex = padIndex
 
-        // Only record hits to layer when transport is playing
         if record {
             audioLayers[padIndex].addHit(at: audioPosition, velocity: velocity)
             audioLayers[padIndex].name = padBank.pads[padIndex].name
@@ -199,13 +222,37 @@ class GodEngine: ObservableObject {
         }
     }
 
+    private func updateCachedCoefficients() {
+        let sr = Float(Transport.sampleRate)
+        for i in 0..<8 {
+            let hp = audioLayers[i].hpCutoff
+            if hp != cachedHPCutoffs[i] {
+                cachedHPCutoffs[i] = hp
+                cachedHPCoeffs[i] = hp <= 21 ? .bypass : .highPass(cutoff: hp, sampleRate: sr)
+            }
+            let lp = audioLayers[i].lpCutoff
+            if lp != cachedLPCutoffs[i] {
+                cachedLPCutoffs[i] = lp
+                cachedLPCoeffs[i] = lp >= 19999 ? .bypass : .lowPass(cutoff: lp, sampleRate: sr)
+            }
+        }
+    }
+
     func processBlock(frameCount: Int) -> (left: [Float], right: [Float]) {
-        var outputL = [Float](repeating: 0, count: frameCount)
-        var outputR = [Float](repeating: 0, count: frameCount)
+        // Ensure pre-allocated buffers are large enough, then zero them
+        if outputBufferL.count < frameCount {
+            outputBufferL = [Float](repeating: 0, count: frameCount)
+            outputBufferR = [Float](repeating: 0, count: frameCount)
+        } else {
+            for i in 0..<frameCount {
+                outputBufferL[i] = 0
+                outputBufferR[i] = 0
+            }
+        }
 
         let loopLen = audioLoopLengthFrames
 
-        // Loop replay, metronome, capture, and position advance only when playing
+        // Loop replay, metronome, and position advance only when playing
         if audioIsPlaying, loopLen > 0 {
             let startPos = audioPosition
 
@@ -267,10 +314,6 @@ class GodEngine: ObservableObject {
                 wrapped = true
             }
 
-            // Capture
-            if audioCaptureState == .recording {
-                audioCapture.append(left: outputL, right: outputR)
-            }
             if wrapped {
                 audioCapture.onLoopBoundary()
                 audioCaptureState = audioCapture.state
@@ -298,21 +341,20 @@ class GodEngine: ObservableObject {
             }
         }
 
+        // Update cached biquad coefficients (only recalculates when cutoffs change)
+        updateCachedCoefficients()
+
         // Mix all active voices — always, even when stopped (for pad auditioning)
         voices = voices.compactMap { voice in
             var v = voice
-            let layer = v.padIndex >= 0 && v.padIndex < 8 ? audioLayers[v.padIndex] : nil
-            let hpCoeffs = (layer?.hpCutoff ?? 20) <= 21
-                ? BiquadCoefficients.bypass
-                : BiquadCoefficients.highPass(cutoff: layer!.hpCutoff, sampleRate: Float(Transport.sampleRate))
-            let lpCoeffs = (layer?.lpCutoff ?? 20000) >= 19999
-                ? BiquadCoefficients.bypass
-                : BiquadCoefficients.lowPass(cutoff: layer!.lpCutoff, sampleRate: Float(Transport.sampleRate))
-            let pan = layer?.pan ?? 0.5
-            let (done, peak) = v.fill(intoLeft: &outputL, right: &outputR, count: frameCount,
+            let padIdx = v.padIndex
+            let hpCoeffs = padIdx >= 0 && padIdx < 8 ? cachedHPCoeffs[padIdx] : .bypass
+            let lpCoeffs = padIdx >= 0 && padIdx < 8 ? cachedLPCoeffs[padIdx] : .bypass
+            let pan = padIdx >= 0 && padIdx < 8 ? audioLayers[padIdx].pan : 0.5
+            let (done, peak) = v.fill(intoLeft: &outputBufferL, right: &outputBufferR, count: frameCount,
                                        pan: pan, hpCoeffs: hpCoeffs, lpCoeffs: lpCoeffs)
-            if v.padIndex >= 0 && v.padIndex < 8 {
-                pendingLevels[v.padIndex] = max(pendingLevels[v.padIndex], peak)
+            if padIdx >= 0 && padIdx < 8 {
+                pendingLevels[padIdx] = max(pendingLevels[padIdx], peak)
             }
             return done ? nil : v
         }
@@ -320,9 +362,17 @@ class GodEngine: ObservableObject {
         // Apply master volume and track master level
         var peak: Float = 0
         for i in 0..<frameCount {
-            outputL[i] *= masterVolume
-            outputR[i] *= masterVolume
-            peak = max(peak, abs(outputL[i]), abs(outputR[i]))
+            outputBufferL[i] *= masterVolume
+            outputBufferR[i] *= masterVolume
+            peak = max(peak, abs(outputBufferL[i]), abs(outputBufferR[i]))
+        }
+
+        // Capture AFTER mixing — so we record actual audio, not silence
+        if audioCaptureState == .recording {
+            audioCapture.append(
+                left: Array(outputBufferL[0..<frameCount]),
+                right: Array(outputBufferR[0..<frameCount])
+            )
         }
 
         // Throttle UI updates — sync position + levels ~30x/sec
@@ -334,7 +384,6 @@ class GodEngine: ObservableObject {
             let masterPeak = peak
             let triggers = pendingTriggers
             let layerVolumes = audioLayers.map { $0.volume }
-            audioActivePadIndex = activePadIndex
             let layerPans = audioLayers.map { $0.pan }
             let layerHPCutoffs = audioLayers.map { $0.hpCutoff }
             let layerLPCutoffs = audioLayers.map { $0.lpCutoff }
@@ -343,6 +392,9 @@ class GodEngine: ObservableObject {
             pendingLevels = Array(repeating: 0, count: 8)
             pendingTriggers = Array(repeating: false, count: 8)
             DispatchQueue.main.async {
+                // Sync active pad index from main → audio thread (safe direction)
+                self.audioActivePadIndex = self.activePadIndex
+
                 if self.audioIsPlaying {
                     for hit in hits {
                         self.layers[hit.padIndex].addHit(at: hit.position, velocity: hit.velocity)
@@ -381,7 +433,7 @@ class GodEngine: ObservableObject {
             }
         }
 
-        return (outputL, outputR)
+        return (Array(outputBufferL[0..<frameCount]), Array(outputBufferR[0..<frameCount]))
     }
 
     private var audioLoopLengthFrames: Int {
@@ -389,5 +441,4 @@ class GodEngine: ObservableObject {
         let secondsPerBeat = 60.0 / Double(audioBPM)
         return Int(beatsPerLoop * secondsPerBeat * Transport.sampleRate)
     }
-
 }

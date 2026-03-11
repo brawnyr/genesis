@@ -42,4 +42,45 @@ enum Theme {
 
     // Charcoal for idle title
     static let charcoal = Color(red: 0.165, green: 0.157, blue: 0.145)  // #2a2825
+
+    // MARK: - Shared GOD pixel bitmap (7 wide x 9 tall per letter)
+
+    static let godBitmap: [[[Bool]]] = [
+        // G
+        [
+            [false,true,true,true,true,true,false],
+            [true,true,false,false,false,true,true],
+            [true,true,false,false,false,false,false],
+            [true,true,false,false,false,false,false],
+            [true,true,false,true,true,true,false],
+            [true,true,false,false,false,true,true],
+            [true,true,false,false,false,true,true],
+            [true,true,false,false,false,true,true],
+            [false,true,true,true,true,true,false],
+        ],
+        // O
+        [
+            [false,true,true,true,true,true,false],
+            [true,true,false,false,false,true,true],
+            [true,true,false,false,false,true,true],
+            [true,true,false,false,false,true,true],
+            [true,true,false,false,false,true,true],
+            [true,true,false,false,false,true,true],
+            [true,true,false,false,false,true,true],
+            [true,true,false,false,false,true,true],
+            [false,true,true,true,true,true,false],
+        ],
+        // D
+        [
+            [true,true,true,true,true,false,false],
+            [true,true,false,false,true,true,false],
+            [true,true,false,false,false,true,true],
+            [true,true,false,false,false,true,true],
+            [true,true,false,false,false,true,true],
+            [true,true,false,false,false,true,true],
+            [true,true,false,false,false,true,true],
+            [true,true,false,false,true,true,false],
+            [true,true,true,true,true,false,false],
+        ],
+    ]
 }

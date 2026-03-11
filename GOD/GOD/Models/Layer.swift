@@ -23,8 +23,14 @@ struct Layer {
     }
 
     mutating func addHit(at position: Int, velocity: Int) {
-        hits.append(Hit(position: position, velocity: velocity))
-        hits.sort { $0.position < $1.position }
+        let hit = Hit(position: position, velocity: velocity)
+        // Binary search insertion — O(log n) vs O(n log n) full sort
+        var lo = 0, hi = hits.count
+        while lo < hi {
+            let mid = (lo + hi) / 2
+            if hits[mid].position < position { lo = mid + 1 } else { hi = mid }
+        }
+        hits.insert(hit, at: lo)
     }
 
     func hits(inRange range: Range<Int>) -> [Hit] {

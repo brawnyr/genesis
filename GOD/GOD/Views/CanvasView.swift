@@ -78,43 +78,6 @@ struct GodTitleLayer: View {
     @State private var phase: Double = 0
     @State private var ambientPixels: [DriftPixel] = GodTitleLayer.generatePixels(count: 40)
 
-    // Pixel bitmap for G, O, D — each letter is 7 wide x 9 tall
-    private static let letterG: [[Bool]] = [
-        [false,true,true,true,true,true,false],
-        [true,true,false,false,false,true,true],
-        [true,true,false,false,false,false,false],
-        [true,true,false,false,false,false,false],
-        [true,true,false,true,true,true,false],
-        [true,true,false,false,false,true,true],
-        [true,true,false,false,false,true,true],
-        [true,true,false,false,false,true,true],
-        [false,true,true,true,true,true,false],
-    ]
-    private static let letterO: [[Bool]] = [
-        [false,true,true,true,true,true,false],
-        [true,true,false,false,false,true,true],
-        [true,true,false,false,false,true,true],
-        [true,true,false,false,false,true,true],
-        [true,true,false,false,false,true,true],
-        [true,true,false,false,false,true,true],
-        [true,true,false,false,false,true,true],
-        [true,true,false,false,false,true,true],
-        [false,true,true,true,true,true,false],
-    ]
-    private static let letterD: [[Bool]] = [
-        [true,true,true,true,true,false,false],
-        [true,true,false,false,true,true,false],
-        [true,true,false,false,false,true,true],
-        [true,true,false,false,false,true,true],
-        [true,true,false,false,false,true,true],
-        [true,true,false,false,false,true,true],
-        [true,true,false,false,false,true,true],
-        [true,true,false,false,true,true,false],
-        [true,true,true,true,true,false,false],
-    ]
-
-    private static let godBitmap: [[[Bool]]] = [letterG, letterO, letterD]
-
     private var isGodMode: Bool {
         capture.state == .armed || capture.state == .recording
     }
@@ -184,7 +147,7 @@ struct GodTitleLayer: View {
                     let startX = cx - totalW / 2
                     let startY = cy - totalH / 2
 
-                    for (li, letter) in Self.godBitmap.enumerated() {
+                    for (li, letter) in Theme.godBitmap.enumerated() {
                         let lx = startX + Double(li) * (letterW + letterSpacing)
                         for (row, bits) in letter.enumerated() {
                             for (col, on) in bits.enumerated() {

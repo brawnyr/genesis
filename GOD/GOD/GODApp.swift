@@ -32,46 +32,6 @@ struct GODApp: App {
         bg.setFill()
         path.fill()
 
-        // Pixel grid for G, O, D — 7 wide x 9 tall each
-        let letters: [[[Bool]]] = [
-            // G
-            [
-                [false,true,true,true,true,true,false],
-                [true,true,false,false,false,true,true],
-                [true,true,false,false,false,false,false],
-                [true,true,false,false,false,false,false],
-                [true,true,false,true,true,true,false],
-                [true,true,false,false,false,true,true],
-                [true,true,false,false,false,true,true],
-                [true,true,false,false,false,true,true],
-                [false,true,true,true,true,true,false],
-            ],
-            // O
-            [
-                [false,true,true,true,true,true,false],
-                [true,true,false,false,false,true,true],
-                [true,true,false,false,false,true,true],
-                [true,true,false,false,false,true,true],
-                [true,true,false,false,false,true,true],
-                [true,true,false,false,false,true,true],
-                [true,true,false,false,false,true,true],
-                [true,true,false,false,false,true,true],
-                [false,true,true,true,true,true,false],
-            ],
-            // D
-            [
-                [true,true,true,true,true,false,false],
-                [true,true,false,false,true,true,false],
-                [true,true,false,false,false,true,true],
-                [true,true,false,false,false,true,true],
-                [true,true,false,false,false,true,true],
-                [true,true,false,false,false,true,true],
-                [true,true,false,false,false,true,true],
-                [true,true,false,false,true,true,false],
-                [true,true,true,true,true,false,false],
-            ],
-        ]
-
         let pixelSize: CGFloat = 14
         let gap: CGFloat = 4
         let cellSize = pixelSize + gap
@@ -84,7 +44,7 @@ struct GODApp: App {
 
         let orange = NSColor(red: 0.855, green: 0.482, blue: 0.290, alpha: 1)
 
-        for (li, letter) in letters.enumerated() {
+        for (li, letter) in Theme.godBitmap.enumerated() {
             let lx = startX + CGFloat(li) * (letterW + letterSpacing)
             for (row, bits) in letter.enumerated() {
                 for (col, on) in bits.enumerated() {
@@ -108,6 +68,9 @@ struct GODApp: App {
                 .onAppear {
                     startManagers()
                     NSApplication.shared.windows.first?.makeKeyAndOrderFront(nil)
+                }
+                .onDisappear {
+                    stopManagers()
                 }
         }
         .windowStyle(.hiddenTitleBar)
@@ -152,6 +115,11 @@ struct GODApp: App {
         midi.interpreter = interpreter
         midi.start()
         midiManager = midi
+    }
+
+    private func stopManagers() {
+        audioManager?.stop()
+        midiManager?.stop()
     }
 
     private func ensureSpliceFolders() {

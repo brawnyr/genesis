@@ -11,29 +11,30 @@ enum MIDIEvent {
 /// Uses OSMemoryBarrier() to ensure correct visibility of writes across threads
 /// on ARM64 (Apple Silicon) without needing locks.
 final class MIDIRingBuffer {
-    private var buffer = [MIDIEvent?](repeating: nil, count: 256)
-    private var _writeIndex: Int = 0
-    private var _readIndex: Int = 0
+    private static let capacity = 256
+    private static let mask = capacity - 1
+
+    private var buffer = [MIDIEvent?](repeating: nil, count: capacity)
+    private var _writeIndex: UInt64 = 0
+    private var _readIndex: UInt64 = 0
 
     func write(_ event: MIDIEvent) {
         let wi = _writeIndex
-        buffer[wi % 256] = event
-        // Memory barrier: ensure buffer write is visible before index update
+        buffer[Int(wi) & Self.mask] = event
         OSMemoryBarrier()
-        _writeIndex = wi + 1
-        if _writeIndex - _readIndex > 256 {
-            _readIndex = _writeIndex - 256
+        _writeIndex = wi &+ 1
+        if _writeIndex &- _readIndex > UInt64(Self.capacity) {
+            _readIndex = _writeIndex &- UInt64(Self.capacity)
         }
     }
 
     func drain(_ handler: (MIDIEvent) -> Void) {
-        // Memory barrier: ensure we see latest _writeIndex
         OSMemoryBarrier()
         while _readIndex < _writeIndex {
-            if let event = buffer[_readIndex % 256] {
+            if let event = buffer[Int(_readIndex) & Self.mask] {
                 handler(event)
             }
-            _readIndex += 1
+            _readIndex &+= 1
         }
     }
 }
