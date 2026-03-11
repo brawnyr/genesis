@@ -98,6 +98,10 @@ class GodEngine: ObservableObject {
         voices.removeAll()
     }
 
+    func killAllVoices() {
+        voices.removeAll()
+    }
+
     func setBPM(_ bpm: Int) {
         transport.bpm = bpm
         audio.bpm = transport.bpm
@@ -150,6 +154,9 @@ class GodEngine: ObservableObject {
         if toggleMode == .instant {
             layers[index].isMuted.toggle()
             audio.layers[index].isMuted = layers[index].isMuted
+            if layers[index].isMuted {
+                voices.removeAll { $0.padIndex == index }
+            }
         } else {
             // Next loop mode: queue the change
             let currentEffective = pendingMutes[index] ?? layers[index].isMuted
@@ -435,6 +442,9 @@ class GodEngine: ObservableObject {
                 let applied = audio.pendingMutes
                 for (index, muteState) in applied {
                     audio.layers[index].isMuted = muteState
+                    if muteState {
+                        voices.removeAll { $0.padIndex == index }
+                    }
                 }
                 audio.pendingMutes.removeAll()
                 DispatchQueue.main.async {

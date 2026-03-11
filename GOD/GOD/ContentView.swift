@@ -108,6 +108,7 @@ struct ContentView: View {
                     KeyLabel(key: "G", action: "god")
                     KeyLabel(key: "A/D", action: "pad ←→")
                     KeyLabel(key: "⇧1-8", action: "pad jump")
+                    KeyLabel(key: "F", action: "kill")
                     KeyLabel(key: "Q", action: "cool")
                     KeyLabel(key: "E", action: "hot")
                     KeyLabel(key: "M", action: "metro")
@@ -152,6 +153,7 @@ struct ContentView: View {
         static let b: UInt16 = 11
         static let z: UInt16 = 6
         static let x: UInt16 = 7
+        static let f: UInt16 = 3
         static let n: UInt16 = 45
         static let returnKey: UInt16 = 36
         static let upArrow: UInt16 = 126
@@ -407,6 +409,9 @@ struct ContentView: View {
             let cutState = engine.layers[engine.activePadIndex].cut ? "on" : "off"
             let name = padName(engine.activePadIndex)
             interpreter.appendLine("pad \(engine.activePadIndex + 1) \(name) cut \(cutState)", kind: .state)
+        case Key.f:
+            engine.killAllVoices()
+            interpreter.appendLine("killed all voices", kind: .state)
         default:
             break
         }

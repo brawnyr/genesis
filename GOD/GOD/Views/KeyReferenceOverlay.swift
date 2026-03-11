@@ -2,7 +2,7 @@ import SwiftUI
 
 enum KeyAction: CaseIterable {
     case play, capture, padLeft, padRight, padJump
-    case cool, hot, browse, browseNav, closeBrowser
+    case killAll, cool, hot, browse, browseNav, closeBrowser
     case metronome, bpmMode, fewerBars, moreBars
     case masterVolume, volume, undoClear, cutMode
     case toggleMode, clearPad, stop, help
@@ -14,6 +14,7 @@ enum KeyAction: CaseIterable {
         case .padLeft:      return "A"
         case .padRight:     return "D"
         case .padJump:      return "⇧1-8"
+        case .killAll:      return "F"
         case .cool:         return "Q"
         case .hot:          return "E"
         case .browse:       return "T"
@@ -41,6 +42,7 @@ enum KeyAction: CaseIterable {
         case .padLeft:      return "select pad left"
         case .padRight:     return "select pad right"
         case .padJump:      return "jump to pad 1-8"
+        case .killAll:      return "kill all sound"
         case .cool:         return "cool (mute) active pad"
         case .hot:          return "hot (unmute) active pad"
         case .browse:       return "browse samples for pad"
