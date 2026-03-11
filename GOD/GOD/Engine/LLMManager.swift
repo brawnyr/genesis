@@ -6,8 +6,6 @@ private let logger = Logger(subsystem: "com.god.llm", category: "LLMManager")
 class LLMManager {
     private let terminalState: TerminalState
     private var process: Process?
-    private var stdinPipe: Pipe?
-    private var stdoutPipe: Pipe?
     private let queue = DispatchQueue(label: "com.god.llm", qos: .utility)
     private var lastRequestTime: Date = .distantPast
     private var _pendingRequestCount = 0
@@ -15,6 +13,8 @@ class LLMManager {
     private let timeoutInterval: TimeInterval = 3.0
     private var isRunning = false
     private var lastSnapshotJSON: String?
+    private let port = 8421
+    private let session = URLSession(configuration: .ephemeral)
 
     var pendingRequestCount: Int {
         queue.sync { _pendingRequestCount }
@@ -42,18 +42,17 @@ class LLMManager {
 
     func start() {
         guard let modelFile = findModelFile() else {
-            // Synchronous — no subprocess work needed, no need for async dispatch
             terminalState.setStatus("no model loaded — drop a gguf into ~/.god/models/")
             return
         }
 
-        guard let llamaBinary = findLlamaBinary() else {
-            terminalState.setStatus("llama-cli not found — install llama.cpp")
+        guard let serverBinary = findServerBinary() else {
+            terminalState.setStatus("llama-server not found — install llama.cpp")
             return
         }
 
         queue.async { [weak self] in
-            self?.launchProcess(binary: llamaBinary, model: modelFile)
+            self?.launchServer(binary: serverBinary, model: modelFile)
         }
     }
 
@@ -78,7 +77,7 @@ class LLMManager {
 
             self.lastRequestTime = now
             self._pendingRequestCount += 1
-            self.sendRequest(snapshot: snapshot)
+            self.sendHTTPRequest(snapshot: snapshot)
         }
     }
 
@@ -88,39 +87,31 @@ class LLMManager {
         return contents.first { $0.pathExtension == "gguf" }
     }
 
-    private func findLlamaBinary() -> String? {
+    private func findServerBinary() -> String? {
         let candidates = [
-            "/usr/local/bin/llama-cli",
-            "/opt/homebrew/bin/llama-cli",
+            "/usr/local/bin/llama-server",
+            "/opt/homebrew/bin/llama-server",
         ]
         return candidates.first { FileManager.default.fileExists(atPath: $0) }
     }
 
-    private func launchProcess(binary: String, model: URL) {
+    private func launchServer(binary: String, model: URL) {
         let proc = Process()
         proc.executableURL = URL(fileURLWithPath: binary)
         proc.arguments = [
             "-m", model.path,
-            "--interactive",
+            "--port", String(port),
             "-c", "2048",
             "--temp", "0.7",
-            "-p", Self.systemPrompt
+            "-ngl", "99",  // offload all layers to GPU/Metal
         ]
-
-        let stdin = Pipe()
-        let stdout = Pipe()
-        proc.standardInput = stdin
-        proc.standardOutput = stdout
+        proc.standardOutput = FileHandle.nullDevice
         proc.standardError = FileHandle.nullDevice
 
         do {
             try proc.run()
             self.process = proc
-            self.stdinPipe = stdin
-            self.stdoutPipe = stdout
-            self.isRunning = true
 
-            // Detect crashes
             proc.terminationHandler = { [weak self] _ in
                 self?.isRunning = false
                 self?.queue.async { self?._pendingRequestCount = 0 }
@@ -129,28 +120,98 @@ class LLMManager {
                 }
             }
 
-            DispatchQueue.main.async {
-                self.terminalState.append("genesis terminal online", highlight: true)
+            // Wait for server to be ready (poll /health)
+            waitForServer { [weak self] success in
+                guard let self = self else { return }
+                if success {
+                    self.isRunning = true
+                    DispatchQueue.main.async {
+                        self.terminalState.append("genesis terminal online", highlight: true)
+                    }
+                } else {
+                    DispatchQueue.main.async {
+                        self.terminalState.setStatus("model failed to start")
+                    }
+                    proc.terminate()
+                }
             }
-
-            readOutput(from: stdout)
         } catch {
-            logger.error("Failed to launch llama: \(error.localizedDescription)")
+            logger.error("Failed to launch llama-server: \(error.localizedDescription)")
             DispatchQueue.main.async {
                 self.terminalState.setStatus("model disconnected")
             }
         }
     }
 
-    private func readOutput(from pipe: Pipe) {
-        pipe.fileHandleForReading.readabilityHandler = { [weak self] handle in
-            let data = handle.availableData
-            guard !data.isEmpty, let text = String(data: data, encoding: .utf8) else { return }
+    private func waitForServer(attempts: Int = 30, completion: @escaping (Bool) -> Void) {
+        let url = URL(string: "http://127.0.0.1:\(port)/health")!
+        var remaining = attempts
 
-            let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
+        func check() {
+            let task = session.dataTask(with: url) { data, response, _ in
+                if let http = response as? HTTPURLResponse, http.statusCode == 200 {
+                    completion(true)
+                } else {
+                    remaining -= 1
+                    if remaining > 0 {
+                        self.queue.asyncAfter(deadline: .now() + 1.0) { check() }
+                    } else {
+                        completion(false)
+                    }
+                }
+            }
+            task.resume()
+        }
+
+        queue.asyncAfter(deadline: .now() + 1.0) { check() }
+    }
+
+    private func sendHTTPRequest(snapshot: StateSnapshot) {
+        let encoder = JSONEncoder()
+        encoder.outputFormatting = .sortedKeys
+        guard let snapshotData = try? encoder.encode(snapshot),
+              let snapshotJSON = String(data: snapshotData, encoding: .utf8) else {
+            queue.async { self._pendingRequestCount = 0 }
+            return
+        }
+
+        lastSnapshotJSON = snapshotJSON
+
+        let requestBody: [String: Any] = [
+            "messages": [
+                ["role": "system", "content": Self.systemPrompt],
+                ["role": "user", "content": snapshotJSON]
+            ],
+            "max_tokens": 100,
+            "temperature": 0.7,
+            "stream": false
+        ]
+
+        guard let bodyData = try? JSONSerialization.data(withJSONObject: requestBody) else {
+            queue.async { self._pendingRequestCount = 0 }
+            return
+        }
+
+        var request = URLRequest(url: URL(string: "http://127.0.0.1:\(port)/v1/chat/completions")!)
+        request.httpMethod = "POST"
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        request.httpBody = bodyData
+        request.timeoutInterval = timeoutInterval
+
+        let task = session.dataTask(with: request) { [weak self] data, _, error in
+            defer { self?.queue.async { self?._pendingRequestCount = 0 } }
+
+            guard let data = data, error == nil else { return }
+
+            // Parse OpenAI-compatible response
+            guard let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+                  let choices = json["choices"] as? [[String: Any]],
+                  let first = choices.first,
+                  let message = first["message"] as? [String: Any],
+                  let content = message["content"] as? String else { return }
+
+            let trimmed = content.trimmingCharacters(in: .whitespacesAndNewlines)
             guard !trimmed.isEmpty else { return }
-
-            self?.queue.async { self?._pendingRequestCount = 0 }
 
             DispatchQueue.main.async {
                 for line in trimmed.components(separatedBy: .newlines) {
@@ -160,32 +221,7 @@ class LLMManager {
                 }
             }
         }
-    }
-
-    private func sendRequest(snapshot: StateSnapshot) {
-        guard let pipe = stdinPipe else {
-            _pendingRequestCount = 0
-            return
-        }
-
-        do {
-            let encoder = JSONEncoder()
-            encoder.outputFormatting = .sortedKeys
-            let json = try encoder.encode(snapshot)
-            guard var text = String(data: json, encoding: .utf8) else { return }
-            lastSnapshotJSON = text
-            text += "\n"
-
-            pipe.fileHandleForWriting.write(text.data(using: .utf8)!)
-
-            queue.asyncAfter(deadline: .now() + timeoutInterval) { [weak self] in
-                if self?._pendingRequestCount ?? 0 > 0 {
-                    self?._pendingRequestCount = 0
-                }
-            }
-        } catch {
-            _pendingRequestCount = 0
-        }
+        task.resume()
     }
 
     deinit {

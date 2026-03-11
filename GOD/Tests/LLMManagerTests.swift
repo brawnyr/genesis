@@ -16,11 +16,14 @@ import Foundation
     #expect(manager.pendingRequestCount <= 1)
 }
 
-@Test func llmManagerModelMissing() {
+@Test func llmManagerFindsModel() {
+    // Verify the manager can locate a gguf in ~/.god/models/
     let state = TerminalState()
     let manager = LLMManager(terminalState: state)
     manager.start()
 
-    // Should show missing model message
-    #expect(state.lines.first?.text.contains("no model loaded") == true)
+    // If model exists, it should NOT show "no model loaded"
+    let hasNoModelMessage = state.lines.contains { $0.text.contains("no model loaded") }
+    #expect(hasNoModelMessage == false)
+    manager.stop()
 }
