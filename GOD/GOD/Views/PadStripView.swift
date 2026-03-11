@@ -73,9 +73,9 @@ struct MarqueeText: View {
                         .fixedSize()
                 }
             }
-            .frame(maxWidth: .infinity, alignment: .center)
-            .clipped()
+            .frame(width: geo.size.width, alignment: .center)
         }
+        .clipped()
         .background(
             Text(text)
                 .font(font)
