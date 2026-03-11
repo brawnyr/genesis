@@ -173,7 +173,7 @@ class GodEngine: ObservableObject {
         if audioLayers[padIndex].cut {
             voices.removeAll { $0.padIndex == padIndex }
         }
-        let vel = Float(velocity) / 127.0 * audioLayers[padIndex].volume
+        let vel = Float(velocity) / 127.0
         voices.append(Voice(sample: sample, velocity: vel, padIndex: padIndex))
 
         pendingHits.append((padIndex: padIndex, position: audioPosition, velocity: velocity))
@@ -231,7 +231,7 @@ class GodEngine: ObservableObject {
                         if layer.cut {
                             voices.removeAll { $0.padIndex == layer.index }
                         }
-                        let vel = Float(hit.velocity) / 127.0 * layer.volume
+                        let vel = Float(hit.velocity) / 127.0
                         voices.append(Voice(sample: sample, velocity: vel, padIndex: layer.index))
                     }
                 }
@@ -294,8 +294,9 @@ class GodEngine: ObservableObject {
                 ? BiquadCoefficients.bypass
                 : BiquadCoefficients.lowPass(cutoff: layer!.lpCutoff, sampleRate: Float(Transport.sampleRate))
             let pan = layer?.pan ?? 0.5
+            let volume = layer?.volume ?? 1.0
             let (done, peak) = v.fill(intoLeft: &outputL, right: &outputR, count: frameCount,
-                                       pan: pan, hpCoeffs: hpCoeffs, lpCoeffs: lpCoeffs)
+                                       pan: pan, volume: volume, hpCoeffs: hpCoeffs, lpCoeffs: lpCoeffs)
             if v.padIndex >= 0 && v.padIndex < 8 {
                 pendingLevels[v.padIndex] = max(pendingLevels[v.padIndex], peak)
             }
