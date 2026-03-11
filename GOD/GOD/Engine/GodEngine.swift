@@ -11,7 +11,7 @@ class GodEngine: ObservableObject {
     @Published var channelSignalLevels: [Float] = Array(repeating: 0, count: 8)
     @Published var channelTriggered: [Bool] = Array(repeating: false, count: 8)
     @Published var masterLevel: Float = 0
-    var masterVolume: Float = 1.0
+    @Published var masterVolume: Float = 1.0
     @Published var activePadIndex: Int = 0
     var interpreter: EngineEventInterpreter?
 
@@ -25,7 +25,7 @@ class GodEngine: ObservableObject {
     private var audioLayers: [Layer] = (0..<8).map { Layer(index: $0, name: "PAD \($0 + 1)") }
     private var audioCaptureState: GodCapture.State = .idle
     private var audioCapture = GodCapture()
-    var voices: [Voice] = []
+    private(set) var voices: [Voice] = []
     let midiRingBuffer = MIDIRingBuffer()
 
     // UI update throttle: 44100 / 1323 ≈ 33Hz (~30fps)
@@ -37,19 +37,6 @@ class GodEngine: ObservableObject {
     private var uiUpdateCounter = 0
     private var lastClearedLayerIndex: Int?
     private var audioActivePadIndex: Int = 0
-
-    // Sync UI state to audio thread (called from main thread before audio starts)
-    private func syncToAudio() {
-        audioIsPlaying = transport.isPlaying
-        audioBPM = transport.bpm
-        audioBarCount = transport.barCount
-        audioPosition = transport.position
-        audioMetronomeOn = metronome.isOn
-        audioMetronomeVolume = metronome.volume
-        audioLayers = layers
-        audioCaptureState = capture.state
-        audioCapture = capture
-    }
 
     func togglePlay() {
         transport.isPlaying.toggle()
@@ -89,8 +76,13 @@ class GodEngine: ObservableObject {
         }
     }
 
-    func adjustMasterVolume(_ delta: Float) {
-        masterVolume = max(0, min(2.0, masterVolume + delta))
+    func setMasterVolume(_ value: Float) {
+        masterVolume = max(0, min(1.0, value))
+    }
+
+    func setLayerVolume(_ index: Int, volume: Float) {
+        guard index >= 0, index < layers.count else { return }
+        layers[index].volume = max(0, min(1.0, volume))
     }
 
     var loopDurationMs: Double {
@@ -101,6 +93,12 @@ class GodEngine: ObservableObject {
         guard index >= 0, index < layers.count else { return }
         layers[index].isMuted.toggle()
         audioLayers[index].isMuted = layers[index].isMuted
+    }
+
+    func toggleCut(pad index: Int) {
+        guard index >= 0, index < layers.count else { return }
+        layers[index].cut.toggle()
+        audioLayers[index].cut = layers[index].cut
     }
 
     func clearLayer(_ index: Int) {
@@ -136,6 +134,9 @@ class GodEngine: ObservableObject {
         audioLayers[padIndex].addHit(at: audioPosition, velocity: velocity)
         audioLayers[padIndex].name = padBank.pads[padIndex].name
 
+        if audioLayers[padIndex].cut {
+            voices.removeAll { $0.padIndex == padIndex }
+        }
         let vel = Float(velocity) / 127.0 * audioLayers[padIndex].volume
         voices.append(Voice(sample: sample, velocity: vel, padIndex: padIndex))
 
@@ -174,19 +175,8 @@ class GodEngine: ObservableObject {
 
         guard loopLen > 0 else { return (outputL, outputR) }
 
-        // Drain MIDI events from ring buffer
-        midiRingBuffer.drain { event in
-            switch event {
-            case .noteOn(let note, let velocity):
-                handlePadHit(note: note, velocity: velocity)
-            case .noteOff(let note):
-                handleNoteOff(note: note)
-            case .cc(let number, let value):
-                handleCC(number: number, value: value)
-            }
-        }
-
-        // Check each layer for hits in this block's range
+        // Check each layer for hits in this block's range (before draining MIDI,
+        // so live hits recorded this block don't retrigger via the loop path)
         for layer in audioLayers where !layer.isMuted {
             let endPos = startPos + frameCount
             let hits: [Hit]
@@ -201,9 +191,24 @@ class GodEngine: ObservableObject {
 
             for hit in hits {
                 if let sample = padBank.pads[layer.index].sample {
+                    if layer.cut {
+                        voices.removeAll { $0.padIndex == layer.index }
+                    }
                     let vel = Float(hit.velocity) / 127.0 * layer.volume
                     voices.append(Voice(sample: sample, velocity: vel, padIndex: layer.index))
                 }
+            }
+        }
+
+        // Drain MIDI events from ring buffer (after loop scan to avoid double-triggering)
+        midiRingBuffer.drain { event in
+            switch event {
+            case .noteOn(let note, let velocity):
+                handlePadHit(note: note, velocity: velocity)
+            case .noteOff(let note):
+                handleNoteOff(note: note)
+            case .cc(let number, let value):
+                handleCC(number: number, value: value)
             }
         }
 
