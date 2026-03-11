@@ -1,5 +1,12 @@
 import Foundation
 
+struct TerminalLine: Identifiable {
+    let id = UUID()
+    let text: String
+    let isHighlight: Bool
+    let timestamp: Date = Date()
+}
+
 class EngineEventInterpreter: ObservableObject {
     @Published var lines: [TerminalLine] = []
     @Published var padIntensities: [Float] = Array(repeating: 0, count: 8)
