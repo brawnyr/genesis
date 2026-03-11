@@ -55,13 +55,16 @@ struct Sample {
         if let error = error { throw error }
 
         let frameLen = Int(outputBuffer.frameLength)
+        guard let channelData = outputBuffer.floatChannelData else {
+            throw SampleError.conversionFailed
+        }
         let leftData = Array(UnsafeBufferPointer(
-            start: outputBuffer.floatChannelData![0], count: frameLen
+            start: channelData[0], count: frameLen
         ))
         let rightData: [Float]
         if outputBuffer.format.channelCount >= 2 {
             rightData = Array(UnsafeBufferPointer(
-                start: outputBuffer.floatChannelData![1], count: frameLen
+                start: channelData[1], count: frameLen
             ))
         } else {
             rightData = leftData
