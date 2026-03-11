@@ -6,8 +6,32 @@ enum ToggleMode: String {
     case nextLoop = "next loop"
 }
 
+/// All state owned exclusively by the audio thread.
+/// Never access @Published properties from here. Sync to main thread via DispatchQueue.main.async.
+struct AudioState {
+    var position: Int = 0
+    var isPlaying: Bool = false
+    var bpm: Int = 120
+    var barCount: Int = 4
+    var metronomeOn: Bool = true
+    var metronomeVolume: Float = 0.5
+    var layers: [Layer] = (0..<PadBank.padCount).map { Layer(index: $0, name: "PAD \($0 + 1)") }
+    var captureState: GodCapture.State = .idle
+    var capture = GodCapture()
+    var activePadIndex: Int = 0
+    var toggleMode: ToggleMode = .instant
+    var pendingMutes: [Int: Bool] = [:]
+
+    var loopLengthFrames: Int {
+        let beatsPerLoop = Double(barCount * Transport.beatsPerBar)
+        let secondsPerBeat = 60.0 / Double(bpm)
+        return Int(beatsPerLoop * secondsPerBeat * Transport.sampleRate)
+    }
+}
+
 class GodEngine: ObservableObject {
-    // UI state — only mutated on main thread
+    // MARK: - UI state (main thread only, observed by SwiftUI)
+
     @Published var transport = Transport()
     @Published var layers: [Layer] = (0..<PadBank.padCount).map { Layer(index: $0, name: "PAD \($0 + 1)") }
     @Published var padBank = PadBank()
@@ -25,30 +49,26 @@ class GodEngine: ObservableObject {
     @Published var pendingMutes: [Int: Bool] = [:]  // pad index -> target mute state
     var interpreter: EngineEventInterpreter?
 
-    // Audio thread state — never touches @Published directly
-    private var audioPosition: Int = 0
-    private var audioIsPlaying: Bool = false
-    private var audioBPM: Int = 120
-    private var audioBarCount: Int = 4
-    private var audioMetronomeOn: Bool = true
-    private var audioMetronomeVolume: Float = 0.5
-    private var audioLayers: [Layer] = (0..<PadBank.padCount).map { Layer(index: $0, name: "PAD \($0 + 1)") }
-    private var audioCaptureState: GodCapture.State = .idle
-    private var audioCapture = GodCapture()
+    // MARK: - Audio thread state (never touch @Published from here)
+
+    private var audio = AudioState()
     private(set) var voices: [Voice] = []
     let midiRingBuffer = MIDIRingBuffer()
 
-    // Pre-allocated audio buffers (avoid heap allocs on the audio thread)
+    // MARK: - Audio thread buffers (pre-allocated, avoid heap allocs)
+
     private var outputBufferL = [Float](repeating: 0, count: 4096)
     private var outputBufferR = [Float](repeating: 0, count: 4096)
 
-    // Cached biquad coefficients per layer (recalculated only when cutoff changes)
+    // MARK: - Cached biquad coefficients (recalculated only on cutoff change)
+
     private var cachedHPCutoffs: [Float] = Array(repeating: Layer.hpBypassFrequency, count: PadBank.padCount)
     private var cachedLPCutoffs: [Float] = Array(repeating: Layer.lpBypassFrequency, count: PadBank.padCount)
     private var cachedHPCoeffs: [BiquadCoefficients] = Array(repeating: .bypass, count: PadBank.padCount)
     private var cachedLPCoeffs: [BiquadCoefficients] = Array(repeating: .bypass, count: PadBank.padCount)
 
-    // UI update throttle: ~33Hz (~30fps)
+    // MARK: - UI sync throttle
+
     private static let uiUpdateHz: Double = 33.0
     private static let uiUpdateFrameThreshold = Int(Transport.sampleRate / uiUpdateHz)
 
@@ -57,38 +77,35 @@ class GodEngine: ObservableObject {
     private var pendingHits: [(padIndex: Int, position: Int, velocity: Int)] = []
     private var uiUpdateCounter = 0
     private var lastClearedLayerIndex: Int?
-    private var audioActivePadIndex: Int = 0
-    private var audioToggleMode: ToggleMode = .instant
-    private var audioPendingMutes: [Int: Bool] = [:]
 
     func togglePlay() {
         transport.isPlaying.toggle()
         if !transport.isPlaying {
             transport.position = 0
-            audioPosition = 0
-            audioIsPlaying = false
+            audio.position = 0
+            audio.isPlaying = false
             voices.removeAll()
         } else {
-            audioIsPlaying = true
+            audio.isPlaying = true
         }
     }
 
     func stop() {
         transport.isPlaying = false
         transport.position = 0
-        audioPosition = 0
-        audioIsPlaying = false
+        audio.position = 0
+        audio.isPlaying = false
         voices.removeAll()
     }
 
     func setBPM(_ bpm: Int) {
         transport.bpm = bpm
-        audioBPM = transport.bpm
+        audio.bpm = transport.bpm
     }
 
     func setBarCount(_ count: Int) {
         transport.barCount = count
-        audioBarCount = transport.barCount
+        audio.barCount = transport.barCount
     }
 
     func cycleBarCount(forward: Bool) {
@@ -132,7 +149,7 @@ class GodEngine: ObservableObject {
         guard index >= 0, index < layers.count else { return }
         if toggleMode == .instant {
             layers[index].isMuted.toggle()
-            audioLayers[index].isMuted = layers[index].isMuted
+            audio.layers[index].isMuted = layers[index].isMuted
         } else {
             // Next loop mode: queue the change
             let currentEffective = pendingMutes[index] ?? layers[index].isMuted
@@ -140,10 +157,10 @@ class GodEngine: ObservableObject {
             if newState == layers[index].isMuted {
                 // Toggling back to current state = cancel pending
                 pendingMutes.removeValue(forKey: index)
-                audioPendingMutes.removeValue(forKey: index)
+                audio.pendingMutes.removeValue(forKey: index)
             } else {
                 pendingMutes[index] = newState
-                audioPendingMutes[index] = newState
+                audio.pendingMutes[index] = newState
             }
         }
     }
@@ -155,22 +172,22 @@ class GodEngine: ObservableObject {
 
     func cycleToggleMode() {
         toggleMode = toggleMode == .instant ? .nextLoop : .instant
-        audioToggleMode = toggleMode
+        audio.toggleMode = toggleMode
         if toggleMode == .instant {
             // Apply any pending mutes immediately when switching to instant
             for (index, muteState) in pendingMutes {
                 layers[index].isMuted = muteState
-                audioLayers[index].isMuted = muteState
+                audio.layers[index].isMuted = muteState
             }
             pendingMutes.removeAll()
-            audioPendingMutes.removeAll()
+            audio.pendingMutes.removeAll()
         }
     }
 
     func toggleCut(pad index: Int) {
         guard index >= 0, index < layers.count else { return }
         layers[index].cut.toggle()
-        audioLayers[index].cut = layers[index].cut
+        audio.layers[index].cut = layers[index].cut
     }
 
     func syncCutToPadBank() {
@@ -182,33 +199,33 @@ class GodEngine: ObservableObject {
     func restoreCutFromPadBank() {
         for i in 0..<PadBank.padCount {
             layers[i].cut = padBank.pads[i].cut
-            audioLayers[i].cut = padBank.pads[i].cut
+            audio.layers[i].cut = padBank.pads[i].cut
         }
     }
 
     func clearLayer(_ index: Int) {
         guard index >= 0, index < layers.count else { return }
         layers[index].clear()
-        audioLayers[index].clear()
+        audio.layers[index].clear()
         lastClearedLayerIndex = index
     }
 
     func undoLastClear() {
         guard let index = lastClearedLayerIndex else { return }
         layers[index].undo()
-        audioLayers[index].undo()
+        audio.layers[index].undo()
         lastClearedLayerIndex = nil
     }
 
     func toggleCapture() {
         capture.toggle()
-        audioCaptureState = capture.state
-        audioCapture = capture
+        audio.captureState = capture.state
+        audio.capture = capture
     }
 
     func toggleMetronome() {
         metronome.isOn.toggle()
-        audioMetronomeOn = metronome.isOn
+        audio.metronomeOn = metronome.isOn
     }
 
     // MARK: - Centralized sample loading (single source of truth)
@@ -229,20 +246,20 @@ class GodEngine: ObservableObject {
         guard let padIndex = padBank.padIndex(forNote: note),
               let sample = padBank.pads[padIndex].sample else { return }
 
-        audioActivePadIndex = padIndex
+        audio.activePadIndex = padIndex
 
         if record {
-            audioLayers[padIndex].addHit(at: audioPosition, velocity: velocity)
-            audioLayers[padIndex].name = padBank.pads[padIndex].name
+            audio.layers[padIndex].addHit(at: audio.position, velocity: velocity)
+            audio.layers[padIndex].name = padBank.pads[padIndex].name
         }
 
-        if audioLayers[padIndex].cut {
+        if audio.layers[padIndex].cut {
             voices.removeAll { $0.padIndex == padIndex }
         }
         let vel = Float(velocity) / 127.0
         voices.append(Voice(sample: sample, velocity: vel, padIndex: padIndex))
 
-        pendingHits.append((padIndex: padIndex, position: audioPosition, velocity: velocity))
+        pendingHits.append((padIndex: padIndex, position: audio.position, velocity: velocity))
         pendingTriggers[padIndex] = true
     }
 
@@ -255,13 +272,13 @@ class GodEngine: ObservableObject {
     private func handleCC(number: Int, value: Int) {
         switch number {
         case 14: // Volume
-            audioLayers[audioActivePadIndex].volume = Float(value) / 127.0
+            audio.layers[audio.activePadIndex].volume = Float(value) / 127.0
         case 15: // Pan
-            audioLayers[audioActivePadIndex].pan = Float(value) / 127.0
+            audio.layers[audio.activePadIndex].pan = Float(value) / 127.0
         case 16: // HP Cutoff
-            audioLayers[audioActivePadIndex].hpCutoff = ccToFrequency(value)
+            audio.layers[audio.activePadIndex].hpCutoff = ccToFrequency(value)
         case 17: // LP Cutoff
-            audioLayers[audioActivePadIndex].lpCutoff = ccToFrequency(value)
+            audio.layers[audio.activePadIndex].lpCutoff = ccToFrequency(value)
         default:
             break
         }
@@ -270,12 +287,12 @@ class GodEngine: ObservableObject {
     private func updateCachedCoefficients() {
         let sr = Float(Transport.sampleRate)
         for i in 0..<PadBank.padCount {
-            let hp = audioLayers[i].hpCutoff
+            let hp = audio.layers[i].hpCutoff
             if hp != cachedHPCutoffs[i] {
                 cachedHPCutoffs[i] = hp
                 cachedHPCoeffs[i] = hp <= 21 ? .bypass : .highPass(cutoff: hp, sampleRate: sr)
             }
-            let lp = audioLayers[i].lpCutoff
+            let lp = audio.layers[i].lpCutoff
             if lp != cachedLPCutoffs[i] {
                 cachedLPCutoffs[i] = lp
                 cachedLPCoeffs[i] = lp >= 19999 ? .bypass : .lowPass(cutoff: lp, sampleRate: sr)
@@ -295,16 +312,16 @@ class GodEngine: ObservableObject {
             }
         }
 
-        let loopLen = audioLoopLengthFrames
+        let loopLen = audio.loopLengthFrames
 
         // Loop replay, metronome, and position advance only when playing
         var wrapped = false
-        if audioIsPlaying, loopLen > 0 {
-            let startPos = audioPosition
+        if audio.isPlaying, loopLen > 0 {
+            let startPos = audio.position
 
             // Check each layer for hits in this block's range (before draining MIDI,
             // so live hits recorded this block don't retrigger via the loop path)
-            for layer in audioLayers where !layer.isMuted {
+            for layer in audio.layers where !layer.isMuted {
                 let endPos = startPos + frameCount
                 let hits: [Hit]
 
@@ -340,22 +357,22 @@ class GodEngine: ObservableObject {
             }
 
             // Metronome
-            if audioMetronomeOn {
-                let beatLen = Metronome.beatLengthFramesStatic(bpm: audioBPM, sampleRate: Transport.sampleRate)
+            if audio.metronomeOn {
+                let beatLen = Metronome.beatLengthFramesStatic(bpm: audio.bpm, sampleRate: Transport.sampleRate)
                 for i in 0..<frameCount {
                     let frameInLoop = (startPos + i) % loopLen
                     if beatLen > 0 && frameInLoop % beatLen == 0 {
                         let isDownbeat = frameInLoop == 0
                         let click = Metronome.generateClick(isDownbeat: isDownbeat, sampleRate: Transport.sampleRate)
-                        voices.append(Voice(sample: click, velocity: audioMetronomeVolume))
+                        voices.append(Voice(sample: click, velocity: audio.metronomeVolume))
                     }
                 }
             }
 
             // Advance audio position
-            audioPosition += frameCount
-            if audioPosition >= loopLen {
-                audioPosition -= loopLen
+            audio.position += frameCount
+            if audio.position >= loopLen {
+                audio.position -= loopLen
                 wrapped = true
             }
 
@@ -382,8 +399,8 @@ class GodEngine: ObservableObject {
             let padIdx = v.padIndex
             let hpCoeffs = padIdx >= 0 && padIdx < PadBank.padCount ? cachedHPCoeffs[padIdx] : .bypass
             let lpCoeffs = padIdx >= 0 && padIdx < PadBank.padCount ? cachedLPCoeffs[padIdx] : .bypass
-            let pan = padIdx >= 0 && padIdx < PadBank.padCount ? audioLayers[padIdx].pan : 0.5
-            let volume = padIdx >= 0 && padIdx < PadBank.padCount ? audioLayers[padIdx].volume : 1.0
+            let pan = padIdx >= 0 && padIdx < PadBank.padCount ? audio.layers[padIdx].pan : 0.5
+            let volume = padIdx >= 0 && padIdx < PadBank.padCount ? audio.layers[padIdx].volume : 1.0
             let (done, peak) = v.fill(intoLeft: &outputBufferL, right: &outputBufferR, count: frameCount,
                                        pan: pan, volume: volume, hpCoeffs: hpCoeffs, lpCoeffs: lpCoeffs)
             if padIdx >= 0 && padIdx < PadBank.padCount {
@@ -401,8 +418,8 @@ class GodEngine: ObservableObject {
         }
 
         // Capture AFTER mixing — so we record actual audio, not silence
-        if audioCaptureState == .recording {
-            audioCapture.append(
+        if audio.captureState == .recording {
+            audio.capture.append(
                 left: Array(outputBufferL[0..<frameCount]),
                 right: Array(outputBufferR[0..<frameCount])
             )
@@ -410,12 +427,12 @@ class GodEngine: ObservableObject {
 
         if wrapped {
             // Apply pending mute changes at loop boundary
-            if !audioPendingMutes.isEmpty {
-                let applied = audioPendingMutes
+            if !audio.pendingMutes.isEmpty {
+                let applied = audio.pendingMutes
                 for (index, muteState) in applied {
-                    audioLayers[index].isMuted = muteState
+                    audio.layers[index].isMuted = muteState
                 }
-                audioPendingMutes.removeAll()
+                audio.pendingMutes.removeAll()
                 DispatchQueue.main.async {
                     for (index, muteState) in applied {
                         self.layers[index].isMuted = muteState
@@ -424,9 +441,9 @@ class GodEngine: ObservableObject {
                 }
             }
 
-            audioCapture.onLoopBoundary()
-            audioCaptureState = audioCapture.state
-            let captureState = audioCaptureState
+            audio.capture.onLoopBoundary()
+            audio.captureState = audio.capture.state
+            let captureState = audio.captureState
             DispatchQueue.main.async {
                 self.capture.state = captureState
                 self.interpreter?.onLoopBoundary(
@@ -441,23 +458,23 @@ class GodEngine: ObservableObject {
         uiUpdateCounter += frameCount
         if uiUpdateCounter >= Self.uiUpdateFrameThreshold {
             uiUpdateCounter = 0
-            let pos = audioPosition
+            let pos = audio.position
             let levels = pendingLevels
             let masterPeak = peak
             let triggers = pendingTriggers
-            let layerVolumes = audioLayers.map { $0.volume }
-            let layerPans = audioLayers.map { $0.pan }
-            let layerHPCutoffs = audioLayers.map { $0.hpCutoff }
-            let layerLPCutoffs = audioLayers.map { $0.lpCutoff }
+            let layerVolumes = audio.layers.map { $0.volume }
+            let layerPans = audio.layers.map { $0.pan }
+            let layerHPCutoffs = audio.layers.map { $0.hpCutoff }
+            let layerLPCutoffs = audio.layers.map { $0.lpCutoff }
             let hits = pendingHits
             pendingHits.removeAll()
             pendingLevels = Array(repeating: 0, count: PadBank.padCount)
             pendingTriggers = Array(repeating: false, count: PadBank.padCount)
             DispatchQueue.main.async {
                 // Sync active pad index from main → audio thread (safe direction)
-                self.audioActivePadIndex = self.activePadIndex
+                self.audio.activePadIndex = self.activePadIndex
 
-                if self.audioIsPlaying {
+                if self.audio.isPlaying {
                     for hit in hits {
                         self.layers[hit.padIndex].addHit(at: hit.position, velocity: hit.velocity)
                         self.layers[hit.padIndex].name = self.padBank.pads[hit.padIndex].name
@@ -498,11 +515,5 @@ class GodEngine: ObservableObject {
         }
 
         return (Array(outputBufferL[0..<frameCount]), Array(outputBufferR[0..<frameCount]))
-    }
-
-    private var audioLoopLengthFrames: Int {
-        let beatsPerLoop = Double(audioBarCount * Transport.beatsPerBar)
-        let secondsPerBeat = 60.0 / Double(audioBPM)
-        return Int(beatsPerLoop * secondsPerBeat * Transport.sampleRate)
     }
 }

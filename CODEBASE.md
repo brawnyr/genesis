@@ -145,9 +145,10 @@ struct GodCapture {
 
 ## Engine (GOD/GOD/Engine/)
 
-### GodEngine.swift — Central hub, 393 lines
+### GodEngine.swift — Central hub, ~380 lines
 - `@Published` state: transport, layers[8], padBank, metronome, capture, channelSignalLevels, channelTriggered, masterLevel, masterVolume, detectedBPMs, activePadIndex
-- Audio-thread mirror state (never touches @Published): audioPosition, audioIsPlaying, audioBPM, audioBarCount, audioLayers, etc.
+- `AudioState` struct (defined above class): groups all audio-thread-only state (position, isPlaying, bpm, barCount, metronomeOn, metronomeVolume, layers, captureState, capture, activePadIndex, toggleMode, pendingMutes, loopLengthFrames computed property)
+- Single `private var audio = AudioState()` replaces individual `audio*` fields
 - Key methods: togglePlay(), stop(), setBPM(), setBarCount(), cycleBarCount(), setMasterVolume(), toggleMute(), toggleCut(), clearLayer(), undoLastClear(), toggleCapture(), toggleMetronome(), detectBPM()
 - `processBlock(frameCount:) -> (left: [Float], right: [Float])` — THE audio render callback:
   1. Scans audioLayers for loop-replayed hits
