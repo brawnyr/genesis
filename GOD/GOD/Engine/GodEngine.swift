@@ -47,7 +47,7 @@ class GodEngine: ObservableObject {
     @Published var masterLevel: Float = 0
     @Published var masterLevelDb: Float = -.infinity
     @Published var channelLevelDb: [Float] = Array(repeating: -.infinity, count: PadBank.padCount)
-    @Published var masterVolume: Float = 1.0
+    @Published var masterVolume: Float = GodEngine.loadMasterVolume()
     @Published var detectedBPMs: [Int: Double] = [:]
     @Published var activePadIndex: Int = 0 {
         didSet { audio.activePadIndex = activePadIndex }
@@ -130,6 +130,23 @@ class GodEngine: ObservableObject {
 
     func setMasterVolume(_ value: Float) {
         masterVolume = max(0, min(1.0, value))
+        saveMasterVolume()
+    }
+
+    private static let masterVolumeURL: URL = {
+        let dir = FileManager.default.homeDirectoryForCurrentUser.appendingPathComponent(".god")
+        try? FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+        return dir.appendingPathComponent("master.txt")
+    }()
+
+    private static func loadMasterVolume() -> Float {
+        guard let str = try? String(contentsOf: masterVolumeURL, encoding: .utf8),
+              let val = Float(str.trimmingCharacters(in: .whitespacesAndNewlines)) else { return 1.0 }
+        return max(0, min(1.0, val))
+    }
+
+    private func saveMasterVolume() {
+        try? String(masterVolume).write(to: Self.masterVolumeURL, atomically: true, encoding: .utf8)
     }
 
     func detectBPM(forPad index: Int) {
@@ -296,7 +313,7 @@ class GodEngine: ObservableObject {
     private func handleCC(number: Int, value: Int) {
         switch number {
         case 82: // Master volume (MiniLab fader 1)
-            masterVolume = Float(value) / 127.0
+            setMasterVolume(Float(value) / 127.0)
         case 14: // Volume (per-pad)
             audio.layers[audio.activePadIndex].volume = Float(value) / 127.0
         case 15: // Pan
