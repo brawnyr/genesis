@@ -3,7 +3,7 @@
 Native macOS loop-stacking instrument.
 
 ## Codebase Cache
-**Read `CODEBASE.md` before reading any source files.** It contains complete type signatures, architecture, and patterns for every file in the project. Only open individual `.swift` files when you need to make edits or see exact implementation details. This saves significant context window space.
+**Read `CODEBASE.md` before reading any source files.** It contains complete type signatures, architecture, and patterns for every file in the project. Only open individual `.swift` files when you need to make edits or see exact implementation details. This saves significant context window space. If a task requires reading every file in the project, that's fine — the cache is a shortcut, not a restriction.
 
 **MANDATORY**: After editing, creating, or deleting any `.swift` file, you MUST update `CODEBASE.md` to reflect the changes before committing. Update only the sections that changed — don't regenerate the whole file. This keeps the cache accurate across sessions.
 
