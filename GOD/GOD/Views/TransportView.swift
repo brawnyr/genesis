@@ -12,58 +12,101 @@ struct TransportView: View {
         return (engine.transport.position / beatLength) % (engine.transport.barCount * 4) + 1
     }
 
+    private var loopProgress: Double {
+        let loopLen = engine.transport.loopLengthFrames
+        guard loopLen > 0 else { return 0 }
+        return Double(engine.transport.position) / Double(loopLen)
+    }
+
+    private var captureText: String {
+        switch engine.capture.state {
+        case .idle: return "○ GOD"
+        case .armed: return "◉ GOD — armed"
+        case .recording: return "◉ GOD — recording"
+        }
+    }
+
+    private var captureColor: Color {
+        switch engine.capture.state {
+        case .idle: return Theme.text
+        case .armed, .recording: return Theme.orange
+        }
+    }
+
+    @State private var captureOpacity: Double = 1.0
+
     var body: some View {
-        VStack(spacing: 12) {
-            // Top row: play state, bpm, bars, metronome, beat
-            HStack(spacing: 20) {
-                Text(engine.transport.isPlaying ? "▶" : "■")
-                    .foregroundColor(engine.transport.isPlaying ? Theme.blue : Theme.text)
-                    .font(Theme.monoLarge)
+        HStack(spacing: 16) {
+            // Play state
+            Text(engine.transport.isPlaying ? "▶" : "■")
+                .foregroundColor(engine.transport.isPlaying ? Theme.blue : Theme.subtle)
+                .font(Theme.monoLarge)
 
-                Text("\(engine.transport.bpm) bpm")
-                    .foregroundColor(Theme.text)
+            // BPM
+            Text("\(engine.transport.bpm)")
+                .foregroundColor(engine.transport.isPlaying ? Theme.text : Theme.subtle)
+                .font(.system(size: 18, design: .monospaced).bold())
+            Text("bpm")
+                .foregroundColor(Theme.subtle)
+                .font(Theme.monoSmall)
 
-                // Bar count with bracket indicators
-                HStack(spacing: 4) {
-                    Text("[")
-                        .foregroundColor(Theme.blue)
-                    Text("\(engine.transport.barCount)")
-                        .foregroundColor(Theme.text)
-                    Text("]")
-                        .foregroundColor(Theme.blue)
-                    Text("bars")
-                        .foregroundColor(Theme.text)
-                }
-
-                Text("♩ \(engine.metronome.isOn ? "on" : "off")")
-                    .foregroundColor(engine.metronome.isOn ? Theme.blue : Theme.text)
-
-                Spacer()
-
-                if engine.transport.isPlaying {
-                    Text("beat \(currentBeat)")
-                        .foregroundColor(Theme.blue)
-                }
+            // Bar count
+            HStack(spacing: 2) {
+                Text("[").foregroundColor(Theme.blue)
+                Text("\(engine.transport.barCount)").foregroundColor(Theme.text)
+                Text("]").foregroundColor(Theme.blue)
+                Text("bars").foregroundColor(Theme.subtle)
             }
-            .font(Theme.mono)
+            .font(Theme.monoSmall)
 
-            // Master mixer row
-            HStack(spacing: 12) {
-                Text("master")
-                    .foregroundColor(Theme.text)
-                    .font(Theme.monoSmall)
+            // Metronome
+            Text("♩ \(engine.metronome.isOn ? "on" : "off")")
+                .foregroundColor(engine.metronome.isOn ? Theme.blue : Theme.subtle)
+                .font(Theme.monoSmall)
 
-                // Volume percentage
-                Text("\(Int(engine.masterVolume * 100))%")
+            // Beat counter
+            if engine.transport.isPlaying {
+                Text("beat \(currentBeat)")
                     .foregroundColor(Theme.blue)
                     .font(Theme.monoSmall)
-                    .frame(width: 50, alignment: .trailing)
-
-                // Master signal meter
-                SignalMeterView(level: engine.masterLevel)
-
-                Spacer()
             }
+
+            Spacer()
+
+            // Capture status
+            Text(captureText)
+                .foregroundColor(captureColor)
+                .font(Theme.monoSmall)
+                .opacity(engine.capture.state == .recording ? captureOpacity : 1.0)
+                .animation(
+                    engine.capture.state == .recording
+                        ? .easeInOut(duration: 0.5).repeatForever(autoreverses: true)
+                        : .default,
+                    value: engine.capture.state == .recording
+                )
+                .onChange(of: engine.capture.state == .recording) { _, isRecording in
+                    captureOpacity = isRecording ? 0.5 : 1.0
+                }
+
+            // Master volume
+            Text("master \(Int(engine.masterVolume * 100))%")
+                .foregroundColor(Theme.subtle)
+                .font(Theme.monoSmall)
+
+            // Inline loop progress bar
+            GeometryReader { _ in
+                ZStack(alignment: .leading) {
+                    RoundedRectangle(cornerRadius: 2)
+                        .fill(Theme.subtle.opacity(0.3))
+                    RoundedRectangle(cornerRadius: 2)
+                        .fill(Theme.blue)
+                        .frame(width: 80 * loopProgress)
+                }
+            }
+            .frame(width: 80, height: 3)
         }
+        .padding(.horizontal, 16)
+        .padding(.vertical, 10)
+        .background(Color(red: 0.122, green: 0.118, blue: 0.106))  // #1f1e1b
     }
 }
