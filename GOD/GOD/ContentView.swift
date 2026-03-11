@@ -38,8 +38,10 @@ struct KeyCaptureRepresentable: NSViewRepresentable {
 
 struct ContentView: View {
     @ObservedObject var engine: GodEngine
+    @ObservedObject var terminalState: TerminalState
     @State private var showSetup = false
     @State private var showKeyReference = false
+    @State private var showTerminal = true
 
     var body: some View {
         ZStack {
@@ -50,68 +52,105 @@ struct ContentView: View {
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
 
-            VStack(spacing: 20) {
-                TransportView(engine: engine)
-                    .padding(.top, 16)
+            VStack(spacing: 0) {
+                HStack(spacing: 0) {
+                    // Left: Instrument panel
+                    VStack(spacing: 20) {
+                        TransportView(engine: engine)
+                            .padding(.top, 16)
 
-                LoopBarView(engine: engine)
+                        LoopBarView(engine: engine)
 
-                ChannelListView(engine: engine)
-                    .padding(.vertical, 8)
+                        ChannelListView(engine: engine)
+                            .padding(.vertical, 8)
 
-                Spacer()
+                        Spacer()
 
-                CaptureIndicatorView(engine: engine)
+                        CaptureIndicatorView(engine: engine)
+                    }
+                    .padding(.horizontal, 24)
+                    .frame(maxWidth: .infinity)
 
-                TipView()
-                    .padding(.vertical, 4)
-
-                // Key strip
-                HStack(spacing: 14) {
-                    KeyLabel(key: "SPC", action: "play")
-                    KeyLabel(key: "G", action: "god")
-                    KeyLabel(key: "M", action: "metro")
-                    KeyLabel(key: "S", action: "setup")
-                    KeyLabel(key: "↑↓", action: "bpm")
-                    KeyLabel(key: "[]", action: "bars")
-                    KeyLabel(key: "-+", action: "vol")
-                    KeyLabel(key: "1-8", action: "mute")
-                    KeyLabel(key: "?", action: "help")
+                    if showTerminal {
+                        // Right: Genesis Terminal
+                        GenesisTerminalView(state: terminalState)
+                            .frame(maxWidth: .infinity)
+                    }
                 }
-                .padding(.bottom, 12)
+
+                // Bottom: Tips + key strip (full width)
+                VStack(spacing: 4) {
+                    TipView()
+                        .padding(.vertical, 4)
+
+                    HStack(spacing: 14) {
+                        KeyLabel(key: "SPC", action: "play")
+                        KeyLabel(key: "G", action: "god")
+                        KeyLabel(key: "M", action: "metro")
+                        KeyLabel(key: "S", action: "setup")
+                        KeyLabel(key: "↑↓", action: "bpm")
+                        KeyLabel(key: "[]", action: "bars")
+                        KeyLabel(key: "-+", action: "vol")
+                        KeyLabel(key: "1-8", action: "mute")
+                        KeyLabel(key: "Z", action: "undo")
+                        KeyLabel(key: "T", action: "term")
+                        KeyLabel(key: "?", action: "help")
+                    }
+                    .padding(.bottom, 12)
+                }
+                .padding(.horizontal, 24)
             }
-            .padding(.horizontal, 24)
 
             if showKeyReference {
                 KeyReferenceOverlay(isVisible: $showKeyReference)
             }
         }
+        .frame(minWidth: 800, minHeight: 500)
         .sheet(isPresented: $showSetup) {
             SetupView(engine: engine, isPresented: $showSetup)
                 .frame(width: 500, height: 500)
         }
     }
 
+    // macOS virtual key codes
+    private enum Key {
+        static let space: UInt16 = 49
+        static let g: UInt16 = 5
+        static let m: UInt16 = 46
+        static let s: UInt16 = 1
+        static let t: UInt16 = 17
+        static let z: UInt16 = 6
+        static let upArrow: UInt16 = 126
+        static let downArrow: UInt16 = 125
+        static let escape: UInt16 = 53
+        static let leftBracket: UInt16 = 33
+        static let rightBracket: UInt16 = 30
+    }
+
     private func handleKey(keyCode: UInt16, chars: String?) {
         switch keyCode {
-        case 49: // space
+        case Key.space:
             engine.togglePlay()
-        case 5: // g
+        case Key.g:
             engine.toggleCapture()
-        case 46: // m
+        case Key.m:
             engine.toggleMetronome()
-        case 1: // s
+        case Key.s:
             showSetup = true
-        case 126: // up arrow
+        case Key.upArrow:
             engine.setBPM(engine.transport.bpm + 1)
-        case 125: // down arrow
+        case Key.downArrow:
             engine.setBPM(engine.transport.bpm - 1)
-        case 53: // escape
+        case Key.escape:
             engine.stop()
-        case 33: // [
+        case Key.leftBracket:
             engine.cycleBarCount(forward: false)
-        case 30: // ]
+        case Key.rightBracket:
             engine.cycleBarCount(forward: true)
+        case Key.t:
+            showTerminal.toggle()
+        case Key.z:
+            engine.undoLastClear()
         default:
             break
         }

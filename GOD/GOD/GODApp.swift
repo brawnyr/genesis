@@ -7,6 +7,7 @@ private let logger = Logger(subsystem: "com.god.app", category: "GODApp")
 @main
 struct GODApp: App {
     @StateObject private var engine = GodEngine()
+    @StateObject private var terminalState = TerminalState()
     @State private var audioManager: AudioManager?
     @State private var midiManager: MIDIManager?
 
@@ -17,14 +18,14 @@ struct GODApp: App {
 
     var body: some Scene {
         WindowGroup {
-            ContentView(engine: engine)
+            ContentView(engine: engine, terminalState: terminalState)
                 .onAppear {
                     startManagers()
                     NSApplication.shared.windows.first?.makeKeyAndOrderFront(nil)
                 }
         }
         .windowStyle(.hiddenTitleBar)
-        .defaultSize(width: 600, height: 700)
+        .defaultSize(width: 1000, height: 700)
     }
 
     private func startManagers() {

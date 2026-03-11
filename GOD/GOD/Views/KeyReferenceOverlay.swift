@@ -15,6 +15,8 @@ struct KeyReferenceOverlay: View {
         ("-", "volume down"),
         ("+", "volume up"),
         ("1-8", "mute / unmute"),
+        ("Z", "undo clear"),
+        ("T", "toggle terminal"),
         ("ESC", "stop"),
         ("?", "this help"),
     ]
