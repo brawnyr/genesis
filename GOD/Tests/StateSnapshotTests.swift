@@ -47,3 +47,12 @@ import Foundation
     #expect(json.contains("\"bpm\":120"))
     #expect(json.contains("\"truncated\":false"))
 }
+
+@Test func engineProducesSnapshot() {
+    let engine = GodEngine()
+    let snapshot = engine.stateSnapshot(peakLevels: Array(repeating: Float(-20.0), count: 8))
+    #expect(snapshot.bpm == 120)
+    #expect(snapshot.bars == 4)
+    #expect(snapshot.playing == false)
+    #expect(snapshot.channels.count == 8)
+}

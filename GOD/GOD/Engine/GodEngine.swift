@@ -23,9 +23,12 @@ class GodEngine: ObservableObject {
     private var audioMetronomeVolume: Float = 0.5
     private var audioLayers: [Layer] = (0..<8).map { Layer(index: $0, name: "PAD \($0 + 1)") }
     private var audioCaptureState: GodCapture.State = .idle
+    private var audioCapture = GodCapture()
     var voices: [Voice] = []
     let midiRingBuffer = MIDIRingBuffer()
 
+    // UI update throttle: 44100 / 1323 ≈ 33Hz (~30fps)
+    private static let uiUpdateFrameThreshold = 1323
 
     private var pendingLevels: [Float] = Array(repeating: 0, count: 8)
     private var pendingTriggers: [Bool] = Array(repeating: false, count: 8)
@@ -44,6 +47,7 @@ class GodEngine: ObservableObject {
         audioMetronomeVolume = metronome.volume
         audioLayers = layers
         audioCaptureState = capture.state
+        audioCapture = capture
     }
 
     func togglePlay() {
@@ -88,6 +92,54 @@ class GodEngine: ObservableObject {
         masterVolume = max(0, min(2.0, masterVolume + delta))
     }
 
+    var loopDurationMs: Double {
+        Double(transport.loopLengthFrames) / Transport.sampleRate * 1000.0
+    }
+
+    func stateSnapshot(peakLevels: [Float]) -> StateSnapshot {
+        let loopMs = loopDurationMs
+        let beatLenFrames = transport.loopLengthFrames / (transport.barCount * 4)
+        let currentBeat = beatLenFrames > 0 ? (transport.position / beatLenFrames) + 1 : 1
+
+        let captureStr: String
+        switch capture.state {
+        case .idle: captureStr = "idle"
+        case .armed: captureStr = "armed"
+        case .recording: captureStr = "recording"
+        }
+
+        let channels = (0..<8).map { i -> StateSnapshot.Channel in
+            let pad = padBank.pads[i]
+            let layer = layers[i]
+            let sampleMs = pad.sample?.durationMs ?? 0
+            let peak = i < peakLevels.count ? peakLevels[i] : -100
+            let peakDb = peak > 0 ? 20.0 * log10(peak) : -100.0
+
+            return StateSnapshot.Channel(
+                ch: i + 1,
+                sample: pad.sample?.name ?? "—",
+                sampleDurationMs: sampleMs,
+                loopDurationMs: loopMs,
+                hits: layer.hits.count,
+                muted: layer.isMuted,
+                volume: layer.volume,
+                pan: layer.pan,
+                hpHz: layer.hpCutoff,
+                lpHz: layer.lpCutoff,
+                peakDb: Float(peakDb)
+            )
+        }
+
+        return StateSnapshot(
+            bpm: transport.bpm,
+            bars: transport.barCount,
+            beat: currentBeat,
+            playing: transport.isPlaying,
+            capture: captureStr,
+            channels: channels
+        )
+    }
+
     func toggleMute(layer index: Int) {
         guard index >= 0, index < layers.count else { return }
         layers[index].isMuted.toggle()
@@ -111,6 +163,7 @@ class GodEngine: ObservableObject {
     func toggleCapture() {
         capture.toggle()
         audioCaptureState = capture.state
+        audioCapture = capture
     }
 
     func toggleMetronome() {
@@ -245,18 +298,22 @@ class GodEngine: ObservableObject {
             wrapped = true
         }
 
-        // Capture
+        // Capture — use audioCapture (audio-thread-safe copy), sync state back to UI
         if audioCaptureState == .recording {
-            capture.append(left: outputL, right: outputR)
+            audioCapture.append(left: outputL, right: outputR)
         }
         if wrapped {
-            capture.onLoopBoundary()
-            audioCaptureState = capture.state
+            audioCapture.onLoopBoundary()
+            audioCaptureState = audioCapture.state
+            let captureState = audioCaptureState
+            DispatchQueue.main.async {
+                self.capture.state = captureState
+            }
         }
 
         // Throttle UI updates — sync position + levels ~30x/sec
         uiUpdateCounter += frameCount
-        if uiUpdateCounter >= 1323 {
+        if uiUpdateCounter >= Self.uiUpdateFrameThreshold {
             uiUpdateCounter = 0
             let pos = audioPosition
             let levels = pendingLevels
