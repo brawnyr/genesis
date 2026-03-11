@@ -30,5 +30,8 @@ samples/
 # Test cache
 .pytest_cache/
 
+# Brainstorm artifacts
+.superpowers/
+
 # Environment
 .env
