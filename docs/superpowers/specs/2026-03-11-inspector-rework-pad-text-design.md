@@ -184,9 +184,9 @@ for hit in hits {
 
 ### Keyboard control
 
-**Key: `C`** — toggles cut for `activePadIndex`. Add to the keyboard handler (likely in the main `ContentView` or wherever `.onKeyPress` is handled):
+**Key: `X`** — toggles cut for `activePadIndex`. (`C` is already bound to "clear layer".) Add to the keyboard handler in `ContentView.swift`:
 ```swift
-case "c":
+case Key.x:
     engine.toggleCut(pad: engine.activePadIndex)
 ```
 
