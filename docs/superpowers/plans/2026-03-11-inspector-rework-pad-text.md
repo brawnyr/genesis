@@ -802,7 +802,7 @@ Expected: Build succeeds
 
 - [ ] **Step 4: Manual test**
 
-Run: `cd ~/god/GOD && ./bundle.sh --run`
+Run: `cd ~/god/GOD && swift build && .build/arm64-apple-macosx/debug/GOD`
 Verify: Short sample names stay centered and static. Long sample names scroll smoothly left in a loop. Font is visibly larger (14pt vs old 12pt).
 
 - [ ] **Step 5: Commit**
@@ -1133,7 +1133,7 @@ Expected: Build succeeds
 
 - [ ] **Step 5: Manual test**
 
-Run: `cd ~/god/GOD && ./bundle.sh --run`
+Run: `cd ~/god/GOD && swift build && .build/arm64-apple-macosx/debug/GOD`
 Verify:
 - Inspector shows channel name (e.g., "KICKS") as large glowing header
 - No pad number visible
@@ -1162,7 +1162,7 @@ Expected: All PASS
 
 - [ ] **Step 2: Full manual smoke test**
 
-Run: `cd ~/god/GOD && ./bundle.sh --run`
+Run: `cd ~/god/GOD && swift build && .build/arm64-apple-macosx/debug/GOD`
 
 Verify everything works together:
 1. Pad names: 14pt, long names scroll, short names static

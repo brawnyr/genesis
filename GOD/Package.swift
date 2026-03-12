@@ -7,8 +7,7 @@ let package = Package(
     targets: [
         .executableTarget(
             name: "GOD",
-            path: "GOD",
-            exclude: ["GOD.entitlements"]
+            path: "GOD"
         ),
         .testTarget(
             name: "GODTests",

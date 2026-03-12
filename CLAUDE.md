@@ -1,6 +1,6 @@
 # GOD — Genesis On Disk
 
-Native macOS loop-stacking instrument.
+A playground for making music. Not a DAW — a personal instrument.
 
 ## Codebase Cache
 **Read `CODEBASE.md` before reading any source files.** It contains complete type signatures, architecture, and patterns for every file in the project. Only open individual `.swift` files when you need to make edits or see exact implementation details. This saves significant context window space. If a task requires reading every file in the project, that's fine — the cache is a shortcut, not a restriction.
@@ -39,9 +39,8 @@ GOD pairs well with [Splice](https://splice.com) — browse and download sounds 
 - `--uninstall` to remove, `--dry-run` to preview
 
 ## Commands
-- `god` alias: `cd ~/god/GOD && ./bundle.sh --run` (builds + launches as proper .app)
-- Build only: `cd ~/god/GOD && ./bundle.sh`
-- Raw binary: `cd ~/god/GOD && swift build && .build/arm64-apple-macosx/debug/GOD`
+- `god` alias: `cd ~/god/GOD && swift build && .build/arm64-apple-macosx/debug/GOD`
+- Build only: `cd ~/god/GOD && swift build`
 - Tests: `cd ~/god/GOD && swift test`
 
 ## Principles

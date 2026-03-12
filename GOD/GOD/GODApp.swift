@@ -70,11 +70,8 @@ struct GODApp: App {
 
     init() {
         installCrashHandlers()
-        // When running as raw binary (not .app bundle), register as a regular app
-        if Bundle.main.bundlePath.hasSuffix(".app") == false {
-            NSApplication.shared.setActivationPolicy(.regular)
-            NSApplication.shared.activate(ignoringOtherApps: true)
-        }
+        NSApplication.shared.setActivationPolicy(.regular)
+        NSApplication.shared.activate(ignoringOtherApps: true)
         NSApplication.shared.applicationIconImage = Self.generateIcon()
     }
 

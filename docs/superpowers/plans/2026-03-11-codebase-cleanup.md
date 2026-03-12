@@ -487,10 +487,10 @@ cd ~/god/GOD && swift test
 
 Expected: 88/89 pass (same pre-existing failure).
 
-- [ ] **Step 2: Build bundle**
+- [ ] **Step 2: Build**
 
 ```bash
-cd ~/god/GOD && ./bundle.sh
+cd ~/god/GOD && swift build
 ```
 
-Expected: Builds successfully as a proper .app bundle.
+Expected: Builds successfully.

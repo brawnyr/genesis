@@ -119,7 +119,7 @@ GODApp.swift                   (unchanged)
 - No file over ~300 lines
 - Every file has one clear job
 - `swift test` passes with no changes to test files
-- `./bundle.sh --run` builds and launches correctly
+- `swift build && .build/arm64-apple-macosx/debug/GOD` builds and launches correctly
 - Extractions done file-by-file with build check after each to isolate any compilation errors
 - No behavioral changes — identical functionality
 - Future capabilities (plugins, effects, CC remapping) have obvious homes

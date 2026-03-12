@@ -29,8 +29,6 @@ samples/
 # Swift
 .build/
 .swiftpm/
-*.app/
-
 # Logs
 *.log
 
