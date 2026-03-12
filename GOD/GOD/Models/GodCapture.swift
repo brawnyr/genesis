@@ -2,7 +2,7 @@ import Foundation
 import AVFoundation
 import os
 
-private let logger = Logger(subsystem: "com.god.capture", category: "GodCapture")
+private let logger = Logger(subsystem: "god", category: "GodCapture")
 
 struct GodCapture {
     enum State {
@@ -41,6 +41,13 @@ struct GodCapture {
         guard state == .recording else { return }
         leftBuffers.append(left)
         rightBuffers.append(right)
+    }
+
+    /// Append from pre-allocated buffers (avoids creating intermediate arrays).
+    mutating func appendFromBuffers(left: UnsafeBufferPointer<Float>, right: UnsafeBufferPointer<Float>) {
+        guard state == .recording else { return }
+        leftBuffers.append(Array(left))
+        rightBuffers.append(Array(right))
     }
 
     private mutating func writeAndReset() {
@@ -86,11 +93,17 @@ struct GodCapture {
                 return
             }
             pcmBuffer.frameLength = frameCount
+            guard let channelData = pcmBuffer.floatChannelData else {
+                logger.error("Failed to get float channel data for WAV export")
+                return
+            }
             left.withUnsafeBufferPointer { ptr in
-                pcmBuffer.floatChannelData![0].update(from: ptr.baseAddress!, count: left.count)
+                guard let base = ptr.baseAddress else { return }
+                channelData[0].update(from: base, count: left.count)
             }
             right.withUnsafeBufferPointer { ptr in
-                pcmBuffer.floatChannelData![1].update(from: ptr.baseAddress!, count: right.count)
+                guard let base = ptr.baseAddress else { return }
+                channelData[1].update(from: base, count: right.count)
             }
             try file.write(from: pcmBuffer)
             logger.info("Capture saved: \(filename)")

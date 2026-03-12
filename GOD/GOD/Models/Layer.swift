@@ -37,7 +37,21 @@ struct Layer {
     }
 
     func hits(inRange range: Range<Int>) -> [Hit] {
-        hits.filter { range.contains($0.position) }
+        guard !hits.isEmpty else { return [] }
+        // Binary search for start of range
+        var lo = 0, hi = hits.count
+        while lo < hi {
+            let mid = (lo + hi) / 2
+            if hits[mid].position < range.lowerBound { lo = mid + 1 } else { hi = mid }
+        }
+        let start = lo
+        // Linear scan from start (most ranges are short relative to total hits)
+        var result: [Hit] = []
+        for i in start..<hits.count {
+            if hits[i].position >= range.upperBound { break }
+            result.append(hits[i])
+        }
+        return result
     }
 
     mutating func clear() {

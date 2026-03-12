@@ -2,14 +2,14 @@ import Testing
 @testable import GOD
 
 @Test func metronomeClickGeneration() {
-    let click = Metronome.generateClick(isDownbeat: false, sampleRate: 44100)
+    let click = Metronome.click(isDownbeat: false)
     #expect(click.frameCount > 0)
     #expect(click.frameCount <= 4410) // max ~100ms
 }
 
 @Test func metronomeDownbeatLouder() {
-    let normal = Metronome.generateClick(isDownbeat: false, sampleRate: 44100)
-    let downbeat = Metronome.generateClick(isDownbeat: true, sampleRate: 44100)
+    let normal = Metronome.click(isDownbeat: false)
+    let downbeat = Metronome.click(isDownbeat: true)
     let normalPeak = normal.left.map { abs($0) }.max()!
     let downbeatPeak = downbeat.left.map { abs($0) }.max()!
     #expect(downbeatPeak > normalPeak)
@@ -21,7 +21,7 @@ import Testing
 }
 
 @Test func metronomeClickIsStereo() {
-    let click = Metronome.generateClick(isDownbeat: true, sampleRate: 44100)
+    let click = Metronome.click(isDownbeat: true)
     #expect(click.left.count == click.right.count)
     // Metronome clicks are centered — identical L/R
     #expect(click.left == click.right)

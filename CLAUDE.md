@@ -8,7 +8,7 @@ A playground for making music. Not a DAW — a personal instrument.
 **MANDATORY**: After editing, creating, or deleting any `.swift` file, you MUST update `CODEBASE.md` to reflect the changes before committing. Update only the sections that changed — don't regenerate the whole file. This keeps the cache accurate across sessions.
 
 ## What This Is
-A SwiftUI app for live loop-stacking driven by an Arturia MiniLab 3. Not a DAW. A performance instrument. Play pads, stack layers, capture output.
+A live loop-stacking instrument driven by an Arturia MiniLab 3. Not a DAW. Play pads, stack layers, capture output.
 
 ## Core Workflow
 - Set tempo (whole numbers) and bar length (1, 2, or 4 bars)

@@ -10,7 +10,12 @@ enum LineKind {
 }
 
 struct TerminalLine: Identifiable {
-    let id = UUID()
+    private static var nextID: Int = 0
+    let id: Int = {
+        let val = nextID
+        nextID += 1
+        return val
+    }()
     let text: String
     let kind: LineKind
     let isHighlight: Bool

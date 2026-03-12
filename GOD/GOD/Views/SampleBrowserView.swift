@@ -3,7 +3,7 @@ import SwiftUI
 import UniformTypeIdentifiers
 import os
 
-private let logger = Logger(subsystem: "com.god.ui", category: "SampleBrowser")
+private let logger = Logger(subsystem: "god", category: "SampleBrowser")
 
 struct SampleBrowserView: View {
     @ObservedObject var engine: GodEngine

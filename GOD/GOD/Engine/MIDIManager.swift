@@ -2,16 +2,16 @@ import CoreMIDI
 import Foundation
 import os
 
-private let logger = Logger(subsystem: "com.god.app", category: "MIDI")
+private let logger = Logger(subsystem: "god", category: "MIDI")
 
-class MIDIManager: ObservableObject {
+class MIDIManager {
     private var midiClient: MIDIClientRef = 0
     private var inputPort: MIDIPortRef = 0
     private let ringBuffer: MIDIRingBuffer
     private var connectedSources: Set<MIDIEndpointRef> = []
 
     var interpreter: EngineEventInterpreter?
-    @Published var connectedDevice: String = "None"
+    var connectedDevice: String = "None"
 
     init(ringBuffer: MIDIRingBuffer) {
         self.ringBuffer = ringBuffer

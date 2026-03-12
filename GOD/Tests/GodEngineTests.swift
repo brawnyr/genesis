@@ -78,21 +78,17 @@ import Testing
     engine.midiRingBuffer.write(.noteOn(note: 39, velocity: 100))
     let _ = engine.processBlock(frameCount: 512)
 
-    // CC 14 (volume) should target pad 3, not pad 0
-    engine.midiRingBuffer.write(.cc(number: 14, value: 64))
+    // Active pad should now be 3 (set by audio thread)
+    #expect(engine.audio.activePadIndex == 3)
+
+    // CC 74 (volume knob) should target the active pad (3), not pad 0
+    engine.midiRingBuffer.write(.cc(number: 74, value: 64))
     let _ = engine.processBlock(frameCount: 512)
 
-    // Hit pad 3 again — new voice should have scaled velocity
-    engine.midiRingBuffer.write(.noteOn(note: 39, velocity: 127))
-    let _ = engine.processBlock(frameCount: 512)
-
-    // The latest voice on pad 3 should have reduced velocity (volume ~0.5)
-    if let voice = engine.voices.last(where: { $0.padIndex == 3 }) {
-        #expect(voice.velocity < 0.6)
-        #expect(voice.velocity > 0.4)
-    } else {
-        Issue.record("Expected voice for pad 3")
-    }
+    // Layer 3 volume should be ~0.5 (64/127), layer 0 should be unchanged at 1.0
+    #expect(engine.audio.layers[3].volume < 0.6)
+    #expect(engine.audio.layers[3].volume > 0.4)
+    #expect(engine.audio.layers[0].volume == 1.0)
 }
 
 @Test @MainActor func engineToggleTcps() {

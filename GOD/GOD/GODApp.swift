@@ -2,7 +2,7 @@ import SwiftUI
 import AppKit
 import os
 
-private let logger = Logger(subsystem: "com.god.app", category: "GODApp")
+private let logger = Logger(subsystem: "god", category: "GODApp")
 
 // MARK: - Crash logging
 

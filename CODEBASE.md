@@ -22,7 +22,7 @@ GODApp (@main)
   │     ├── GodCapture (struct) — idle→armed→recording state machine, WAV export
   │     └── MIDIRingBuffer — lock-free SPSC ring buffer for MIDI→audio thread
   ├── AudioManager — AVAudioEngine + AVAudioSourceNode, calls engine.processBlock()
-  ├── MIDIManager (ObservableObject) — CoreMIDI input, auto-connects sources, writes to ring buffer
+  ├── MIDIManager — CoreMIDI input, auto-connects sources, writes to ring buffer
   └── EngineEventInterpreter (ObservableObject) — terminal log + pad intensity visuals
 ```
 
@@ -132,7 +132,7 @@ struct Metronome {
     var isOn: Bool = true, volume: Float = 0.5
     // Named constants: clickDuration, downbeatFreq, beatFreq, downbeatAmplitude, beatAmplitude, clickDecayRate
     static func beatLengthFramesStatic(bpm:sampleRate:) -> Int
-    static func generateClick(isDownbeat:sampleRate:) -> Sample  // 20ms sine burst
+    static func click(isDownbeat:) -> Sample  // cached 20ms sine burst, generated once
 }
 ```
 
@@ -161,7 +161,7 @@ struct GodCapture {
 ### GodEngine+ProcessBlock.swift — Audio render callback, ~298 lines
 - Extension on GodEngine with processBlock() and audio-thread helpers
 - handlePadHit(), handleNoteOff(), handleCC(), updateCachedCoefficients()
-- `processBlock(frameCount:) -> (left: [Float], right: [Float])` — THE audio render callback:
+- `processBlock(frameCount:intoLeft:intoRight:)` — THE audio render callback (writes directly to audio buffer pointers, locked with os_unfair_lock):
   1. Scans audioLayers for loop-replayed hits
   2. Drains MIDIRingBuffer for live hits (after loop scan to avoid double-trigger)
   3. Generates metronome clicks on beat boundaries
@@ -265,9 +265,6 @@ struct GodCapture {
 ### SampleBrowserView.swift — ~137 lines
 - File browser overlay with W/S navigation, file picker fallback
 
-### TransportView.swift — 49 lines
-- Horizontal bar: play state, BPM, bar count, metronome, beat counter (uses transport.currentBeat)
-
 ### KeyReferenceOverlay.swift — ~120 lines
 - `KeyAction` enum (CaseIterable): all keyboard shortcuts with key/action string pairs (includes velocityMode, tcpsMode)
 - Help overlay iterates KeyAction.allCases for display
@@ -280,7 +277,7 @@ struct GodCapture {
 - Window: hiddenTitleBar, 1000x700 default
 
 ## Key Patterns
-- **Dual-state architecture**: GodEngine has @Published UI state AND audio-thread mirror state. Audio thread never touches @Published. UI sync happens via DispatchQueue.main.async at ~30fps.
+- **Dual-state architecture**: GodEngine has @Published UI state AND audio-thread mirror state. Audio thread never touches @Published. UI sync happens via DispatchQueue.main.async at ~30fps. Main-thread mutations to audio state are protected by os_unfair_lock.
 - **Lock-free MIDI**: MIDIManager → MIDIRingBuffer (SPSC, OSMemoryBarrier) → drained in processBlock()
 - **Loop recording**: hits recorded with frame position, replayed on each loop cycle by scanning layer.hits(inRange:)
 - **Per-layer effects**: volume, pan, HP/LP biquad filters applied per-voice in Voice.fill()
@@ -296,4 +293,4 @@ struct GodCapture {
 - GodEngineTests, GodCaptureTests, BiquadTests
 - MIDITests, MIDIRingBufferTests, EngineEventInterpreterTests
 - BPMDetectorTests, SpliceLoadingTests
-- Note: engineActivePadTracking has a known test bug (velocity assertion)
+- All 91 tests pass

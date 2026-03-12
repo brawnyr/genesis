@@ -2,6 +2,18 @@
 import Foundation
 
 extension GodEngine {
+    /// Convenience for tests — processes a block and returns stereo arrays.
+    func processBlock(frameCount: Int) -> (left: [Float], right: [Float]) {
+        var left = [Float](repeating: 0, count: frameCount)
+        var right = [Float](repeating: 0, count: frameCount)
+        left.withUnsafeMutableBufferPointer { leftBuf in
+            right.withUnsafeMutableBufferPointer { rightBuf in
+                processBlock(frameCount: frameCount, intoLeft: leftBuf.baseAddress, intoRight: rightBuf.baseAddress)
+            }
+        }
+        return (left, right)
+    }
+
     // MARK: - Pad hit handling (audio thread)
 
     func handlePadHit(note: Int, velocity: Int, record: Bool) {
@@ -77,7 +89,8 @@ extension GodEngine {
 
     // MARK: - Audio render callback
 
-    func processBlock(frameCount: Int) -> (left: [Float], right: [Float]) {
+    func processBlock(frameCount: Int, intoLeft destL: UnsafeMutablePointer<Float>?, intoRight destR: UnsafeMutablePointer<Float>?) {
+        os_unfair_lock_lock(&audioLock)
         // Ensure pre-allocated buffers are large enough, then zero them
         if outputBufferL.count < frameCount {
             outputBufferL = [Float](repeating: 0, count: frameCount)
@@ -140,7 +153,7 @@ extension GodEngine {
                     let frameInLoop = (startPos + i) % loopLen
                     if beatLen > 0 && frameInLoop % beatLen == 0 {
                         let isDownbeat = frameInLoop == 0
-                        let click = Metronome.generateClick(isDownbeat: isDownbeat, sampleRate: Transport.sampleRate)
+                        let click = Metronome.click(isDownbeat: isDownbeat)
                         voices.append(Voice(sample: click, velocity: audio.metronomeVolume))
                     }
                 }
@@ -194,10 +207,13 @@ extension GodEngine {
 
         // Capture AFTER mixing — so we record actual audio, not silence
         if audio.captureState == .recording {
-            audio.capture.append(
-                left: Array(outputBufferL[0..<frameCount]),
-                right: Array(outputBufferR[0..<frameCount])
-            )
+            outputBufferL.withUnsafeBufferPointer { leftPtr in
+                outputBufferR.withUnsafeBufferPointer { rightPtr in
+                    let leftSlice = UnsafeBufferPointer(rebasing: leftPtr[0..<frameCount])
+                    let rightSlice = UnsafeBufferPointer(rebasing: rightPtr[0..<frameCount])
+                    audio.capture.appendFromBuffers(left: leftSlice, right: rightSlice)
+                }
+            }
         }
 
         if wrapped {
@@ -293,6 +309,13 @@ extension GodEngine {
             }
         }
 
-        return (Array(outputBufferL[0..<frameCount]), Array(outputBufferR[0..<frameCount]))
+        // Copy into destination audio buffers
+        if let destL = destL, let destR = destR {
+            for i in 0..<frameCount {
+                destL[i] = outputBufferL[i]
+                destR[i] = outputBufferR[i]
+            }
+        }
+        os_unfair_lock_unlock(&audioLock)
     }
 }

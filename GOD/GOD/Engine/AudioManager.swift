@@ -1,7 +1,11 @@
 import AVFoundation
 import os
 
-private let logger = Logger(subsystem: "com.god.audio", category: "AudioManager")
+private let logger = Logger(subsystem: "god", category: "AudioManager")
+
+enum AudioError: Error {
+    case formatCreationFailed
+}
 
 class AudioManager {
     private let audioEngine = AVAudioEngine()
@@ -13,29 +17,18 @@ class AudioManager {
     }
 
     func start() throws {
-        let format = AVAudioFormat(standardFormatWithSampleRate: Transport.sampleRate, channels: 2)!
+        guard let format = AVAudioFormat(standardFormatWithSampleRate: Transport.sampleRate, channels: 2) else {
+            throw AudioError.formatCreationFailed
+        }
 
         let node = AVAudioSourceNode(format: format) { [weak self] _, _, frameCount, audioBufferList -> OSStatus in
             guard let engine = self?.godEngine else { return noErr }
 
-            let (left, right) = engine.processBlock(frameCount: Int(frameCount))
-
             let ablPointer = UnsafeMutableAudioBufferListPointer(audioBufferList)
             let leftPtr = ablPointer[0].mData?.assumingMemoryBound(to: Float.self)
-            let rightPtr: UnsafeMutablePointer<Float>?
+            let rightPtr = ablPointer.count >= 2 ? ablPointer[1].mData?.assumingMemoryBound(to: Float.self) : nil
 
-            if ablPointer.count >= 2 {
-                rightPtr = ablPointer[1].mData?.assumingMemoryBound(to: Float.self)
-            } else {
-                rightPtr = nil
-            }
-
-            for i in 0..<Int(frameCount) {
-                let l = i < left.count ? left[i] : 0
-                let r = i < right.count ? right[i] : 0
-                leftPtr?[i] = l
-                rightPtr?[i] = r
-            }
+            engine.processBlock(frameCount: Int(frameCount), intoLeft: leftPtr, intoRight: rightPtr)
 
             return noErr
         }

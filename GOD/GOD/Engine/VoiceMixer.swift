@@ -17,13 +17,14 @@ enum VoiceMixer {
         voices = voices.compactMap { voice in
             var v = voice
             let padIdx = v.padIndex
-            let hpCoeffs = padIdx >= 0 && padIdx < PadBank.padCount ? cachedHP[padIdx] : .bypass
-            let lpCoeffs = padIdx >= 0 && padIdx < PadBank.padCount ? cachedLP[padIdx] : .bypass
-            let pan = padIdx >= 0 && padIdx < PadBank.padCount ? layers[padIdx].pan : 0.5
-            let volume = padIdx >= 0 && padIdx < PadBank.padCount ? layers[padIdx].volume : 1.0
+            let validPad = padIdx >= 0 && padIdx < PadBank.padCount
+            let hpCoeffs = validPad ? cachedHP[padIdx] : .bypass
+            let lpCoeffs = validPad ? cachedLP[padIdx] : .bypass
+            let pan = validPad ? layers[padIdx].pan : 0.5
+            let volume = validPad ? layers[padIdx].volume : 1.0
             let (done, peak) = v.fill(intoLeft: &bufferL, right: &bufferR, count: count,
                                        pan: pan, volume: volume, hpCoeffs: hpCoeffs, lpCoeffs: lpCoeffs)
-            if padIdx >= 0 && padIdx < PadBank.padCount {
+            if validPad {
                 levels[padIdx] = max(levels[padIdx], peak)
             }
             return done ? nil : v

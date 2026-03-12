@@ -1,7 +1,7 @@
 import Foundation
 import os
 
-private let logger = Logger(subsystem: "com.god.pads", category: "PadBank")
+private let logger = Logger(subsystem: "god", category: "PadBank")
 
 struct Pad {
     let index: Int

@@ -1,5 +1,5 @@
 import Foundation
-import Combine
+import os
 
 enum ToggleMode: String {
     case instant = "instant"
@@ -63,6 +63,7 @@ class GodEngine: ObservableObject {
     var audio = AudioState(masterVolume: GodEngine.loadMasterVolume())
     var voices: [Voice] = []
     let midiRingBuffer = MIDIRingBuffer()
+    var audioLock = os_unfair_lock()
 
     // MARK: - Audio thread buffers (pre-allocated, avoid heap allocs)
 
@@ -91,6 +92,7 @@ class GodEngine: ObservableObject {
 
     func togglePlay() {
         transport.isPlaying.toggle()
+        os_unfair_lock_lock(&audioLock)
         if !transport.isPlaying {
             transport.position = 0
             audio.position = 0
@@ -99,18 +101,23 @@ class GodEngine: ObservableObject {
         } else {
             audio.isPlaying = true
         }
+        os_unfair_lock_unlock(&audioLock)
     }
 
     func stop() {
         transport.isPlaying = false
         transport.position = 0
+        os_unfair_lock_lock(&audioLock)
         audio.position = 0
         audio.isPlaying = false
         voices.removeAll()
+        os_unfair_lock_unlock(&audioLock)
     }
 
     func killAllVoices() {
+        os_unfair_lock_lock(&audioLock)
         voices.removeAll()
+        os_unfair_lock_unlock(&audioLock)
     }
 
     func setBPM(_ bpm: Int) {
@@ -191,10 +198,12 @@ class GodEngine: ObservableObject {
         guard index >= 0, index < layers.count else { return }
         if toggleMode == .instant {
             layers[index].isMuted.toggle()
+            os_unfair_lock_lock(&audioLock)
             audio.layers[index].isMuted = layers[index].isMuted
             if layers[index].isMuted {
                 voices.removeAll { $0.padIndex == index }
             }
+            os_unfair_lock_unlock(&audioLock)
         } else {
             // Next loop mode: queue the change
             let currentEffective = pendingMutes[index] ?? layers[index].isMuted
@@ -217,9 +226,9 @@ class GodEngine: ObservableObject {
 
     func cycleToggleMode() {
         toggleMode = toggleMode == .instant ? .nextLoop : .instant
+        os_unfair_lock_lock(&audioLock)
         audio.toggleMode = toggleMode
         if toggleMode == .instant {
-            // Apply any pending mutes immediately when switching to instant
             for (index, muteState) in pendingMutes {
                 layers[index].isMuted = muteState
                 audio.layers[index].isMuted = muteState
@@ -227,6 +236,7 @@ class GodEngine: ObservableObject {
             pendingMutes.removeAll()
             audio.pendingMutes.removeAll()
         }
+        os_unfair_lock_unlock(&audioLock)
     }
 
     func cycleVelocityMode() {
@@ -246,24 +256,28 @@ class GodEngine: ObservableObject {
     }
 
     func restoreTcpsFromPadBank() {
-        // TCPS (this cuts previous sound) defaults to ON for all pads.
         for i in 0..<PadBank.padCount {
-            layers[i].tcps = true
-            audio.layers[i].tcps = true
+            let tcps = padBank.pads[i].tcps
+            layers[i].tcps = tcps
+            audio.layers[i].tcps = tcps
         }
     }
 
     func clearLayer(_ index: Int) {
         guard index >= 0, index < layers.count else { return }
         layers[index].clear()
+        os_unfair_lock_lock(&audioLock)
         audio.layers[index].clear()
+        os_unfair_lock_unlock(&audioLock)
         lastClearedLayerIndex = index
     }
 
     func undoLastClear() {
         guard let index = lastClearedLayerIndex else { return }
         layers[index].undo()
+        os_unfair_lock_lock(&audioLock)
         audio.layers[index].undo()
+        os_unfair_lock_unlock(&audioLock)
         lastClearedLayerIndex = nil
     }
 
@@ -271,13 +285,17 @@ class GodEngine: ObservableObject {
 
     func toggleCapture() {
         capture.toggle()
+        os_unfair_lock_lock(&audioLock)
         audio.captureState = capture.state
         audio.capture = capture
+        os_unfair_lock_unlock(&audioLock)
     }
 
     func toggleMetronome() {
         metronome.isOn.toggle()
+        os_unfair_lock_lock(&audioLock)
         audio.metronomeOn = metronome.isOn
+        os_unfair_lock_unlock(&audioLock)
     }
 
     // MARK: - Centralized sample loading (single source of truth)

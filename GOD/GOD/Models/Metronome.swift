@@ -11,6 +11,10 @@ struct Metronome {
     var isOn: Bool = true
     var volume: Float = 0.5
 
+    // Cached click samples — generated once, reused on every beat
+    private static let cachedDownbeat: Sample = generateClickInternal(isDownbeat: true)
+    private static let cachedBeat: Sample = generateClickInternal(isDownbeat: false)
+
     func beatLengthFrames(bpm: Int, sampleRate: Double) -> Int {
         Self.beatLengthFramesStatic(bpm: bpm, sampleRate: sampleRate)
     }
@@ -19,7 +23,12 @@ struct Metronome {
         Int(60.0 / Double(bpm) * sampleRate)
     }
 
-    static func generateClick(isDownbeat: Bool, sampleRate: Double) -> Sample {
+    static func click(isDownbeat: Bool) -> Sample {
+        isDownbeat ? cachedDownbeat : cachedBeat
+    }
+
+    private static func generateClickInternal(isDownbeat: Bool) -> Sample {
+        let sampleRate = Transport.sampleRate
         let frameCount = Int(clickDuration * sampleRate)
         let frequency: Double = isDownbeat ? downbeatFreq : beatFreq
         let amplitude: Float = isDownbeat ? downbeatAmplitude : beatAmplitude
