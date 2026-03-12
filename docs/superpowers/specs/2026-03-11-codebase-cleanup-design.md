@@ -38,31 +38,31 @@ Three distinct visual layers composed together. Extract:
 
 ### ContentView.swift (418 -> 2 files)
 
-Layout and keyboard handling are separate concerns:
+ContentView lives at `GOD/GOD/ContentView.swift` (not in Views/) and stays there. Layout and keyboard handling are separate concerns:
 
-- **ContentView+KeyHandlers.swift** (~220 lines) — extension with all key dispatch logic for normal/bpm/browse modes
-- **ContentView.swift** (~200 lines) — layout composition and state management
+- **ContentView+KeyHandlers.swift** (~220 lines) — extension with all key dispatch logic for normal/bpm/browse modes. `bpmPresets` array moves here since it's only used by `handleBPMKey`.
+- **ContentView.swift** (~200 lines) — layout composition, state management, `KeyCaptureView`/`KeyCaptureRepresentable` (AppKit bridging, ~35 lines), `KeyLabel` helper view
 
 ### GodEngine.swift (583 -> ~4 files)
 
 The engine currently handles coordination AND DSP AND CC routing AND transport control:
 
-- **VoiceMixer.swift** (~80 lines) — pure DSP unit: takes voices + layer filter state, returns mixed stereo output. No knowledge of pads, MIDI, transport, or UI. This is where plugins/effects would extend.
-- **CCRouter.swift** (~60 lines) — declarative CC number -> action mapping table. Instead of switch/case in the engine, CC mappings become table entries. Adding a new knob mapping = adding one entry. Foundation for user-configurable CC mapping.
-- **GodEngine+ProcessBlock.swift** (~120 lines) — the render callback, using VoiceMixer and CCRouter
-- **GodEngine.swift** (~300 lines) — coordination hub: owns state, public API, transport control, delegates DSP to VoiceMixer and CC handling to CCRouter
+- **VoiceMixer.swift** (~80 lines) — pure DSP unit. Signature: `static func mix(voices: inout [Voice], layers: [Layer], cachedHP: [BiquadCoefficients?], cachedLP: [BiquadCoefficients?], into bufferL: inout [Float], bufferR: inout [Float], frameOffset: Int, count: Int) -> [Float]` — returns per-pad peak levels. Owns the voice iteration, `voice.fill()` calls, and peak tracking. Does not own the voice array or coefficient caching — the engine passes those in.
+- **CCRouter.swift** (~80 lines) — CC routing with action closures. Captures a weak engine reference. Maps CC numbers to handler closures (e.g., `82: { engine, val in engine.setMasterVolume(val) }`). Handles main-thread dispatch internally where needed. The engine calls `router.handle(cc:, value:)` instead of a switch/case.
+- **GodEngine+ProcessBlock.swift** (~120 lines) — the render callback, using VoiceMixer and CCRouter. Note: fields accessed by processBlock (e.g., `audio`, `voices`, `pendingLevels`, `cachedHPCoeffs`, etc.) must be `internal` rather than `private` to allow cross-file extension access.
+- **GodEngine.swift** (~300 lines) — coordination hub: owns state, public API, transport control, delegates DSP to VoiceMixer and CC handling to CCRouter. `ToggleMode` and `VelocityMode` enums remain here (they're engine state consumed by views via @Published).
 
 ### EngineEventInterpreter.swift (228 -> 2 files)
 
 Currently does two unrelated things — formatting log text and tracking visual decay for pad animations:
 
-- **TerminalLogger.swift** (~130 lines) — event formatting, state diffing, line management. Consumed by TerminalTextLayer.
+- **TerminalLogger.swift** (~130 lines) — event formatting, state diffing, line management. Consumed by TerminalTextLayer. Static formatting helpers (`formatPan`, `formatFrequency`, `formatDuration`) stay here as static methods — views import TerminalLogger for formatting, which is acceptable (they're display formatters, not logging internals).
 - **PadIntensityTracker.swift** (~100 lines) — visual decay/sustain tracking for pad columns. Consumed by PadVisualsLayer.
 
 ## Naming & Pattern Pass
 
 - Audit Theme.swift: ensure no color or font constants are hardcoded elsewhere. One source of truth.
-- Helper views (InspectorRow, TcpsBadge, ToggleModeBadge) don't need renaming — moving them to CCPanelView.swift gives them proper context.
+- Helper views (InspectorRow, InspectorSectionHeader, TcpsBadge, ToggleModeBadge) don't need renaming — moving them to CCPanelView.swift gives them proper context.
 - No gratuitous renames. If a name is clear in context and the file is in the right place, leave it.
 
 ## What Won't Change
@@ -85,7 +85,7 @@ Engine/
   GodEngine.swift              (~300 lines — coordination, state, public API)
   GodEngine+ProcessBlock.swift (~120 lines — render callback)
   VoiceMixer.swift             (~80 lines — DSP mixing/filtering)
-  CCRouter.swift               (~60 lines — CC mapping table)
+  CCRouter.swift               (~80 lines — CC mapping with action closures)
   AudioManager.swift           (unchanged)
   MIDIManager.swift            (unchanged)
   MIDIRingBuffer.swift         (unchanged)
@@ -93,10 +93,11 @@ Engine/
   PadIntensityTracker.swift    (~100 lines — visual decay state)
   BPMDetector.swift            (unchanged)
 
+ContentView.swift              (~200 lines — layout, state, AppKit bridging)
+ContentView+KeyHandlers.swift  (~220 lines — key dispatch extension)
+
 Views/
   Theme.swift                  (unchanged, audit for scattered constants)
-  ContentView.swift            (~200 lines — layout and state)
-  ContentView+KeyHandlers.swift (~220 lines — key dispatch extension)
   CanvasView.swift             (~80 lines — composes three layers)
   PadVisualsLayer.swift        (~80 lines)
   GodTitleLayer.swift          (~250 lines — generative animation)
@@ -119,5 +120,6 @@ GODApp.swift                   (unchanged)
 - Every file has one clear job
 - `swift test` passes with no changes to test files
 - `./bundle.sh --run` builds and launches correctly
+- Extractions done file-by-file with build check after each to isolate any compilation errors
 - No behavioral changes — identical functionality
 - Future capabilities (plugins, effects, CC remapping) have obvious homes
