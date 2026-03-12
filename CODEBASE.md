@@ -16,7 +16,7 @@ GODApp (@main)
   ├── GodEngine (ObservableObject) — central state, audio processing
   │     ├── Transport (struct) — BPM, bar count, position, loop length
   │     ├── PadBank (struct) — 8 pads, MIDI note mapping, Splice loading, config persistence
-  │     ├── Layer[8] (struct) — per-pad hit recording, mute, volume, pan, HP/LP filters, cut
+  │     ├── Layer[8] (struct) — per-pad hit recording, mute, volume, pan, HP/LP filters, tcps
   │     ├── Voice[] (struct) — active audio voices with per-voice biquad filter state
   │     ├── Metronome (struct) — click generation
   │     ├── GodCapture (struct) — idle→armed→recording state machine, WAV export
@@ -62,9 +62,9 @@ struct Sample {
 struct Pad {
     let index: Int, midiNote: Int
     var name: String, sample: Sample?, samplePath: String?
-    var isOneShot: Bool = true, cut: Bool = false
+    var isOneShot: Bool = true, tcps: Bool = true
 }
-struct PadAssignment: Codable { let path: String, name: String; var cut: Bool? }
+struct PadAssignment: Codable { let path: String, name: String; var tcps: Bool? }
 struct PadConfig: Codable { var assignments: [String: PadAssignment] }
 struct PadBank {
     static let baseNote = 36, padCount = 8
@@ -93,7 +93,7 @@ struct Layer {
     static let lpBypassFrequency: Float = 20000.0
     var hpCutoff: Float = Layer.hpBypassFrequency
     var lpCutoff: Float = Layer.lpBypassFrequency
-    var cut: Bool = false
+    var tcps: Bool = true         // "this cuts previous sound" — kills previous voice on same pad
     mutating func addHit(at:velocity:)
     func hits(inRange:) -> [Hit]
     mutating func clear()       // saves to previousHits for undo
@@ -151,22 +151,31 @@ struct GodCapture {
 
 ## Engine (GOD/GOD/Engine/)
 
-### GodEngine.swift — Central hub, ~500 lines
-- `@Published` state: transport, layers[PadBank.padCount], padBank, metronome, capture, channelSignalLevels, channelTriggered, masterLevel, masterVolume, detectedBPMs, activePadIndex
-- `AudioState` struct (private, audio-thread-only): groups position, isPlaying, bpm, barCount, metronomeOn, metronomeVolume, layers, captureState, capture, activePadIndex, toggleMode, pendingMutes, loopLengthFrames (computed)
-- Single `private var audio = AudioState()` — all audio-thread state accessed via `audio.`
-- Named constants: `uiUpdateHz` (UI throttle rate)
-- Key methods: togglePlay(), stop(), setBPM(), setBarCount(), cycleBarCount(), setMasterVolume(), toggleMute(), toggleCut(), clearLayer(), undoLastClear(), toggleCapture(), toggleMetronome(), detectBPM()
+### GodEngine.swift — State & control, ~298 lines
+- `@Published` state: transport, layers[PadBank.padCount], padBank, metronome, capture, channelSignalLevels, channelTriggered, masterLevel, masterVolume (persisted), detectedBPMs, activePadIndex (syncs audio→main), velocityMode
+- `AudioState` struct (audio-thread-only): groups position, isPlaying, bpm, barCount, metronomeOn, metronomeVolume, layers, captureState, capture, activePadIndex, toggleMode, pendingMutes, loopLengthFrames (computed)
+- `ToggleMode` enum (.instant, .nextLoop), `VelocityMode` enum (.pressure, .full)
+- Key methods: togglePlay(), stop(), setBPM(), setBarCount(), cycleBarCount(), setMasterVolume(), toggleMute() (kills voices on mute), toggleTcps(), clearLayer(), undoLastClear(), toggleCapture(), toggleMetronome(), detectBPM(), killAllVoices(), cycleVelocityMode(), loadSample()
+- Master volume persistence: loadMasterVolume()/saveMasterVolume() via ~/.god/master.txt
+
+### GodEngine+ProcessBlock.swift — Audio render callback, ~298 lines
+- Extension on GodEngine with processBlock() and audio-thread helpers
+- handlePadHit(), handleNoteOff(), handleCC(), updateCachedCoefficients()
 - `processBlock(frameCount:) -> (left: [Float], right: [Float])` — THE audio render callback:
   1. Scans audioLayers for loop-replayed hits
   2. Drains MIDIRingBuffer for live hits (after loop scan to avoid double-trigger)
   3. Generates metronome clicks on beat boundaries
-  4. Advances position, handles loop wrap
+  4. Advances position, handles loop wrap + pending mute application
   5. Capture recording
-  6. Mixes all voices with per-layer biquad filters + pan
+  6. Calls VoiceMixer.mix() for voice rendering
   7. Applies master volume
   8. Throttled UI sync (~30fps) via DispatchQueue.main.async
-- CC routing: CC14=volume, CC15=pan, CC16=HP cutoff, CC17=LP cutoff (applied to active pad)
+- CC routing: CC82=master volume, CC74=pad volume, CC71=pan, CC76=HP cutoff, CC77=LP cutoff, CC114=browse encoder
+
+### VoiceMixer.swift — Stateless voice mixer, ~33 lines
+- `enum VoiceMixer` with static `mix()` method
+- Pure DSP: renders voices with per-layer biquad filters + pan + volume
+- Returns per-pad peak levels, removes finished voices via compactMap
 
 ### AudioManager.swift — 59 lines
 - Wraps AVAudioEngine + AVAudioSourceNode
@@ -206,39 +215,68 @@ struct GodCapture {
 - Colors: bg (#1a1917), blue (#6283e2), ice (#64beff), orange (#da7b4a), green, red, amber, subtle, charcoal, canvasBg (#131210)
 - Fonts: mono (16pt), monoSmall (14), monoTiny (12), monoLarge (22), monoTitle (28 bold)
 
-### ContentView.swift — 447 lines
+### ContentView.swift — ~129 lines
 - Root view with KeyCaptureView (NSView) for keyboard input
 - Layout: HStack[CanvasView + CCPanelView] → LoopProgressBar → PadStripView → Hotkeys strip
-- `EditMode` enum (.normal, .bpm, .browse) replaces boolean state flags
-- Key handling split into mode-dispatched methods: handleKey → handleShiftPad, handleBPMKey, handleBrowseKey, handleNormalKey
-- Keys: SPC=play, G=capture, A/D=pad nav, Shift+1-8=pad jump, Q=cool(mute), E=hot(unmute), M=metro, B=bpm, []=bars, V=master vol mode, 0-9=volume, Z=undo, C=clear, X=cut, T=browse, ESC=stop, ?=help
+- `EditMode` enum (.normal, .bpm, .browse)
+- KeyLabel helper view for hotkey strip
 
-### CanvasView.swift — 322 lines
-- Three layers: PadVisualsLayer (orange gradient columns), GodTitleLayer (animated pixel GOD letters + ambient swirl), TerminalTextLayer (scrolling log)
-- GodTitleLayer: pixel bitmaps for G/O/D letters, animated drift + pulse, three visual modes (idle=ice, playing=orange, godMode=orange+red)
-- TerminalTextLayer: scrolling log with line-kind coloring, blinking cursor, fade-in opacity
+### ContentView+KeyHandlers.swift — ~292 lines
+- Extension on ContentView with all keyboard dispatch logic
+- Key enum (virtual key codes), bpmPresets array
+- Mode-dispatched: handleKey → handleBPMKey, handleBrowseKey, handleNormalKey
+- Keys: SPC=play, G=capture, A/D=pad nav, Q=cool(mute), E=hot(unmute), M=metro, B=bpm, []=bars, F=kill all voices, P=velocity mode, 0-9=pad volume, Z=undo, C=clear, X=tcps toggle, N=toggle mode, T=browse, ESC=stop, ?=help
 
-### PadStripView.swift — ~580 lines
-- PadStripView: HStack of PadBank.padCount PadCell views
-- PadCellOverlay (ViewModifier): consolidates hot glow, cold frost, trigger flash, pending stroke, and top border overlays
-- PadCell: sample name (MarqueeText), folder label, signal meter, uses PadCellOverlay modifier
-- MarqueeText: auto-scrolling text for long names using TimelineView
+### CanvasView.swift — ~34 lines
+- Composes three layers: PadVisualsLayer, GodTitleLayer, TerminalTextLayer
+
+### GodTitleLayer.swift — ~312 lines
+- GeoShapeKind enum, GeoShape struct for generative geometric field
+- Canvas-based rendering: triangles, hexagons, lines, angular spirals, fragments
+- CRT jitter, rotation, fade-in/out, mirror copies
+- Three visual modes: idle (ice), playing (orange), godMode (orange+red)
+- Master volume ring (64px circle), transport info display
+
+### PadVisualsLayer.swift — ~35 lines
+- Orange gradient columns driven by pad intensity values
+
+### TerminalTextLayer.swift — ~67 lines
+- Scrolling terminal log with blinking cursor
+- Line-kind color coding: system, transport, hit, state, capture, browse
+
+### PadStripView.swift — ~53 lines
+- PadStripView: HStack of PadCell views
 - LoopProgressBar: thin horizontal progress bar
-- CCPanelView (right panel, 190px): master volume display, pad inspector (sample info, params, cut badge), sample browser
-- SampleBrowserView: lists files from Splice folder, W/S navigation, tap to load, file picker fallback
-- Helper views: InspectorSectionHeader, InspectorRow, CutBadge
+
+### PadCell.swift — ~107 lines
+- Single pad visual cell with sample name (MarqueeText), folder label, signal meter
+- Uses PadCellOverlay modifier
+
+### PadCellOverlay.swift — ~68 lines
+- ViewModifier with glow strokes: hot/cold/pending visual states, breathing animation
+
+### MarqueeText.swift — ~70 lines
+- Auto-scrolling text for long names using TimelineView
+
+### CCPanelView.swift — ~207 lines
+- Right-side inspector panel (260px): sample info, params (vol/pan/HP/LP), mode badges
+- Helper views: InspectorSectionHeader, InspectorRow, TcpsBadge, ToggleModeBadge
+
+### SampleBrowserView.swift — ~137 lines
+- File browser overlay with W/S navigation, file picker fallback
 
 ### TransportView.swift — 49 lines
 - Horizontal bar: play state, BPM, bar count, metronome, beat counter (uses transport.currentBeat)
 
 ### KeyReferenceOverlay.swift — ~120 lines
-- `KeyAction` enum (CaseIterable): all keyboard shortcuts with key/action string pairs
+- `KeyAction` enum (CaseIterable): all keyboard shortcuts with key/action string pairs (includes velocityMode, tcpsMode)
 - Help overlay iterates KeyAction.allCases for display
 
-## App Entry (GODApp.swift) — 164 lines
+## App Entry (GODApp.swift) — ~186 lines
 - @main struct, creates GodEngine + EngineEventInterpreter
+- Crash logging: installCrashHandlers() — NSSetUncaughtExceptionHandler + signal handlers, writes to ~/.god/crash.log
 - startManagers(): loads pad config → Splice folders → wires interpreter → starts AudioManager → starts MIDIManager
-- Programmatic dock icon (pixel-art GOD in orange on dark bg)
+- Programmatic dock icon ("GENESIS" text in orange monospace on dark bg)
 - Window: hiddenTitleBar, 1000x700 default
 
 ## Key Patterns
@@ -248,6 +286,8 @@ struct GodCapture {
 - **Per-layer effects**: volume, pan, HP/LP biquad filters applied per-voice in Voice.fill()
 - **Splice integration**: auto-loads from ~/Splice/sounds/{kicks,snares,hats,perc,bass,keys,vox,fx}/
 - **Pad config**: persisted to ~/.god/pads.json
+- **Master volume**: persisted to ~/.god/master.txt, loaded on init
+- **TCPS (This Cuts Previous Sound)**: ON by default, kills previous voice on same pad when re-triggered
 - **Error logging**: Sample/config operations use os.Logger (Pad.swift) or interpreter terminal (ContentView) instead of silent try?
 
 ## Test Files (GOD/Tests/)

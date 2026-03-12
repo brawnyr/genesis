@@ -25,8 +25,9 @@ A SwiftUI app for live loop-stacking driven by an Arturia MiniLab 3. Not a DAW. 
 
 ## Project Structure
 - `GOD/GOD/Models/` — Transport, Sample, Voice, Layer, Pad, Biquad, Metronome, GodCapture
-- `GOD/GOD/Engine/` — GodEngine, AudioManager, MIDIManager, MIDIRingBuffer, BPMDetector, EngineEventInterpreter
-- `GOD/GOD/Views/` — Theme, ContentView, CanvasView, PadStripView, TransportView, KeyReferenceOverlay
+- `GOD/GOD/Engine/` — GodEngine (+ ProcessBlock extension, VoiceMixer), AudioManager, MIDIManager, MIDIRingBuffer, BPMDetector, EngineEventInterpreter
+- `GOD/GOD/Views/` — Theme, CanvasView (+ GodTitleLayer, PadVisualsLayer, TerminalTextLayer), PadStripView (+ PadCell, PadCellOverlay, MarqueeText), CCPanelView, SampleBrowserView, TransportView, KeyReferenceOverlay
+- `GOD/GOD/` — ContentView (+ KeyHandlers extension), GODApp
 - `GOD/Tests/` — Swift Testing unit tests (13 files)
 - `tools/` — Splice download sorter (optional)
 - `docs/` — Design specs and implementation plans

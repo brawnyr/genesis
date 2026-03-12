@@ -4,6 +4,63 @@ import os
 
 private let logger = Logger(subsystem: "com.god.app", category: "GODApp")
 
+// MARK: - Crash logging
+
+private let crashLogURL: URL = {
+    let dir = FileManager.default.homeDirectoryForCurrentUser.appendingPathComponent(".god")
+    try? FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+    return dir.appendingPathComponent("crash.log")
+}()
+
+private func writeCrashLog(_ message: String) {
+    let timestamp = ISO8601DateFormatter().string(from: Date())
+    let entry = "[\(timestamp)] \(message)\n"
+    if let data = entry.data(using: .utf8) {
+        if FileManager.default.fileExists(atPath: crashLogURL.path) {
+            if let handle = try? FileHandle(forWritingTo: crashLogURL) {
+                handle.seekToEndOfFile()
+                handle.write(data)
+                handle.closeFile()
+            }
+        } else {
+            try? data.write(to: crashLogURL)
+        }
+    }
+}
+
+private func installCrashHandlers() {
+    // Objective-C uncaught exceptions
+    NSSetUncaughtExceptionHandler { exception in
+        let info = """
+        UNCAUGHT EXCEPTION: \(exception.name.rawValue)
+        Reason: \(exception.reason ?? "unknown")
+        Stack:\n\(exception.callStackSymbols.joined(separator: "\n"))
+        """
+        writeCrashLog(info)
+    }
+
+    // Signal handlers for crashes Swift doesn't catch as exceptions
+    let signals: [(Int32, String)] = [
+        (SIGABRT, "SIGABRT"), (SIGSEGV, "SIGSEGV"), (SIGBUS, "SIGBUS"),
+        (SIGFPE, "SIGFPE"), (SIGILL, "SIGILL"), (SIGTRAP, "SIGTRAP")
+    ]
+    for (sig, _) in signals {
+        signal(sig) { sigNum in
+            let names: [Int32: String] = [
+                SIGABRT: "SIGABRT", SIGSEGV: "SIGSEGV", SIGBUS: "SIGBUS",
+                SIGFPE: "SIGFPE", SIGILL: "SIGILL", SIGTRAP: "SIGTRAP"
+            ]
+            let name = names[sigNum] ?? "SIGNAL \(sigNum)"
+            // Can't do much in a signal handler — write minimal info
+            let msg = "\(name) — app crashed. Check Console.app for full stack trace."
+            writeCrashLog(msg)
+            // Re-raise to get default behavior (core dump / crash report)
+            signal(sigNum, SIG_DFL)
+            raise(sigNum)
+        }
+    }
+}
+
 @main
 struct GODApp: App {
     @StateObject private var engine = GodEngine()
@@ -12,6 +69,7 @@ struct GODApp: App {
     @State private var midiManager: MIDIManager?
 
     init() {
+        installCrashHandlers()
         // When running as raw binary (not .app bundle), register as a regular app
         if Bundle.main.bundlePath.hasSuffix(".app") == false {
             NSApplication.shared.setActivationPolicy(.regular)
@@ -20,7 +78,7 @@ struct GODApp: App {
         NSApplication.shared.applicationIconImage = Self.generateIcon()
     }
 
-    // Programmatic dock icon — pixel GOD on dark bg
+    // Programmatic dock icon — "GENESIS" text on dark bg
     private static func generateIcon() -> NSImage {
         let size: CGFloat = 512
         let image = NSImage(size: NSSize(width: size, height: size))
@@ -32,35 +90,23 @@ struct GODApp: App {
         bg.setFill()
         path.fill()
 
-        let pixelSize: CGFloat = 14
-        let gap: CGFloat = 4
-        let cellSize = pixelSize + gap
-        let letterW = 7 * cellSize
-        let letterSpacing: CGFloat = 28
-        let totalW = 3 * letterW + 2 * letterSpacing
-        let totalH = 9 * cellSize
-        let startX = (size - totalW) / 2
-        let startY = (size - totalH) / 2
-
+        // "GENESIS" in orange monospace
         let orange = NSColor(red: 0.855, green: 0.482, blue: 0.290, alpha: 1)
-
-        for (li, letter) in Theme.godBitmap.enumerated() {
-            let lx = startX + CGFloat(li) * (letterW + letterSpacing)
-            for (row, bits) in letter.enumerated() {
-                for (col, on) in bits.enumerated() {
-                    guard on else { continue }
-                    let x = lx + CGFloat(col) * cellSize
-                    // Flip Y since NSImage draws bottom-up
-                    let y = startY + CGFloat(8 - row) * cellSize
-                    orange.setFill()
-                    NSRect(x: x, y: y, width: pixelSize, height: pixelSize).fill()
-                }
-            }
-        }
+        let font = NSFont.monospacedSystemFont(ofSize: 64, weight: .bold)
+        let attrs: [NSAttributedString.Key: Any] = [
+            .font: font,
+            .foregroundColor: orange,
+        ]
+        let text = NSAttributedString(string: "GENESIS", attributes: attrs)
+        let textSize = text.size()
+        let textX = (size - textSize.width) / 2
+        let textY = (size - textSize.height) / 2
+        text.draw(at: NSPoint(x: textX, y: textY))
 
         image.unlockFocus()
         return image
     }
+
 
     var body: some Scene {
         WindowGroup {
