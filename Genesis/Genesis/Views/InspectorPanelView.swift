@@ -73,7 +73,7 @@ struct ChokeBadge: View {
                         .stroke(isOn ? Theme.orange.opacity(0.3) : Color.white.opacity(0.1), lineWidth: 1)
                 )
                 .shadow(color: isOn ? Theme.orange.opacity(0.5) : .clear, radius: 8)
-            Text(isOn ? "(kills previous)" : "(stacks)")
+            Text(isOn ? "(cuts previous note)" : "(stacks)")
                 .font(.system(size: 11, design: .monospaced))
                 .foregroundColor(.white.opacity(0.7))
                 .shadow(color: .white.opacity(0.4), radius: 6)
