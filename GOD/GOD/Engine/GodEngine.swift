@@ -87,6 +87,7 @@ class GodEngine: ObservableObject {
     var pendingHits: [(padIndex: Int, position: Int, velocity: Int)] = []
     var uiUpdateCounter = 0
     private var lastClearedLayerIndex: Int?
+    private var preMuteMasterVolume: Float?
 
     // MARK: - Transport control
 
@@ -114,10 +115,9 @@ class GodEngine: ObservableObject {
         os_unfair_lock_unlock(&audioLock)
     }
 
-    func killAllVoices() {
-        os_unfair_lock_lock(&audioLock)
-        voices.removeAll()
-        os_unfair_lock_unlock(&audioLock)
+    /// Whether any pad is alive (loop can't stop while true)
+    var hasAlivePads: Bool {
+        layers.contains { $0.padState == .alive }
     }
 
     func setBPM(_ bpm: Int) {
@@ -146,6 +146,20 @@ class GodEngine: ObservableObject {
         DispatchQueue.main.async { [weak self] in
             self?.masterVolume = clamped
             self?.saveMasterVolume()
+        }
+    }
+
+    var isMasterMuted: Bool { masterVolume == 0 && preMuteMasterVolume != nil }
+
+    func toggleMasterMute() {
+        if let saved = preMuteMasterVolume {
+            // Restore
+            preMuteMasterVolume = nil
+            setMasterVolume(saved)
+        } else {
+            // Mute
+            preMuteMasterVolume = masterVolume
+            setMasterVolume(0)
         }
     }
 
@@ -188,6 +202,14 @@ class GodEngine: ObservableObject {
     func setLayerVolume(_ index: Int, volume: Float) {
         guard index >= 0, index < layers.count else { return }
         layers[index].volume = max(0, min(1.0, volume))
+    }
+
+    func setSwing(_ index: Int, swing: Float) {
+        guard index >= 0, index < layers.count else { return }
+        layers[index].swing = swing  // didSet clamps to 0.5–0.75
+        os_unfair_lock_lock(&audioLock)
+        audio.layers[index].swing = layers[index].swing
+        os_unfair_lock_unlock(&audioLock)
     }
 
     var loopDurationMs: Double {
@@ -243,6 +265,51 @@ class GodEngine: ObservableObject {
         velocityMode = velocityMode == .pressure ? .full : .pressure
     }
 
+    // MARK: - Crystal pad states
+
+    func armPad(_ index: Int) {
+        guard index >= 0, index < layers.count else { return }
+        guard transport.isPlaying else { return }
+        guard layers[index].padState == .clear else { return }
+        layers[index].padState = .red
+        os_unfair_lock_lock(&audioLock)
+        audio.layers[index].padState = .red
+        audio.layers[index].hasNewHits = false
+        os_unfair_lock_unlock(&audioLock)
+    }
+
+    func disarmPad(_ index: Int) {
+        guard index >= 0, index < layers.count else { return }
+        guard layers[index].padState == .red else { return }
+        layers[index].padState = .clear
+        layers[index].hits.removeAll()
+        layers[index].hasNewHits = false
+        os_unfair_lock_lock(&audioLock)
+        audio.layers[index].padState = .clear
+        audio.layers[index].hits.removeAll()
+        audio.layers[index].hasNewHits = false
+        os_unfair_lock_unlock(&audioLock)
+    }
+
+    func muteAll() {
+        os_unfair_lock_lock(&audioLock)
+        for i in 0..<PadBank.padCount {
+            layers[i].isMuted = true
+            audio.layers[i].isMuted = true
+        }
+        voices.removeAll()
+        os_unfair_lock_unlock(&audioLock)
+    }
+
+    func unmuteAll() {
+        os_unfair_lock_lock(&audioLock)
+        for i in 0..<PadBank.padCount {
+            layers[i].isMuted = false
+            audio.layers[i].isMuted = false
+        }
+        os_unfair_lock_unlock(&audioLock)
+    }
+
     func toggleTcps(pad index: Int) {
         guard index >= 0, index < layers.count else { return }
         layers[index].tcps.toggle()
@@ -268,6 +335,7 @@ class GodEngine: ObservableObject {
         layers[index].clear()
         os_unfair_lock_lock(&audioLock)
         audio.layers[index].clear()
+        voices.removeAll { $0.padIndex == index }
         os_unfair_lock_unlock(&audioLock)
         lastClearedLayerIndex = index
     }

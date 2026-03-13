@@ -10,21 +10,17 @@ extension ContentView {
         static let w: UInt16 = 13
         static let s: UInt16 = 1
         static let q: UInt16 = 12
-        static let e: UInt16 = 14
         static let c: UInt16 = 8
+        static let f: UInt16 = 3
         static let g: UInt16 = 5
-        static let m: UInt16 = 46
         static let t: UInt16 = 17
-        static let v: UInt16 = 9
         static let b: UInt16 = 11
         static let z: UInt16 = 6
         static let x: UInt16 = 7
-        static let f: UInt16 = 3
         static let p: UInt16 = 35
+        static let v: UInt16 = 9
         static let n: UInt16 = 45
         static let returnKey: UInt16 = 36
-        static let upArrow: UInt16 = 126
-        static let downArrow: UInt16 = 125
         static let escape: UInt16 = 53
         static let leftBracket: UInt16 = 33
         static let rightBracket: UInt16 = 30
@@ -94,7 +90,7 @@ extension ContentView {
         case .browse:
             handleBrowseKey(keyCode: keyCode, chars: chars)
         case .normal:
-            handleNormalKey(keyCode: keyCode, chars: chars)
+            handleNormalKey(keyCode: keyCode, chars: chars, modifiers: modifiers)
         }
     }
 
@@ -162,13 +158,20 @@ extension ContentView {
             return
         default:
             // Fall through to normal key handling (space, A/D, etc.)
-            handleNormalKey(keyCode: keyCode, chars: chars)
+            handleNormalKey(keyCode: keyCode, chars: chars, modifiers: [])
         }
     }
 
-    func handleNormalKey(keyCode: UInt16, chars: String?) {
+    func handleNormalKey(keyCode: UInt16, chars: String?, modifiers: NSEvent.ModifierFlags = []) {
+        let hasShift = modifiers.contains(.shift)
+        let hasCmd = modifiers.contains(.command)
+
         switch keyCode {
         case Key.space:
+            if engine.transport.isPlaying && engine.hasAlivePads {
+                interpreter.appendLine("■ can't stop — pads alive (clear them first)", kind: .transport)
+                return
+            }
             if engine.transport.isPlaying {
                 let loopSec = Double(engine.transport.loopLengthFrames) / Transport.sampleRate
                 interpreter.appendLine("■ paused @ \(engine.transport.bpm)bpm \(engine.transport.barCount) bars (\(String(format: "%.1f", loopSec))s)", kind: .transport)
@@ -195,9 +198,6 @@ extension ContentView {
                     break
                 }
             }
-        case Key.m:
-            engine.toggleMetronome()
-            interpreter.appendLine("metronome \(engine.metronome.isOn ? "on" : "off")", kind: .state)
         case Key.t:
             mode = mode == .browse ? .normal : .browse
             if mode == .browse {
@@ -213,25 +213,39 @@ extension ContentView {
         case Key.d:
             engine.activePadIndex = (engine.activePadIndex + 1) % PadBank.padCount
             interpreter.appendLine("pad \(engine.activePadIndex + 1) → \(padName(engine.activePadIndex))", kind: .state)
-        case Key.q:
-            let effective = engine.effectiveMuteState(layer: engine.activePadIndex)
-            if !effective {
-                engine.toggleMute(layer: engine.activePadIndex)
-                if engine.toggleMode == .nextLoop {
-                    interpreter.appendLine("pad \(engine.activePadIndex + 1) \(padName(engine.activePadIndex)) → freeze next loop", kind: .state)
+        case Key.f:
+            let idx = engine.activePadIndex
+            let state = engine.layers[idx].padState
+            switch state {
+            case .clear:
+                if engine.transport.isPlaying {
+                    engine.armPad(idx)
+                    interpreter.appendLine("pad \(idx + 1) \(padName(idx)) armed → crystal red", kind: .state)
                 } else {
-                    interpreter.appendLine("pad \(engine.activePadIndex + 1) \(padName(engine.activePadIndex)) frozen", kind: .state)
+                    interpreter.appendLine("pad \(idx + 1) must be looping to arm", kind: .state)
                 }
+            case .red:
+                engine.disarmPad(idx)
+                interpreter.appendLine("pad \(idx + 1) \(padName(idx)) disarmed → crystal clear", kind: .state)
+            case .alive:
+                interpreter.appendLine("pad \(idx + 1) is alive — clear with C", kind: .state)
             }
-        case Key.e:
-            let effective = engine.effectiveMuteState(layer: engine.activePadIndex)
-            if effective {
-                engine.toggleMute(layer: engine.activePadIndex)
-                if engine.toggleMode == .nextLoop {
-                    interpreter.appendLine("pad \(engine.activePadIndex + 1) \(padName(engine.activePadIndex)) → hot next loop", kind: .state)
-                } else {
-                    interpreter.appendLine("pad \(engine.activePadIndex + 1) \(padName(engine.activePadIndex)) hot", kind: .state)
-                }
+        case Key.q:
+            if hasCmd && hasShift {
+                // Cmd+Shift+Q: mute all pads + master
+                engine.muteAll()
+                if !engine.isMasterMuted { engine.toggleMasterMute() }
+                interpreter.appendLine("all pads + master muted", kind: .state)
+            } else if hasShift {
+                // Shift+Q: toggle master mute
+                engine.toggleMasterMute()
+                interpreter.appendLine("master \(engine.isMasterMuted ? "muted" : "unmuted")", kind: .state)
+            } else {
+                // Q: toggle mute on selected pad
+                let idx = engine.activePadIndex
+                engine.toggleMute(layer: idx)
+                let muted = engine.layers[idx].isMuted
+                interpreter.appendLine("pad \(idx + 1) \(padName(idx)) \(muted ? "muted" : "unmuted")", kind: .state)
             }
         case Key.c:
             let name = padName(engine.activePadIndex)
@@ -247,6 +261,10 @@ extension ContentView {
             let p = presets[bpmPresetIndex]
             interpreter.appendLine("bpm mode → \(p.bpm) \(p.mood) [W↑ S↓ or type]", kind: .transport)
         case Key.escape:
+            if engine.hasAlivePads {
+                interpreter.appendLine("■ can't stop — pads alive (clear them first)", kind: .transport)
+                return
+            }
             engine.stop()
             interpreter.appendLine("■ stopped", kind: .transport)
         case Key.leftBracket:
@@ -264,14 +282,21 @@ extension ContentView {
         case Key.n:
             engine.cycleToggleMode()
             interpreter.appendLine("toggle mode → \(engine.toggleMode.rawValue)", kind: .state)
+        case Key.v:
+            let idx = engine.activePadIndex
+            let current = engine.layers[idx].swing
+            if hasShift {
+                engine.setSwing(idx, swing: current - 0.01)
+            } else {
+                engine.setSwing(idx, swing: current + 0.01)
+            }
+            let pct = Int((engine.layers[idx].swing - 0.5) / 0.25 * 100)
+            interpreter.appendLine("pad \(idx + 1) swing → \(pct)%", kind: .state)
         case Key.x:
             engine.toggleTcps(pad: engine.activePadIndex)
             let tcps = engine.layers[engine.activePadIndex].tcps
             let name = padName(engine.activePadIndex)
             interpreter.appendLine("pad \(engine.activePadIndex + 1) \(name) tcps \(tcps ? "on (kills previous)" : "off (stacks)")", kind: .state)
-        case Key.f:
-            engine.killAllVoices()
-            interpreter.appendLine("killed all voices", kind: .state)
         default:
             break
         }

@@ -321,6 +321,7 @@ extension GodEngine {
             let layerPans = audio.layers.map { $0.pan }
             let layerHPCutoffs = audio.layers.map { $0.hpCutoff }
             let layerLPCutoffs = audio.layers.map { $0.lpCutoff }
+            let layerSwings = audio.layers.map { $0.swing }
             let layerPadStates = audio.layers.map { $0.padState }
             let layerHasNewHits = audio.layers.map { $0.hasNewHits }
             let hits = pendingHits
@@ -357,6 +358,7 @@ extension GodEngine {
                     self.layers[i].pan = layerPans[i]
                     self.layers[i].hpCutoff = layerHPCutoffs[i]
                     self.layers[i].lpCutoff = layerLPCutoffs[i]
+                    self.layers[i].swing = layerSwings[i]
                     self.layers[i].padState = layerPadStates[i]
                     self.layers[i].hasNewHits = layerHasNewHits[i]
                 }
