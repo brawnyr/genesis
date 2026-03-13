@@ -1,4 +1,4 @@
-// Genesis/Genesis/Views/CCPanelView.swift
+// Genesis/Genesis/Views/InspectorPanelView.swift
 import SwiftUI
 
 // MARK: - Inspector helper views
@@ -125,7 +125,7 @@ struct ToggleModeBadge: View {
 
 // MARK: - Right-side panel (CC readout + sample browser)
 
-struct CCPanelView: View {
+struct InspectorPanelView: View {
     @ObservedObject var engine: GenesisEngine
     @Binding var browsingPad: Bool
     @Binding var browserIndex: Int

@@ -76,8 +76,8 @@ struct ContentView: View {
                     TriggerRollView(engine: engine)
                         .frame(maxWidth: .infinity, maxHeight: .infinity)
 
-                    // Right: CC panel
-                    CCPanelView(
+                    // Right: inspector panel
+                    InspectorPanelView(
                         engine: engine,
                         browsingPad: Binding(
                             get: { mode == .browse },
@@ -89,7 +89,7 @@ struct ContentView: View {
             }
 
             if showKeyReference {
-                KeyReferenceOverlay(isVisible: $showKeyReference)
+                KeyboardShortcutHelpOverlay(isVisible: $showKeyReference)
             }
         }
         .frame(minWidth: 900, minHeight: 600)
