@@ -258,14 +258,13 @@ extension GenesisEngine {
             pendingLevels[i] = max(pendingLevels[i], frameLevels[i])
         }
 
-        // Apply master volume
+        // Apply master volume and track peak
+        var peak: Float = 0
         for i in 0..<frameCount {
             outputBufferL[i] *= audio.masterVolume
             outputBufferR[i] *= audio.masterVolume
+            peak = max(peak, abs(outputBufferL[i]), abs(outputBufferR[i]))
         }
-
-        // Brickwall peak limiter — instant attack, smooth release, ceiling at -1 dBTP
-        let peak = limiter.process(left: &outputBufferL, right: &outputBufferR, count: frameCount)
 
         // Declick: apply short crossfade at loop boundary to eliminate pops
         if wrapped {
