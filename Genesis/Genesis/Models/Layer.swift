@@ -16,7 +16,7 @@ struct Layer {
     var isRecording: Bool = false
     var queued: Bool = false       // fire at beat 1 of next loop
     var hasNewHits: Bool = false
-    var volume: Float = 1.0
+    var volume: Float = 0.25  // -12 dB default
     var pan: Float = 0.5            // 0.0 = left, 0.5 = center, 1.0 = right
     var hpCutoff: Float = Layer.hpBypassFrequency      // Hz — 20 = no effect
     var lpCutoff: Float = Layer.lpBypassFrequency   // Hz — 20000 = no effect

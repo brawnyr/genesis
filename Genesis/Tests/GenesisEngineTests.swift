@@ -31,7 +31,7 @@ private func totalActiveVoices(_ engine: GenesisEngine) -> Int {
     // Layer 3 volume should be ~0.5 (64/127), layer 0 should be unchanged at 1.0
     #expect(engine.audio.layers[3].volume < 0.6)
     #expect(engine.audio.layers[3].volume > 0.4)
-    #expect(engine.audio.layers[0].volume == 1.0)
+    #expect(engine.audio.layers[0].volume == 0.25)
 }
 
 @Test @MainActor func engineChokeChopsVoices() {
