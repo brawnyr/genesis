@@ -69,10 +69,10 @@ extension GenesisEngine {
 
     func handleCC(number: Int, value: Int) {
         switch number {
-        case 82: // Master volume (MiniLab fader 1) — 0 to +6dB
-            setMasterVolume(Float(value) / 127.0 * 2.0)
-        case 74: // Pad volume (knob 1) — 0 to +6dB
-            audio.layers[audio.activePadIndex].volume = Float(value) / 127.0 * 2.0
+        case 82: // Master volume (MiniLab fader 1)
+            setMasterVolume(Float(value) / 127.0)
+        case 74: // Pad volume (knob 1)
+            audio.layers[audio.activePadIndex].volume = Float(value) / 127.0
         case 71: // Pan (knob 2)
             audio.layers[audio.activePadIndex].pan = Float(value) / 127.0
         case 76: // HP cutoff (knob 3)

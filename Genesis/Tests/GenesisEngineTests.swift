@@ -28,9 +28,9 @@ private func totalActiveVoices(_ engine: GenesisEngine) -> Int {
     engine.midiRingBuffer.write(.cc(number: 74, value: 64))
     let _ = engine.processBlock(frameCount: 512)
 
-    // Layer 3 volume should be ~1.0 (64/127 * 2.0), layer 0 should be unchanged at 1.0
-    #expect(engine.audio.layers[3].volume < 1.1)
-    #expect(engine.audio.layers[3].volume > 0.9)
+    // Layer 3 volume should be ~0.5 (64/127), layer 0 should be unchanged at 1.0
+    #expect(engine.audio.layers[3].volume < 0.6)
+    #expect(engine.audio.layers[3].volume > 0.4)
     #expect(engine.audio.layers[0].volume == 1.0)
 }
 
@@ -129,8 +129,8 @@ private func totalActiveVoices(_ engine: GenesisEngine) -> Int {
     engine.setMasterVolume(-0.5)
     #expect(engine.audio.masterVolume == 0.0)
 
-    engine.setMasterVolume(3.0)
-    #expect(engine.audio.masterVolume == 2.0)
+    engine.setMasterVolume(2.0)
+    #expect(engine.audio.masterVolume == 1.0)
 }
 
 @Test @MainActor func engineCC18SetsSwing() {

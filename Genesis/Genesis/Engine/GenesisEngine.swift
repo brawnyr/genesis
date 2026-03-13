@@ -156,7 +156,7 @@ class GenesisEngine: ObservableObject {
     // MARK: - Master volume
 
     func setMasterVolume(_ value: Float) {
-        let clamped = max(0, min(2.0, value))
+        let clamped = max(0, min(1.0, value))
         audio.masterVolume = clamped
         DispatchQueue.main.async { [weak self] in
             self?.masterVolume = clamped
@@ -187,7 +187,7 @@ class GenesisEngine: ObservableObject {
     static func loadMasterVolume() -> Float {
         guard let str = try? String(contentsOf: masterVolumeURL, encoding: .utf8),
               let val = Float(str.trimmingCharacters(in: .whitespacesAndNewlines)) else { return 1.0 }
-        return max(0, min(2.0, val))
+        return max(0, min(1.0, val))
     }
 
     private func saveMasterVolume() {
@@ -208,7 +208,7 @@ class GenesisEngine: ObservableObject {
 
     func setLayerVolume(_ index: Int, volume: Float) {
         guard index >= 0, index < layers.count else { return }
-        let clamped = max(0, min(2.0, volume))
+        let clamped = max(0, min(1.0, volume))
         if toggleMode == .nextLoop {
             pendingVolumes[index] = clamped
             os_unfair_lock_lock(&audioLock)
