@@ -67,17 +67,17 @@ struct TransportHUD: View {
 
                 Text(formatMasterDb(engine.masterLevelDb))
                     .font(.system(size: 28, design: .monospaced).bold())
-                    .foregroundColor(engine.masterLevelDb > -1 ? Theme.red : .white)
-                    .shadow(color: (engine.masterLevelDb > -1 ? Theme.red : .white).opacity(0.5), radius: 8)
+                    .foregroundColor(engine.masterLevelDb > 0 ? Theme.red : .white)
+                    .shadow(color: (engine.masterLevelDb > 0 ? Theme.red : .white).opacity(0.5), radius: 8)
                     .padding(.horizontal, 10)
                     .padding(.vertical, 2)
                     .background(
                         RoundedRectangle(cornerRadius: 4)
-                            .stroke((engine.masterLevelDb > -1 ? Theme.red : Theme.orange).opacity(0.3), lineWidth: 1)
+                            .stroke((engine.masterLevelDb > 0 ? Theme.red : Theme.orange).opacity(0.3), lineWidth: 1)
                     )
                     .background(
                         RoundedRectangle(cornerRadius: 4)
-                            .fill((engine.masterLevelDb > -1 ? Theme.red : Theme.orange).opacity(0.05))
+                            .fill((engine.masterLevelDb > 0 ? Theme.red : Theme.orange).opacity(0.05))
                     )
                 Text("dB")
                     .font(.system(size: 12, design: .monospaced).bold())
