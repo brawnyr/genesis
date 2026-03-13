@@ -10,6 +10,16 @@ struct TransportHUD: View {
         Double(engine.transport.position) / Transport.sampleRate
     }
 
+    private var loopPositionString: String {
+        let beatStr = EngineEventInterpreter.formatBeatPosition(
+            framePosition: engine.transport.position,
+            loopLengthFrames: engine.transport.loopLengthFrames,
+            barCount: engine.transport.barCount
+        )
+        let sec = String(format: "%.1fs", secondsElapsed)
+        return "\(beatStr) / \(sec)"
+    }
+
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
             Rectangle()
@@ -37,7 +47,11 @@ struct TransportHUD: View {
                     .shadow(color: Theme.orange.opacity(0.5), radius: 8)
 
                 if engine.transport.isPlaying {
-                    Text(String(format: "%.1fs", secondsElapsed))
+                    Text("LOOP")
+                        .font(.system(size: 14, design: .monospaced).bold())
+                        .foregroundColor(Theme.orange)
+                        .shadow(color: Theme.orange.opacity(0.5), radius: 8)
+                    Text(loopPositionString)
                         .font(.system(size: 14, design: .monospaced).bold())
                         .foregroundColor(.white)
                         .shadow(color: .white.opacity(0.5), radius: 8)
