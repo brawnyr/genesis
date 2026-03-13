@@ -304,8 +304,6 @@ extension ContentView {
 
         if let c = chars?.first {
             switch c {
-            case "?":
-                showKeyReference.toggle()
             case "0"..."9":
                 guard let asciiVal = c.asciiValue, let zeroVal = Character("0").asciiValue else { break }
                 let digit = Float(asciiVal - zeroVal)

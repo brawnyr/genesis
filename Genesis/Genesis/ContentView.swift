@@ -39,7 +39,6 @@ struct KeyCaptureRepresentable: NSViewRepresentable {
 struct ContentView: View {
     @ObservedObject var engine: GenesisEngine
     @ObservedObject var interpreter: EngineEventInterpreter
-    @State var showKeyReference = false
     enum EditMode {
         case normal
         case bpm
@@ -88,9 +87,6 @@ struct ContentView: View {
                 }
             }
 
-            if showKeyReference {
-                KeyboardShortcutHelpOverlay(isVisible: $showKeyReference)
-            }
         }
         .frame(minWidth: 900, minHeight: 600)
     }
@@ -100,37 +96,47 @@ struct ContentView: View {
 
 struct HotkeyHUD: View {
     var body: some View {
-        HStack(spacing: 20) {
-            // Transport — blue
-            HotkeyGroup(color: Theme.blue, items: [
-                ("SPC", "play"), ("G", "bounce"), ("ESC", "stop"),
-            ])
+        VStack(spacing: 6) {
+            HStack(spacing: 20) {
+                // Transport — blue
+                HotkeyGroup(color: Theme.blue, items: [
+                    ("SPC", "play/stop"), ("ESC", "stop"), ("G", "bounce"),
+                ])
 
-            // Pads — orange
-            HotkeyGroup(color: Theme.orange, items: [
-                ("A/D", "pad"), ("T", "browse"), ("R", "looper"),
-            ])
+                // Pads — orange
+                HotkeyGroup(color: Theme.orange, items: [
+                    ("A/D", "pad ←→"), ("F", "rec"), ("⇧F", "queue"),
+                    ("T", "browse"), ("W/S", "nav"),
+                ])
 
-            // Muting — red
-            HotkeyGroup(color: Theme.red, items: [
-                ("Q", "mute"), ("⇧Q", "master"), ("⌘⇧Q", "all"),
-                ("N", "queued"), ("X", "choke"),
-            ])
+                // Muting — red
+                HotkeyGroup(color: Theme.red, items: [
+                    ("Q", "mute"), ("⇧Q", "master"), ("⌘⇧Q", "all"),
+                ])
+            }
 
-            // Sound — green
-            HotkeyGroup(color: Theme.green, items: [
-                ("0-9", "vol"), ("V", "swing"), ("M", "metro"),
-            ])
+            HStack(spacing: 20) {
+                // Muting continued
+                HotkeyGroup(color: Theme.red, items: [
+                    ("N", "queued"), ("X", "choke"),
+                ])
 
-            // Edit — amber
-            HotkeyGroup(color: Theme.amber, items: [
-                ("C", "clear"), ("B", "bpm"), ("[]", "bars"),
-            ])
+                // Sound — green
+                HotkeyGroup(color: Theme.green, items: [
+                    ("0-9", "vol"), ("V/⇧V", "swing"), ("P", "velocity"),
+                    ("M", "metro"), ("R", "looper"),
+                ])
 
-            // Help
-            HotkeyGroup(color: Theme.subtle, items: [
-                ("?", "help"),
-            ])
+                // Edit — amber
+                HotkeyGroup(color: Theme.amber, items: [
+                    ("C", "clear"), ("Z", "undo"), ("B", "bpm"), ("[]", "bars"),
+                ])
+
+                // Oracle
+                HotkeyGroup(color: Theme.green, items: [
+                    ("O", "oracle"),
+                ])
+            }
         }
         .padding(.horizontal, 20)
         .padding(.vertical, 8)
