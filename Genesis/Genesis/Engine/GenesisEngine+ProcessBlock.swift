@@ -258,11 +258,13 @@ extension GenesisEngine {
             pendingLevels[i] = max(pendingLevels[i], frameLevels[i])
         }
 
-        // Apply master volume and track master level
+        // Apply headroom (-12 dB) and master volume, then track peak
+        let headroom: Float = 0.25  // -12 dB
         var peak: Float = 0
+        let gain = headroom * audio.masterVolume
         for i in 0..<frameCount {
-            outputBufferL[i] *= audio.masterVolume
-            outputBufferR[i] *= audio.masterVolume
+            outputBufferL[i] *= gain
+            outputBufferR[i] *= gain
             peak = max(peak, abs(outputBufferL[i]), abs(outputBufferR[i]))
         }
 
