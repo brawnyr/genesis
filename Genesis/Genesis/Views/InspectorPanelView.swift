@@ -113,8 +113,8 @@ struct ToggleModeBadge: View {
             .font(.system(size: 16, design: .monospaced))
 
             Text(isNextLoop
-                 ? "mutes wait for next loop"
-                 : "mutes happen instantly")
+                 ? "queues changes for next loop"
+                 : "changes happen instantly")
                 .font(.system(size: 10, design: .monospaced))
                 .foregroundColor(.white.opacity(0.7))
                 .shadow(color: .white.opacity(0.4), radius: 6)
