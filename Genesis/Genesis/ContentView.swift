@@ -105,7 +105,7 @@ struct HotkeyHUD: View {
 
                 // Pads — orange
                 HotkeyGroup(color: Theme.orange, items: [
-                    ("A/D", "pad ←→"), ("F", "queue"),
+                    ("A/D", "pad ←→"), ("F", "queued"),
                     ("T", "browse"), ("W/S", "nav"),
                 ])
 
@@ -118,7 +118,7 @@ struct HotkeyHUD: View {
             HStack(spacing: 20) {
                 // Muting continued
                 HotkeyGroup(color: Theme.red, items: [
-                    ("N", "queued"), ("X", "choke"),
+                    ("X", "choke"),
                 ])
 
                 // Sound — green

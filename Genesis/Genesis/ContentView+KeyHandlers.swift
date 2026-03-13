@@ -215,9 +215,8 @@ extension ContentView {
             engine.activePadIndex = (engine.activePadIndex + 1) % PadBank.padCount
             interpreter.appendLine("pad \(engine.activePadIndex + 1) → \(padName(engine.activePadIndex))", kind: .state)
         case Key.f:
-            let idx = engine.activePadIndex
-            engine.toggleQueuePad(idx)
-            interpreter.appendLine("pad \(idx + 1) \(padName(idx)) \(engine.layers[idx].queued ? "queued" : "queue cancelled")", kind: .state)
+            engine.cycleToggleMode()
+            interpreter.appendLine("queued \(engine.toggleMode == .nextLoop ? "on" : "off")", kind: .state)
         case Key.q:
             if hasCmd && hasShift {
                 // Cmd+Shift+Q: mute all pads + master
@@ -272,8 +271,7 @@ extension ContentView {
             engine.undoLastClear()
             interpreter.appendLine("undo clear → pad \(engine.activePadIndex + 1)", kind: .state)
         case Key.n:
-            engine.cycleToggleMode()
-            interpreter.appendLine("queued mutes \(engine.toggleMode == .nextLoop ? "on" : "off")", kind: .state)
+            break
         case Key.m:
             engine.toggleMetronome()
             interpreter.appendLine("metronome \(engine.metronome.isOn ? "on" : "off")", kind: .transport)
