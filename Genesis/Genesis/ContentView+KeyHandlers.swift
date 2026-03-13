@@ -26,6 +26,23 @@ extension ContentView {
         static let escape: UInt16 = 53
         static let leftBracket: UInt16 = 33
         static let rightBracket: UInt16 = 30
+
+        // Numpad key codes
+        static let numpad0: UInt16 = 82
+        static let numpad1: UInt16 = 83
+        static let numpad2: UInt16 = 84
+        static let numpad3: UInt16 = 85
+        static let numpad4: UInt16 = 86
+        static let numpad5: UInt16 = 87
+        static let numpad6: UInt16 = 88
+        static let numpad7: UInt16 = 89
+        static let numpad8: UInt16 = 91
+        static let numpad9: UInt16 = 92
+
+        static let numpadCodes: [UInt16: Int] = [
+            numpad0: 0, numpad1: 1, numpad2: 2, numpad3: 3, numpad4: 4,
+            numpad5: 5, numpad6: 6, numpad7: 7, numpad8: 8, numpad9: 9,
+        ]
     }
 
     // BPM presets covering all moods
@@ -302,20 +319,15 @@ extension ContentView {
             break
         }
 
-        if let c = chars?.first {
-            switch c {
-            case "0"..."9":
-                guard let asciiVal = c.asciiValue, let zeroVal = Character("0").asciiValue else { break }
-                let digit = Float(asciiVal - zeroVal)
-                let vol = digit / 9.0
-                engine.setLayerVolume(engine.activePadIndex, volume: vol)
-                let pDb = formatDb(linearToDb(vol))
-                if engine.toggleMode == .nextLoop {
-                    interpreter.appendLine("pad \(engine.activePadIndex + 1) vol → \(Int(vol * 100))% (\(pDb)) queued for next loop", kind: .state)
-                } else {
-                    interpreter.appendLine("pad \(engine.activePadIndex + 1) vol → \(Int(vol * 100))% (\(pDb))", kind: .state)
-                }
-            default: break
+        // Numpad-only volume control
+        if let digit = Key.numpadCodes[keyCode] {
+            let vol = Float(digit) / 9.0
+            engine.setLayerVolume(engine.activePadIndex, volume: vol)
+            let pDb = formatDb(linearToDb(vol))
+            if engine.toggleMode == .nextLoop {
+                interpreter.appendLine("pad \(engine.activePadIndex + 1) vol → \(Int(vol * 100))% (\(pDb)) queued for next loop", kind: .state)
+            } else {
+                interpreter.appendLine("pad \(engine.activePadIndex + 1) vol → \(Int(vol * 100))% (\(pDb))", kind: .state)
             }
         }
     }
