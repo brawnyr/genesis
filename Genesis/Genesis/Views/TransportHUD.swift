@@ -22,10 +22,6 @@ struct TransportHUD: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
-            Rectangle()
-                .fill(Color.white.opacity(0.04))
-                .frame(height: 1)
-
             // Row 1: BPM big + bar count
             HStack(alignment: .firstTextBaseline, spacing: 16) {
                 Text("\(engine.transport.bpm)")
