@@ -70,7 +70,7 @@ struct TransportHUD: View {
                 HStack(spacing: 4) {
                     Text("METRONOME")
                         .font(.system(size: 14, design: .monospaced).bold())
-                        .foregroundColor(engine.metronome.isOn ? Theme.orange : Theme.orange.opacity(0.2))
+                        .foregroundColor(Theme.orange)
                     Text(engine.metronome.isOn ? "ON" : "OFF")
                         .font(.system(size: 14, design: .monospaced).bold())
                         .foregroundColor(.white)
