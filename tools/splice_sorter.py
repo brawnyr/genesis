@@ -9,7 +9,7 @@ import sys
 from datetime import datetime
 from pathlib import Path
 
-SPLICE_SOUNDS = Path.home() / "splice" / "sounds"
+SPLICE_SOUNDS = Path.home() / "Splice" / "sounds"
 PACKS_DIR = SPLICE_SOUNDS / "packs"
 LOG_FILE = Path(__file__).parent / "splice_sort.log"
 
@@ -152,7 +152,7 @@ def setup_logging(dry_run: bool = False):
 
 # --- launchd install/uninstall ---
 
-PLIST_NAME = "com.god.splicesorter.plist"
+PLIST_NAME = "com.genesis.splicesorter.plist"
 PLIST_SOURCE = Path(__file__).parent / PLIST_NAME
 LAUNCH_AGENTS = Path.home() / "Library" / "LaunchAgents"
 
