@@ -62,20 +62,21 @@ struct ContentView: View {
                 // Hotkey HUD — top
                 HotkeyHUD()
 
-                HStack(spacing: 0) {
-                    // Left: terminal log + transport
-                    VStack(spacing: 0) {
-                        TerminalTextLayer(interpreter: interpreter, engine: engine)
-                        TransportHUD(engine: engine)
-                    }
-                    .frame(width: 480)
+                // Terminal — full width, main visual
+                TerminalTextLayer(interpreter: interpreter, engine: engine)
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
                     .background(Theme.canvasBg)
 
-                    // Center: trigger roll — fills the gap edge to edge
-                    TriggerRollView(engine: engine)
-                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+                // Bottom bar: transport + pads + inspector
+                HStack(spacing: 0) {
+                    TransportHUD(engine: engine)
+                        .frame(width: 320)
+                        .background(Theme.canvasBg)
 
-                    // Right: inspector panel
+                    PadStripView(engine: engine)
+                        .frame(maxWidth: .infinity)
+                        .background(Theme.canvasBg)
+
                     InspectorPanelView(
                         engine: engine,
                         browsingPad: Binding(
@@ -85,6 +86,7 @@ struct ContentView: View {
                         browserIndex: $browserIndex
                     )
                 }
+                .frame(height: 120)
             }
 
         }

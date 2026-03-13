@@ -20,6 +20,7 @@ struct TerminalLine: Identifiable {
     let text: String
     let kind: LineKind
     let isHighlight: Bool
+    var padIndex: Int? = nil     // for hit lines — colors by pad
     let timestamp: Date = Date()
 
     private static let timeFormatter: DateFormatter = {
@@ -64,8 +65,8 @@ class EngineEventInterpreter: ObservableObject {
     // Track which pads have active voices (set by engine)
     var activePadVoices: Set<Int> = []
 
-    func appendLine(_ text: String, kind: LineKind = .system) {
-        let line = TerminalLine(text: text, kind: kind, isHighlight: false)
+    func appendLine(_ text: String, kind: LineKind = .system, padIndex: Int? = nil) {
+        let line = TerminalLine(text: text, kind: kind, isHighlight: false, padIndex: padIndex)
         lines.append(line)
         if lines.count > maxLines {
             lines.removeFirst(lines.count - maxLines)
@@ -73,12 +74,11 @@ class EngineEventInterpreter: ObservableObject {
     }
 
     func processHits(_ hits: [(padIndex: Int, position: Int, velocity: Int)],
-                     padBank: PadBank, loopDurationMs: Double) {
+                     padBank: PadBank, loopDurationMs: Double,
+                     loopLengthFrames: Int = 0, barCount: Int = 4) {
         var intensities = padIntensities
         for hit in hits {
-            let pad = padBank.pads[hit.padIndex]
-            let name = pad.sample?.name ?? pad.name
-            let durationMs = pad.sample?.durationMs ?? 0
+            let name = PadBank.spliceFolderNames[hit.padIndex].uppercased()
 
             let velNorm = Float(hit.velocity) / 127.0
             intensities[hit.padIndex] = min(1.0, velNorm)
@@ -86,11 +86,24 @@ class EngineEventInterpreter: ObservableObject {
             loopHitCounts[hit.padIndex] += 1
             loopHitVelocities[hit.padIndex].append(hit.velocity)
 
-            let dur = Self.formatDuration(durationMs)
-            let velDesc = hit.velocity > 90 ? " — hard hit" : ""
-            appendLine("\(name.lowercased()) \(dur) — vel \(hit.velocity)\(velDesc)", kind: .hit)
+            let beatStr = Self.formatBeatPosition(
+                framePosition: hit.position,
+                loopLengthFrames: loopLengthFrames,
+                barCount: barCount
+            )
+            appendLine("\(name)  \(beatStr)", kind: .hit, padIndex: hit.padIndex)
         }
         padIntensities = intensities
+    }
+
+    static func formatBeatPosition(framePosition: Int, loopLengthFrames: Int, barCount: Int) -> String {
+        guard loopLengthFrames > 0 else { return "1.1" }
+        let totalBeats = barCount * Transport.beatsPerBar
+        let totalSubdivisions = totalBeats * 4
+        let subdivIndex = Int(Double(framePosition) / Double(loopLengthFrames) * Double(totalSubdivisions))
+        let beat = subdivIndex / 4 + 1
+        let subdivision = subdivIndex % 4 + 1
+        return "\(beat).\(subdivision)"
     }
 
     func processStateDiff(layers: [Layer], transport: Transport, capture: GenesisCapture,

@@ -54,6 +54,9 @@ struct TerminalLineView: View {
     let opacity: Double
 
     private var color: Color {
+        if let padIdx = line.padIndex, line.kind == .hit {
+            return Theme.padColor(padIdx)
+        }
         switch line.kind {
         case .system:    return Theme.ice
         case .transport: return Theme.ice

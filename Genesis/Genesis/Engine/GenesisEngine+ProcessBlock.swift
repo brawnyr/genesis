@@ -474,7 +474,8 @@ extension GenesisEngine {
                 }
                 if let interp = self.interpreter {
                     interp.activePadVoices = snap.activeVoicePads
-                    interp.processHits(snap.hits, padBank: self.padBank, loopDurationMs: self.loopDurationMs)
+                    interp.processHits(snap.hits, padBank: self.padBank, loopDurationMs: self.loopDurationMs,
+                                       loopLengthFrames: self.transport.loopLengthFrames, barCount: self.transport.barCount)
                     interp.processStateDiff(
                         layers: self.layers,
                         transport: self.transport,
