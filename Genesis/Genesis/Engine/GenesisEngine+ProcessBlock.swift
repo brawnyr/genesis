@@ -362,7 +362,6 @@ extension GenesisEngine {
                     }
                 }
                 self.transport.position = pos
-                self.updateLoopingState()
                 self.channelSignalLevels = levels
                 self.masterLevel = masterPeak
                 self.masterLevelDb = linearToDb(masterPeak)

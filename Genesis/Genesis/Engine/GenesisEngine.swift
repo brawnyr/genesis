@@ -43,7 +43,6 @@ class GenesisEngine: ObservableObject {
     @Published var padBank = PadBank()
     @Published var metronome = Metronome()
     @Published var capture = GenesisCapture()
-    @Published var isLooping: Bool = false
     @Published var channelSignalLevels: [Float] = Array(repeating: 0, count: PadBank.padCount)
     @Published var channelTriggered: [Bool] = Array(repeating: false, count: PadBank.padCount)
     @Published var masterLevel: Float = 0
@@ -108,7 +107,7 @@ class GenesisEngine: ObservableObject {
             audio.isPlaying = true
         }
         os_unfair_lock_unlock(&audioLock)
-        updateLoopingState()
+
     }
 
     func stop() {
@@ -119,7 +118,7 @@ class GenesisEngine: ObservableObject {
         audio.isPlaying = false
         voicePool.killAll()
         os_unfair_lock_unlock(&audioLock)
-        updateLoopingState()
+
     }
 
     /// Whether any pad has recorded hits
@@ -333,7 +332,7 @@ class GenesisEngine: ObservableObject {
         voicePool.killPad(index)
         os_unfair_lock_unlock(&audioLock)
         lastClearedLayerIndex = index
-        updateLoopingState()
+
     }
 
     func undoLastClear() {
@@ -343,7 +342,7 @@ class GenesisEngine: ObservableObject {
         audio.layers[index].undo()
         os_unfair_lock_unlock(&audioLock)
         lastClearedLayerIndex = nil
-        updateLoopingState()
+
     }
 
     // MARK: - Trigger roll editing
@@ -387,10 +386,6 @@ class GenesisEngine: ObservableObject {
         os_unfair_lock_unlock(&audioLock)
     }
 
-    func updateLoopingState() {
-        let looping = transport.isPlaying && hasRecordedHits
-        if looping != isLooping { isLooping = looping }
-    }
 
     // MARK: - Centralized sample loading (single source of truth)
 
