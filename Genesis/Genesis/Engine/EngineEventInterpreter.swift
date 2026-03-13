@@ -47,6 +47,7 @@ class EngineEventInterpreter: ObservableObject {
         var pan: Float = 0.5
         var hp: Float = Layer.hpBypassFrequency
         var lp: Float = Layer.lpBypassFrequency
+        var swing: Float = 0.5
     }
     private var prevPads: [PrevPadState] = Array(repeating: PrevPadState(), count: PadBank.padCount)
     private var prevPlaying: Bool = false
@@ -131,6 +132,11 @@ class EngineEventInterpreter: ObservableObject {
             if layers[i].lpCutoff != prevPads[i].lp {
                 appendLine("pad \(i + 1) LP → \(Self.formatFrequency(layers[i].lpCutoff))", kind: .state)
                 prevPads[i].lp = layers[i].lpCutoff
+            }
+            if layers[i].swing != prevPads[i].swing {
+                let pct = Int((layers[i].swing - 0.5) / 0.25 * 100)
+                appendLine("pad \(i + 1) swing → \(pct)%", kind: .state)
+                prevPads[i].swing = layers[i].swing
             }
         }
 
