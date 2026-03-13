@@ -47,17 +47,7 @@ class EngineEventInterpreter: ObservableObject {
         var pan: Float = 0.5
         var hp: Float = Layer.hpBypassFrequency
         var lp: Float = Layer.lpBypassFrequency
-        // Debounce: track last-seen value and settle counter
-        var pendingVolume: Float = 0.25
-        var volumeSettleCount: Int = 0
-        var pendingPan: Float = 0.5
-        var panSettleCount: Int = 0
-        var pendingHP: Float = Layer.hpBypassFrequency
-        var hpSettleCount: Int = 0
-        var pendingLP: Float = Layer.lpBypassFrequency
-        var lpSettleCount: Int = 0
     }
-    private static let settleThreshold = 15  // ~500ms at 30fps — wait for knob to stop
     private var prevPads: [PrevPadState] = Array(repeating: PrevPadState(), count: PadBank.padCount)
     private var prevPlaying: Bool = false
     private var prevCaptureState: String = "idle"
@@ -123,52 +113,24 @@ class EngineEventInterpreter: ObservableObject {
             }
         }
 
-        // CC changes from MIDI knobs — debounce: log only after value settles
+        // CC changes from MIDI knobs — log every distinct change
         for i in 0..<PadBank.padCount {
-            // Volume
-            if abs(layers[i].volume - prevPads[i].pendingVolume) > 0.005 {
-                prevPads[i].pendingVolume = layers[i].volume
-                prevPads[i].volumeSettleCount = 0
-            } else if prevPads[i].pendingVolume != prevPads[i].volume {
-                prevPads[i].volumeSettleCount += 1
-                if prevPads[i].volumeSettleCount >= Self.settleThreshold {
-                    let volDb = formatDb(linearToDb(prevPads[i].pendingVolume))
-                    appendLine("pad \(i + 1) vol → \(Int(prevPads[i].pendingVolume * 100))% (\(volDb))", kind: .state)
-                    prevPads[i].volume = prevPads[i].pendingVolume
-                }
+            if layers[i].volume != prevPads[i].volume {
+                let volDb = formatDb(linearToDb(layers[i].volume))
+                appendLine("pad \(i + 1) vol → \(Int(layers[i].volume * 100))% (\(volDb))", kind: .state)
+                prevPads[i].volume = layers[i].volume
             }
-            // Pan
-            if abs(layers[i].pan - prevPads[i].pendingPan) > 0.005 {
-                prevPads[i].pendingPan = layers[i].pan
-                prevPads[i].panSettleCount = 0
-            } else if prevPads[i].pendingPan != prevPads[i].pan {
-                prevPads[i].panSettleCount += 1
-                if prevPads[i].panSettleCount >= Self.settleThreshold {
-                    appendLine("pad \(i + 1) pan → \(Self.formatPan(prevPads[i].pendingPan))", kind: .state)
-                    prevPads[i].pan = prevPads[i].pendingPan
-                }
+            if layers[i].pan != prevPads[i].pan {
+                appendLine("pad \(i + 1) pan → \(Self.formatPan(layers[i].pan))", kind: .state)
+                prevPads[i].pan = layers[i].pan
             }
-            // HP cutoff
-            if abs(layers[i].hpCutoff - prevPads[i].pendingHP) > 1 {
-                prevPads[i].pendingHP = layers[i].hpCutoff
-                prevPads[i].hpSettleCount = 0
-            } else if prevPads[i].pendingHP != prevPads[i].hp {
-                prevPads[i].hpSettleCount += 1
-                if prevPads[i].hpSettleCount >= Self.settleThreshold {
-                    appendLine("pad \(i + 1) HP → \(Self.formatFrequency(prevPads[i].pendingHP))", kind: .state)
-                    prevPads[i].hp = prevPads[i].pendingHP
-                }
+            if layers[i].hpCutoff != prevPads[i].hp {
+                appendLine("pad \(i + 1) HP → \(Self.formatFrequency(layers[i].hpCutoff))", kind: .state)
+                prevPads[i].hp = layers[i].hpCutoff
             }
-            // LP cutoff
-            if abs(layers[i].lpCutoff - prevPads[i].pendingLP) > 1 {
-                prevPads[i].pendingLP = layers[i].lpCutoff
-                prevPads[i].lpSettleCount = 0
-            } else if prevPads[i].pendingLP != prevPads[i].lp {
-                prevPads[i].lpSettleCount += 1
-                if prevPads[i].lpSettleCount >= Self.settleThreshold {
-                    appendLine("pad \(i + 1) LP → \(Self.formatFrequency(prevPads[i].pendingLP))", kind: .state)
-                    prevPads[i].lp = prevPads[i].pendingLP
-                }
+            if layers[i].lpCutoff != prevPads[i].lp {
+                appendLine("pad \(i + 1) LP → \(Self.formatFrequency(layers[i].lpCutoff))", kind: .state)
+                prevPads[i].lp = layers[i].lpCutoff
             }
         }
 

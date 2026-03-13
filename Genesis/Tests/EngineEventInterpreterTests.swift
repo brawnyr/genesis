@@ -32,11 +32,8 @@ import Testing
 
     layers[1].hpCutoff = 500
     layers[1].lpCutoff = 4200
-    // Call multiple times to pass debounce settle threshold
-    for _ in 0..<20 {
-        interpreter.processStateDiff(layers: layers, transport: Transport(),
-                                      capture: GenesisCapture(), padBank: PadBank(), masterVolume: 1.0)
-    }
+    interpreter.processStateDiff(layers: layers, transport: Transport(),
+                                  capture: GenesisCapture(), padBank: PadBank(), masterVolume: 1.0)
 
     #expect(interpreter.lines.contains { $0.text.contains("HP → 500Hz") })
     #expect(interpreter.lines.contains { $0.text.contains("LP → 4.2kHz") })
