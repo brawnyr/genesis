@@ -77,6 +77,7 @@ class GenesisEngine: ObservableObject {
 
     var outputBufferL = [Float](repeating: 0, count: 4096)
     var outputBufferR = [Float](repeating: 0, count: 4096)
+    var limiter = PeakLimiter()
 
     // MARK: - Cached biquad coefficients (recalculated only on cutoff change)
 

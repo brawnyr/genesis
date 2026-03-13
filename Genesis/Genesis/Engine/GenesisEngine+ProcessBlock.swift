@@ -259,20 +259,13 @@ extension GenesisEngine {
         }
 
         // Apply master volume
-        var peak: Float = 0
         for i in 0..<frameCount {
             outputBufferL[i] *= audio.masterVolume
             outputBufferR[i] *= audio.masterVolume
         }
 
-        // Peak limiter — soft-knee, prevents harsh digital clipping
-        // Uses tanh for smooth saturation near ceiling
-        let ceiling: Float = 1.0
-        for i in 0..<frameCount {
-            outputBufferL[i] = ceiling * tanhf(outputBufferL[i] / ceiling)
-            outputBufferR[i] = ceiling * tanhf(outputBufferR[i] / ceiling)
-            peak = max(peak, abs(outputBufferL[i]), abs(outputBufferR[i]))
-        }
+        // Brickwall peak limiter — instant attack, smooth release, ceiling at -1 dBTP
+        let peak = limiter.process(left: &outputBufferL, right: &outputBufferR, count: frameCount)
 
         // Declick: apply short crossfade at loop boundary to eliminate pops
         if wrapped {
