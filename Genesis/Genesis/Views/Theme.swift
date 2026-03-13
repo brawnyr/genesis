@@ -16,9 +16,6 @@ enum Theme {
     // Orange — hot state, recording, triggers, alive
     static let orange = Color(red: 0.855, green: 0.482, blue: 0.290)   // #da7b4a
 
-    // Crystal clear — warm white with orange warmth, like sunlight through glass
-    static let crystalClear = Color(red: 0.95, green: 0.85, blue: 0.70) // warm amber-white
-
     // Status colors
     static let green = Color(red: 0.373, green: 0.667, blue: 0.431)    // #5faa6e
     static let red = Color(red: 0.831, green: 0.337, blue: 0.306)      // #d4564e
@@ -43,23 +40,12 @@ enum Theme {
     // Subtle — only for empty slots and track background
     static let subtle = Color(white: 0.25)
 
-    // Terminal text — same white but for dimming
-    static let terminalText = Color.white
-    static let terminalDim = Color(white: 0.4)
-
     // Fonts — bumped sizes for readability
     static let mono = Font.system(size: 16, design: .monospaced)
     static let monoSmall = Font.system(size: 14, design: .monospaced)
-    static let monoTiny = Font.system(size: 12, design: .monospaced)
     static let monoLarge = Font.system(size: 22, design: .monospaced)
-    static let monoTitle = Font.system(size: 28, design: .monospaced).weight(.bold)
 
     // Canvas
     static let canvasBg = Color(red: 0.075, green: 0.071, blue: 0.063)  // #131210
-
-    static let genesisSubtitle = "GENESIS ON DISK"
-
-    // Charcoal for idle title
-    static let charcoal = Color(red: 0.165, green: 0.157, blue: 0.145)  // #2a2825
 
 }
