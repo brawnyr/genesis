@@ -100,12 +100,12 @@ struct HotkeyHUD: View {
             HStack(spacing: 20) {
                 // Transport — blue
                 HotkeyGroup(color: Theme.blue, items: [
-                    ("SPC", "play/stop"), ("ESC", "stop"), ("G", "bounce"),
+                    ("SPC", "play/stop"), ("ESC", "stop"), ("G", "record"),
                 ])
 
                 // Pads — orange
                 HotkeyGroup(color: Theme.orange, items: [
-                    ("A/D", "pad ←→"), ("F", "rec"), ("⇧F", "queue"),
+                    ("A/D", "pad ←→"), ("F", "arm pad"), ("⇧F", "queue"),
                     ("T", "browse"), ("W/S", "nav"),
                 ])
 
@@ -123,7 +123,7 @@ struct HotkeyHUD: View {
 
                 // Sound — green
                 HotkeyGroup(color: Theme.green, items: [
-                    ("0-9", "vol"), ("V/⇧V", "swing"), ("P", "velocity"),
+                    ("0-9", "vol"), ("P", "velocity"),
                     ("M", "metro"), ("R", "looper"),
                 ])
 

@@ -18,8 +18,7 @@ extension ContentView {
         static let z: UInt16 = 6
         static let x: UInt16 = 7
         static let p: UInt16 = 35
-        static let v: UInt16 = 9
-        static let m: UInt16 = 46
+            static let m: UInt16 = 46
         static let n: UInt16 = 45
         static let r: UInt16 = 15
         static let o: UInt16 = 31
@@ -270,16 +269,6 @@ extension ContentView {
         case Key.n:
             engine.cycleToggleMode()
             interpreter.appendLine("queued mutes \(engine.toggleMode == .nextLoop ? "on" : "off")", kind: .state)
-        case Key.v:
-            let idx = engine.activePadIndex
-            let current = engine.layers[idx].swing
-            if hasShift {
-                engine.setSwing(idx, swing: current - 0.01)
-            } else {
-                engine.setSwing(idx, swing: current + 0.01)
-            }
-            let pct = Int((engine.layers[idx].swing - 0.5) / 0.25 * 100)
-            interpreter.appendLine("pad \(idx + 1) swing → \(pct)%", kind: .state)
         case Key.m:
             engine.toggleMetronome()
             interpreter.appendLine("metronome \(engine.metronome.isOn ? "on" : "off")", kind: .transport)
