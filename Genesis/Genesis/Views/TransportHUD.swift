@@ -50,7 +50,7 @@ struct TransportHUD: View {
                     .foregroundColor(Theme.orange.opacity(0.6))
                 Text("\(Int(engine.masterVolume * 100))")
                     .font(.system(size: 28, design: .monospaced).bold())
-                    .foregroundColor(Theme.orange)
+                    .foregroundColor(.white)
                     .shadow(color: .white.opacity(0.5), radius: 0, x: 1, y: 1)
                     .shadow(color: Theme.orange.opacity(0.4), radius: 8)
                     .padding(.horizontal, 10)
@@ -67,10 +67,15 @@ struct TransportHUD: View {
 
             // Row 3: Status badges
             HStack(spacing: 10) {
-                Text(engine.metronome.isOn ? "METRONOME ON" : "METRONOME OFF")
-                    .font(.system(size: 14, design: .monospaced).bold())
-                    .foregroundColor(engine.metronome.isOn ? Theme.orange : Theme.orange.opacity(0.2))
-                    .shadow(color: engine.metronome.isOn ? .white.opacity(0.4) : .clear, radius: 0, x: 1, y: 1)
+                HStack(spacing: 4) {
+                    Text("METRONOME")
+                        .font(.system(size: 14, design: .monospaced).bold())
+                        .foregroundColor(engine.metronome.isOn ? Theme.orange : Theme.orange.opacity(0.2))
+                    Text(engine.metronome.isOn ? "ON" : "OFF")
+                        .font(.system(size: 14, design: .monospaced).bold())
+                        .foregroundColor(.white)
+                }
+                .shadow(color: engine.metronome.isOn ? .white.opacity(0.4) : .clear, radius: 0, x: 1, y: 1)
 
                 if isLooping {
                     Text("LOOPER")
