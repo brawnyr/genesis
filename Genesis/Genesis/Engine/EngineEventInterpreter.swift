@@ -41,11 +41,14 @@ class EngineEventInterpreter: ObservableObject {
     private let maxLines = 30
 
     // Previous state for diffing
-    private var prevMuted: [Bool] = Array(repeating: false, count: PadBank.padCount)
-    private var prevVolumes: [Float] = Array(repeating: 1.0, count: PadBank.padCount)
-    private var prevPans: [Float] = Array(repeating: 0.5, count: PadBank.padCount)
-    private var prevHP: [Float] = Array(repeating: Layer.hpBypassFrequency, count: PadBank.padCount)
-    private var prevLP: [Float] = Array(repeating: Layer.lpBypassFrequency, count: PadBank.padCount)
+    private struct PrevPadState {
+        var muted: Bool = false
+        var volume: Float = 1.0
+        var pan: Float = 0.5
+        var hp: Float = Layer.hpBypassFrequency
+        var lp: Float = Layer.lpBypassFrequency
+    }
+    private var prevPads: [PrevPadState] = Array(repeating: PrevPadState(), count: PadBank.padCount)
     private var prevPlaying: Bool = false
     private var prevCaptureState: String = "idle"
     private var loopHitCounts: [Int] = Array(repeating: 0, count: PadBank.padCount)
@@ -100,34 +103,34 @@ class EngineEventInterpreter: ObservableObject {
         prevPlaying = transport.isPlaying
 
         for i in 0..<PadBank.padCount {
-            if layers[i].isMuted != prevMuted[i] {
+            if layers[i].isMuted != prevPads[i].muted {
                 if layers[i].isMuted {
                     var intensities = padIntensities
                     intensities[i] = 0
                     padIntensities = intensities
                 }
-                prevMuted[i] = layers[i].isMuted
+                prevPads[i].muted = layers[i].isMuted
             }
         }
 
         // CC changes from MIDI knobs — only emit when value actually changes
         for i in 0..<PadBank.padCount {
-            if abs(layers[i].volume - prevVolumes[i]) > 0.05 {
+            if abs(layers[i].volume - prevPads[i].volume) > 0.05 {
                 let volDb = formatDb(linearToDb(layers[i].volume))
                 appendLine("pad \(i + 1) vol → \(Int(layers[i].volume * 100))% (\(volDb))", kind: .state)
             }
-            prevVolumes[i] = layers[i].volume
-            if abs(layers[i].pan - prevPans[i]) > 0.01 {
+            prevPads[i].volume = layers[i].volume
+            if abs(layers[i].pan - prevPads[i].pan) > 0.01 {
                 appendLine("pad \(i + 1) pan → \(Self.formatPan(layers[i].pan))", kind: .state)
-                prevPans[i] = layers[i].pan
+                prevPads[i].pan = layers[i].pan
             }
-            if abs(layers[i].hpCutoff - prevHP[i]) > 1 {
+            if abs(layers[i].hpCutoff - prevPads[i].hp) > 1 {
                 appendLine("pad \(i + 1) HP → \(Self.formatFrequency(layers[i].hpCutoff))", kind: .state)
-                prevHP[i] = layers[i].hpCutoff
+                prevPads[i].hp = layers[i].hpCutoff
             }
-            if abs(layers[i].lpCutoff - prevLP[i]) > 1 {
+            if abs(layers[i].lpCutoff - prevPads[i].lp) > 1 {
                 appendLine("pad \(i + 1) LP → \(Self.formatFrequency(layers[i].lpCutoff))", kind: .state)
-                prevLP[i] = layers[i].lpCutoff
+                prevPads[i].lp = layers[i].lpCutoff
             }
         }
 

@@ -293,15 +293,6 @@ class GenesisEngine: ObservableObject {
         os_unfair_lock_unlock(&audioLock)
     }
 
-    func unmuteAll() {
-        os_unfair_lock_lock(&audioLock)
-        for i in 0..<PadBank.padCount {
-            layers[i].isMuted = false
-            audio.layers[i].isMuted = false
-        }
-        os_unfair_lock_unlock(&audioLock)
-    }
-
     func toggleChoke(pad index: Int) {
         guard index >= 0, index < layers.count else { return }
         layers[index].choke.toggle()

@@ -150,7 +150,14 @@ extension ContentView {
             }
             return
         case Key.s:
-            browserIndex += 1
+            let padIndex = engine.activePadIndex
+            let folderName = PadBank.spliceFolderNames[padIndex]
+            let folderURL = PadBank.spliceBasePath.appendingPathComponent(folderName)
+            let fileCount = (try? FileManager.default.contentsOfDirectory(at: folderURL, includingPropertiesForKeys: nil)
+                .filter { PadBank.audioExtensions.contains($0.pathExtension.lowercased()) }.count) ?? 0
+            if fileCount > 0 {
+                browserIndex = min(browserIndex + 1, fileCount - 1)
+            }
             loadBrowserSample()
             if let name = browserFileName() {
                 interpreter.appendLine("browse → \(name)", kind: .browse)
@@ -300,7 +307,8 @@ extension ContentView {
             case "?":
                 showKeyReference.toggle()
             case "0"..."9":
-                let digit = Float(c.asciiValue! - Character("0").asciiValue!)
+                guard let asciiVal = c.asciiValue, let zeroVal = Character("0").asciiValue else { break }
+                let digit = Float(asciiVal - zeroVal)
                 engine.setLayerVolume(engine.activePadIndex, volume: digit / 9.0)
                 let pDb = formatDb(linearToDb(digit / 9.0))
                 interpreter.appendLine("pad \(engine.activePadIndex + 1) vol → \(Int(digit / 9.0 * 100))% (\(pDb))", kind: .state)

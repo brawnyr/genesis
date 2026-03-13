@@ -249,7 +249,8 @@ extension GenesisEngine {
 
         // Declick: apply short crossfade at loop boundary to eliminate pops
         if wrapped {
-            let fadeSamples = max(0, min(88, wrapFrame, frameCount - wrapFrame))  // ~2ms at 44100
+            let declickFrames = 88  // ~2ms at 44.1kHz
+            let fadeSamples = max(0, min(declickFrames, wrapFrame, frameCount - wrapFrame))
             // Fade out leading into wrap point
             for i in 0..<fadeSamples {
                 let gain = Float(i) / Float(fadeSamples)  // 0→1 going backward from wrap
