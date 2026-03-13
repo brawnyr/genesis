@@ -6,7 +6,7 @@ enum KeyAction: CaseIterable {
     case browse, browseNav, closeBrowser
     case bpmMode, fewerBars, moreBars
     case volume, velocityMode, undoClear, chokeMode
-    case toggleMode, clearPad, stop, help
+    case toggleMode, clearPad, oracle, stop, help
 
     var key: String {
         switch self {
@@ -31,6 +31,7 @@ enum KeyAction: CaseIterable {
         case .chokeMode:     return "X"
         case .toggleMode:   return "N"
         case .clearPad:     return "C"
+        case .oracle:       return "O"
         case .stop:         return "ESC"
         case .help:         return "?"
         }
@@ -59,6 +60,7 @@ enum KeyAction: CaseIterable {
         case .chokeMode:     return "choke (cuts previous sound)"
         case .toggleMode:   return "queued mutes on / off"
         case .clearPad:     return "clear active pad"
+        case .oracle:       return "oracle on / off"
         case .stop:         return "stop"
         case .help:         return "this help"
         }
