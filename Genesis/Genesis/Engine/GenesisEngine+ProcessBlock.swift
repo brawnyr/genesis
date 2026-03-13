@@ -188,6 +188,8 @@ extension GenesisEngine {
                         if let idx = voicePool.allocate(sample: sample, velocity: vel, padIndex: layer.index) {
                             voicePool.slots[idx].blockOffset = max(0, min(offset, frameCount - 1))
                         }
+                        // Log loop-replayed hits to terminal
+                        pendingHits.append((padIndex: layer.index, position: hit.position, velocity: hit.velocity))
                     }
                 }
             }

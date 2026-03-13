@@ -129,7 +129,7 @@ class EngineEventInterpreter: ObservableObject {
 
         // CC changes from MIDI knobs — log every distinct change
         for i in 0..<PadBank.padCount {
-            if layers[i].volume != prevPads[i].volume {
+            if abs(layers[i].volume - prevPads[i].volume) > 0.005 {
                 let volDb = formatDb(linearToDb(layers[i].volume))
                 appendLine("pad \(i + 1) vol → \(Int(layers[i].volume * 100))% (\(volDb))", kind: .state)
                 prevPads[i].volume = layers[i].volume

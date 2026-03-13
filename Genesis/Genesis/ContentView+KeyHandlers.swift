@@ -323,12 +323,6 @@ extension ContentView {
         if let digit = Key.numpadCodes[keyCode] {
             let vol = Float(digit) / 9.0
             engine.setLayerVolume(engine.activePadIndex, volume: vol)
-            let pDb = formatDb(linearToDb(vol))
-            if engine.toggleMode == .nextLoop {
-                interpreter.appendLine("pad \(engine.activePadIndex + 1) vol → \(Int(vol * 100))% (\(pDb)) queued for next loop", kind: .state)
-            } else {
-                interpreter.appendLine("pad \(engine.activePadIndex + 1) vol → \(Int(vol * 100))% (\(pDb))", kind: .state)
-            }
         }
     }
 }
