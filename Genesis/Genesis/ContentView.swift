@@ -70,7 +70,7 @@ struct ContentView: View {
                 // Bottom bar: transport + pads + inspector
                 HStack(spacing: 0) {
                     TransportHUD(engine: engine)
-                        .frame(width: 320)
+                        .frame(width: 420)
                         .background(Theme.canvasBg)
 
                     PadStripView(engine: engine)
