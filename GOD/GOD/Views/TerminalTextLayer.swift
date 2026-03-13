@@ -50,10 +50,10 @@ struct TerminalTextLayer: View {
 
     private func lineColor(_ kind: LineKind) -> Color {
         switch kind {
-        case .system:    return Color(white: 0.5)
-        case .transport: return Theme.blue
+        case .system:    return Theme.ice
+        case .transport: return Theme.ice
         case .hit:       return Theme.orange
-        case .state:     return Color(white: 0.75)
+        case .state:     return Color.white
         case .capture:   return Theme.orange
         case .browse:    return Theme.ice
         }
