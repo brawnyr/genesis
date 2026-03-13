@@ -288,8 +288,16 @@ extension ContentView {
         case Key.r:
             let idx = engine.activePadIndex
             engine.toggleLooper(pad: idx)
-            let looper = engine.layers[idx].looper
-            interpreter.appendLine("pad \(idx + 1) \(padName(idx)) looper \(looper ? "on" : "off")", kind: .state)
+            if engine.toggleMode == .nextLoop {
+                if let pending = engine.pendingLoopers[idx] {
+                    interpreter.appendLine("pad \(idx + 1) \(padName(idx)) looper \(pending ? "on" : "off") queued for next loop", kind: .state)
+                } else {
+                    interpreter.appendLine("pad \(idx + 1) \(padName(idx)) looper queue cancelled", kind: .state)
+                }
+            } else {
+                let looper = engine.layers[idx].looper
+                interpreter.appendLine("pad \(idx + 1) \(padName(idx)) looper \(looper ? "on" : "off")", kind: .state)
+            }
         case Key.o:
             if let oracle = interpreter.oracle {
                 oracle.isEnabled.toggle()
@@ -304,9 +312,14 @@ extension ContentView {
             case "0"..."9":
                 guard let asciiVal = c.asciiValue, let zeroVal = Character("0").asciiValue else { break }
                 let digit = Float(asciiVal - zeroVal)
-                engine.setLayerVolume(engine.activePadIndex, volume: digit / 9.0)
-                let pDb = formatDb(linearToDb(digit / 9.0))
-                interpreter.appendLine("pad \(engine.activePadIndex + 1) vol → \(Int(digit / 9.0 * 100))% (\(pDb))", kind: .state)
+                let vol = digit / 9.0
+                engine.setLayerVolume(engine.activePadIndex, volume: vol)
+                let pDb = formatDb(linearToDb(vol))
+                if engine.toggleMode == .nextLoop {
+                    interpreter.appendLine("pad \(engine.activePadIndex + 1) vol → \(Int(vol * 100))% (\(pDb)) queued for next loop", kind: .state)
+                } else {
+                    interpreter.appendLine("pad \(engine.activePadIndex + 1) vol → \(Int(vol * 100))% (\(pDb))", kind: .state)
+                }
             default: break
             }
         }

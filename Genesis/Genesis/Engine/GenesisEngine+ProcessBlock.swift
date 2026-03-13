@@ -295,8 +295,33 @@ extension GenesisEngine {
 
         // Collect data for deferred main-thread work (outside lock)
         var appliedMutes: [Int: Bool]? = nil
+        var appliedVolumes: [Int: Float]? = nil
+        var appliedLoopers: [Int: Bool]? = nil
 
         if wrapped {
+            // Apply pending changes BEFORE voice allocation so new state takes effect this loop
+            if !audio.pendingMutes.isEmpty {
+                appliedMutes = audio.pendingMutes
+                for (index, muteState) in audio.pendingMutes {
+                    audio.layers[index].isMuted = muteState
+                }
+                audio.pendingMutes.removeAll()
+            }
+            if !audio.pendingVolumes.isEmpty {
+                appliedVolumes = audio.pendingVolumes
+                for (index, vol) in audio.pendingVolumes {
+                    audio.layers[index].volume = vol
+                }
+                audio.pendingVolumes.removeAll()
+            }
+            if !audio.pendingLoopers.isEmpty {
+                appliedLoopers = audio.pendingLoopers
+                for (index, looper) in audio.pendingLoopers {
+                    audio.layers[index].looper = looper
+                }
+                audio.pendingLoopers.removeAll()
+            }
+
             // Kill pad voices at loop boundary — let metronome clicks ring out
             voicePool.killPads()
 
@@ -319,15 +344,6 @@ extension GenesisEngine {
                     let vel: Float = velocityMode == .full ? 1.0 : audio.layers[i].volume
                     let _ = voicePool.allocate(sample: sample, velocity: vel, padIndex: i)
                 }
-            }
-
-            // Apply pending mute changes at loop boundary
-            if !audio.pendingMutes.isEmpty {
-                appliedMutes = audio.pendingMutes
-                for (index, muteState) in audio.pendingMutes {
-                    audio.layers[index].isMuted = muteState
-                }
-                audio.pendingMutes.removeAll()
             }
         }
 
@@ -388,13 +404,27 @@ extension GenesisEngine {
 
         // Dispatch main-thread UI sync (outside lock to avoid priority inversion)
         if wrapped {
-            if let applied = appliedMutes {
+            if appliedMutes != nil || appliedVolumes != nil || appliedLoopers != nil {
                 DispatchQueue.main.async { [weak self] in
                     guard let self else { return }
-                    for (index, muteState) in applied {
-                        self.layers[index].isMuted = muteState
+                    if let mutes = appliedMutes {
+                        for (index, muteState) in mutes {
+                            self.layers[index].isMuted = muteState
+                        }
+                        self.pendingMutes.removeAll()
                     }
-                    self.pendingMutes.removeAll()
+                    if let volumes = appliedVolumes {
+                        for (index, vol) in volumes {
+                            self.layers[index].volume = vol
+                        }
+                        self.pendingVolumes.removeAll()
+                    }
+                    if let loopers = appliedLoopers {
+                        for (index, looper) in loopers {
+                            self.layers[index].looper = looper
+                        }
+                        self.pendingLoopers.removeAll()
+                    }
                 }
             }
             DispatchQueue.main.async { [weak self] in
