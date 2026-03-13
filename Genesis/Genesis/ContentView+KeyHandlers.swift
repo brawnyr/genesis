@@ -235,8 +235,16 @@ extension ContentView {
                 // Q: toggle mute on selected pad
                 let idx = engine.activePadIndex
                 engine.toggleMute(layer: idx)
-                let muted = engine.layers[idx].isMuted
-                interpreter.appendLine("pad \(idx + 1) \(padName(idx)) \(muted ? "muted" : "unmuted")", kind: .state)
+                if engine.toggleMode == .nextLoop {
+                    if let pending = engine.pendingMutes[idx] {
+                        interpreter.appendLine("pad \(idx + 1) \(padName(idx)) \(pending ? "mute" : "unmute") queued for next loop", kind: .state)
+                    } else {
+                        interpreter.appendLine("pad \(idx + 1) \(padName(idx)) queue cancelled", kind: .state)
+                    }
+                } else {
+                    let muted = engine.layers[idx].isMuted
+                    interpreter.appendLine("pad \(idx + 1) \(padName(idx)) \(muted ? "muted" : "unmuted")", kind: .state)
+                }
             }
         case Key.c:
             let name = padName(engine.activePadIndex)
