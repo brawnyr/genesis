@@ -134,6 +134,16 @@ struct VoicePool {
         }
     }
 
+    /// Check if a specific pad has any active voice.
+    func hasPadVoice(_ padIndex: Int) -> Bool {
+        for i in 0..<Self.capacity {
+            if slots[i].active && slots[i].padIndex == padIndex {
+                return true
+            }
+        }
+        return false
+    }
+
     /// Set of pad indices that currently have active voices.
     var activePadIndices: Set<Int> {
         var result = Set<Int>()

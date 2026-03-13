@@ -1,6 +1,24 @@
 // Genesis/Genesis/Engine/GenesisEngine+ProcessBlock.swift
 import Foundation
 
+/// Lightweight snapshot of audio state for UI sync — avoids .map {} heap allocations on audio thread.
+private struct UISnapshot {
+    var pos: Int = 0
+    var levels: [Float] = Array(repeating: 0, count: PadBank.padCount)
+    var masterPeak: Float = 0
+    var triggers: [Bool] = Array(repeating: false, count: PadBank.padCount)
+    var activeIdx: Int = 0
+    var hits: [(padIndex: Int, position: Int, velocity: Int)] = []
+    var activeVoicePads: Set<Int> = []
+    var layerVolumes = Array(repeating: Float(1.0), count: PadBank.padCount)
+    var layerPans = Array(repeating: Float(0.5), count: PadBank.padCount)
+    var layerHPCutoffs = Array(repeating: Layer.hpBypassFrequency, count: PadBank.padCount)
+    var layerLPCutoffs = Array(repeating: Layer.lpBypassFrequency, count: PadBank.padCount)
+    var layerSwings = Array(repeating: Float(0.5), count: PadBank.padCount)
+    var layerIsRecording = Array(repeating: false, count: PadBank.padCount)
+    var layerHasNewHits = Array(repeating: false, count: PadBank.padCount)
+}
+
 extension GenesisEngine {
     /// Convenience for tests — processes a block and returns stereo arrays.
     func processBlock(frameCount: Int) -> (left: [Float], right: [Float]) {
@@ -275,6 +293,9 @@ extension GenesisEngine {
         // Snapshot capture state — actual append happens after lock release
         let shouldCapture = audio.captureState == .on
 
+        // Collect data for deferred main-thread work (outside lock)
+        var appliedMutes: [Int: Bool]? = nil
+
         if wrapped {
             // Kill pad voices at loop boundary — let metronome clicks ring out
             voicePool.killPads()
@@ -302,11 +323,72 @@ extension GenesisEngine {
 
             // Apply pending mute changes at loop boundary
             if !audio.pendingMutes.isEmpty {
-                let applied = audio.pendingMutes
-                for (index, muteState) in applied {
+                appliedMutes = audio.pendingMutes
+                for (index, muteState) in audio.pendingMutes {
                     audio.layers[index].isMuted = muteState
                 }
                 audio.pendingMutes.removeAll()
+            }
+        }
+
+        // Throttle UI updates — sync position + levels ~30x/sec
+        var uiSnapshot: UISnapshot? = nil
+        uiUpdateCounter += frameCount
+        if uiUpdateCounter >= Self.uiUpdateFrameThreshold {
+            uiUpdateCounter = 0
+
+            // Snapshot audio state into stack-allocated fixed arrays (no heap allocs)
+            var snap = UISnapshot()
+            snap.pos = audio.position
+            snap.levels = pendingLevels
+            snap.masterPeak = peak
+            snap.triggers = pendingTriggers
+            snap.activeIdx = audio.activePadIndex
+            snap.hits = pendingHits
+            for i in 0..<PadBank.padCount {
+                snap.layerVolumes[i] = audio.layers[i].volume
+                snap.layerPans[i] = audio.layers[i].pan
+                snap.layerHPCutoffs[i] = audio.layers[i].hpCutoff
+                snap.layerLPCutoffs[i] = audio.layers[i].lpCutoff
+                snap.layerSwings[i] = audio.layers[i].swing
+                snap.layerIsRecording[i] = audio.layers[i].isRecording
+                snap.layerHasNewHits[i] = audio.layers[i].hasNewHits
+                if voicePool.hasPadVoice(i) {
+                    snap.activeVoicePads.insert(i)
+                }
+            }
+
+            pendingHits.removeAll(keepingCapacity: true)
+            pendingLevels = Array(repeating: 0, count: PadBank.padCount)
+            pendingTriggers = Array(repeating: false, count: PadBank.padCount)
+            uiSnapshot = snap
+        }
+
+        // Copy into destination audio buffers
+        if let destL = destL, let destR = destR {
+            for i in 0..<frameCount {
+                destL[i] = outputBufferL[i]
+                destR[i] = outputBufferR[i]
+            }
+        }
+        os_unfair_lock_unlock(&audioLock)
+
+        // === Everything below runs OUTSIDE the audio lock ===
+
+        // Capture — avoids heap allocations while holding spinlock
+        if shouldCapture {
+            outputBufferL.withUnsafeBufferPointer { leftPtr in
+                outputBufferR.withUnsafeBufferPointer { rightPtr in
+                    let leftSlice = UnsafeBufferPointer(rebasing: leftPtr[0..<frameCount])
+                    let rightSlice = UnsafeBufferPointer(rebasing: rightPtr[0..<frameCount])
+                    audio.capture.appendFromBuffers(left: leftSlice, right: rightSlice)
+                }
+            }
+        }
+
+        // Dispatch main-thread UI sync (outside lock to avoid priority inversion)
+        if wrapped {
+            if let applied = appliedMutes {
                 DispatchQueue.main.async { [weak self] in
                     guard let self else { return }
                     for (index, muteState) in applied {
@@ -315,7 +397,6 @@ extension GenesisEngine {
                     self.pendingMutes.removeAll()
                 }
             }
-
             DispatchQueue.main.async { [weak self] in
                 guard let self else { return }
                 for i in 0..<PadBank.padCount {
@@ -330,62 +411,40 @@ extension GenesisEngine {
             }
         }
 
-        // Throttle UI updates — sync position + levels ~30x/sec
-        uiUpdateCounter += frameCount
-        if uiUpdateCounter >= Self.uiUpdateFrameThreshold {
-            uiUpdateCounter = 0
-            let pos = audio.position
-            let levels = pendingLevels
-            let masterPeak = peak
-            let triggers = pendingTriggers
-            let layerVolumes = audio.layers.map { $0.volume }
-            let layerPans = audio.layers.map { $0.pan }
-            let layerHPCutoffs = audio.layers.map { $0.hpCutoff }
-            let layerLPCutoffs = audio.layers.map { $0.lpCutoff }
-            let layerSwings = audio.layers.map { $0.swing }
-            let layerIsRecording = audio.layers.map { $0.isRecording }
-            let layerHasNewHits = audio.layers.map { $0.hasNewHits }
-            let hits = pendingHits
-            let activeIdx = audio.activePadIndex
-            let activeVoicePads = voicePool.activePadIndices
-            pendingHits.removeAll()
-            pendingLevels = Array(repeating: 0, count: PadBank.padCount)
-            pendingTriggers = Array(repeating: false, count: PadBank.padCount)
+        if let snap = uiSnapshot {
             DispatchQueue.main.async { [weak self] in
                 guard let self else { return }
-                // Sync active pad index: audio → main (MIDI hits select pads)
-                self.activePadIndex = activeIdx
+                self.activePadIndex = snap.activeIdx
 
-                if self.transport.isPlaying && !hits.isEmpty {
-                    for hit in hits {
+                if self.transport.isPlaying && !snap.hits.isEmpty {
+                    for hit in snap.hits {
                         self.layers[hit.padIndex].addHit(at: hit.position, velocity: hit.velocity)
                         self.layers[hit.padIndex].name = self.padBank.pads[hit.padIndex].name
                     }
                 }
-                self.transport.position = pos
-                self.channelSignalLevels = levels
-                self.masterLevel = masterPeak
-                self.masterLevelDb = linearToDb(masterPeak)
-                self.channelLevelDb = levels.map { linearToDb($0) }
+                self.transport.position = snap.pos
+                self.channelSignalLevels = snap.levels
+                self.masterLevel = snap.masterPeak
+                self.masterLevelDb = linearToDb(snap.masterPeak)
+                self.channelLevelDb = snap.levels.map { linearToDb($0) }
                 for i in 0..<PadBank.padCount {
-                    if triggers[i] {
+                    if snap.triggers[i] {
                         self.channelTriggered[i] = true
                         DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) { [weak self] in
                             self?.channelTriggered[i] = false
                         }
                     }
-                    self.layers[i].volume = layerVolumes[i]
-                    self.layers[i].pan = layerPans[i]
-                    self.layers[i].hpCutoff = layerHPCutoffs[i]
-                    self.layers[i].lpCutoff = layerLPCutoffs[i]
-                    self.layers[i].swing = layerSwings[i]
-                    self.layers[i].isRecording = layerIsRecording[i]
-                    self.layers[i].hasNewHits = layerHasNewHits[i]
+                    self.layers[i].volume = snap.layerVolumes[i]
+                    self.layers[i].pan = snap.layerPans[i]
+                    self.layers[i].hpCutoff = snap.layerHPCutoffs[i]
+                    self.layers[i].lpCutoff = snap.layerLPCutoffs[i]
+                    self.layers[i].swing = snap.layerSwings[i]
+                    self.layers[i].isRecording = snap.layerIsRecording[i]
+                    self.layers[i].hasNewHits = snap.layerHasNewHits[i]
                 }
                 if let interp = self.interpreter {
-                    interp.activePadVoices = activeVoicePads
-
-                    interp.processHits(hits, padBank: self.padBank, loopDurationMs: self.loopDurationMs)
+                    interp.activePadVoices = snap.activeVoicePads
+                    interp.processHits(snap.hits, padBank: self.padBank, loopDurationMs: self.loopDurationMs)
                     interp.processStateDiff(
                         layers: self.layers,
                         transport: self.transport,
@@ -394,26 +453,6 @@ extension GenesisEngine {
                         masterVolume: self.masterVolume
                     )
                     interp.tickVisuals()
-                }
-            }
-        }
-
-        // Copy into destination audio buffers
-        if let destL = destL, let destR = destR {
-            for i in 0..<frameCount {
-                destL[i] = outputBufferL[i]
-                destR[i] = outputBufferR[i]
-            }
-        }
-        os_unfair_lock_unlock(&audioLock)
-
-        // Capture AFTER lock release — avoids heap allocations while holding spinlock
-        if shouldCapture {
-            outputBufferL.withUnsafeBufferPointer { leftPtr in
-                outputBufferR.withUnsafeBufferPointer { rightPtr in
-                    let leftSlice = UnsafeBufferPointer(rebasing: leftPtr[0..<frameCount])
-                    let rightSlice = UnsafeBufferPointer(rebasing: rightPtr[0..<frameCount])
-                    audio.capture.appendFromBuffers(left: leftSlice, right: rightSlice)
                 }
             }
         }
