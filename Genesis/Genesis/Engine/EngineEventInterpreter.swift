@@ -57,7 +57,7 @@ class EngineEventInterpreter: ObservableObject {
         var pendingLP: Float = Layer.lpBypassFrequency
         var lpSettleCount: Int = 0
     }
-    private static let settleThreshold = 3  // frames of no change before logging
+    private static let settleThreshold = 15  // ~500ms at 30fps — wait for knob to stop
     private var prevPads: [PrevPadState] = Array(repeating: PrevPadState(), count: PadBank.padCount)
     private var prevPlaying: Bool = false
     private var prevCaptureState: String = "idle"
