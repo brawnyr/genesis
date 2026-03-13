@@ -215,6 +215,9 @@ class GenesisEngine: ObservableObject {
             os_unfair_lock_unlock(&audioLock)
         } else {
             layers[index].volume = clamped
+            os_unfair_lock_lock(&audioLock)
+            audio.layers[index].volume = clamped
+            os_unfair_lock_unlock(&audioLock)
         }
     }
 
