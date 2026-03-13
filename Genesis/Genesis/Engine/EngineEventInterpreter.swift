@@ -112,7 +112,8 @@ class EngineEventInterpreter: ObservableObject {
             let loopSec = Double(transport.loopLengthFrames) / Transport.sampleRate
             appendLine("▶ loop start — \(transport.barCount) bars @ \(transport.bpm)bpm (\(String(format: "%.1f", loopSec))s)", kind: .transport)
         } else if !transport.isPlaying && prevPlaying {
-            appendLine("■ stopped", kind: .transport)
+            let loopSec = Double(transport.loopLengthFrames) / Transport.sampleRate
+            appendLine("■ paused @ \(transport.bpm)bpm \(transport.barCount) bars (\(String(format: "%.1f", loopSec))s)", kind: .transport)
         }
         prevPlaying = transport.isPlaying
 

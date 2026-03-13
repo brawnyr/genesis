@@ -195,13 +195,6 @@ extension ContentView {
 
         switch keyCode {
         case Key.space:
-            if engine.transport.isPlaying {
-                let loopSec = Double(engine.transport.loopLengthFrames) / Transport.sampleRate
-                interpreter.appendLine("■ paused @ \(engine.transport.bpm)bpm \(engine.transport.barCount) bars (\(String(format: "%.1f", loopSec))s)", kind: .transport)
-            } else {
-                let loopSec = Double(engine.transport.loopLengthFrames) / Transport.sampleRate
-                interpreter.appendLine("▶ loop start — \(engine.transport.barCount) bars @ \(engine.transport.bpm)bpm (\(String(format: "%.1f", loopSec))s)", kind: .transport)
-            }
             engine.togglePlay()
         case Key.g:
             // G = bounce loop audio to disk
@@ -209,8 +202,6 @@ extension ContentView {
             if engine.capture.state == .on {
                 if !engine.transport.isPlaying {
                     engine.togglePlay()
-                    let loopSec = Double(engine.transport.loopLengthFrames) / Transport.sampleRate
-                    interpreter.appendLine("▶ loop start — \(engine.transport.barCount) bars @ \(engine.transport.bpm)bpm (\(String(format: "%.1f", loopSec))s)", kind: .transport)
                 }
                 interpreter.appendLine("recording to disk...", kind: .capture)
             } else {
