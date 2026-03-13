@@ -5,6 +5,12 @@ struct Hit {
     let velocity: Int  // 0-127
 }
 
+enum PadState: String {
+    case clear = "clear"   // playable, not recording to loop
+    case red = "red"       // armed — hits get written to loop
+    case alive = "alive"   // locked — plays back from loop
+}
+
 struct Layer {
     static let hpBypassFrequency: Float = 20.0
     static let lpBypassFrequency: Float = 20000.0
@@ -13,11 +19,16 @@ struct Layer {
     var name: String
     var hits: [Hit] = []
     var isMuted: Bool = false
+    var padState: PadState = .clear
+    var hasNewHits: Bool = false  // tracks if red pad recorded hits this loop cycle
     var volume: Float = 1.0
     var pan: Float = 0.5            // 0.0 = left, 0.5 = center, 1.0 = right
     var hpCutoff: Float = Layer.hpBypassFrequency      // Hz — 20 = no effect
     var lpCutoff: Float = Layer.lpBypassFrequency   // Hz — 20000 = no effect
     var tcps: Bool = true
+    var swing: Float = 0.5 {
+        didSet { swing = max(0.5, min(0.75, swing)) }
+    }
     private var previousHits: [Hit]?
 
     init(index: Int, name: String) {
@@ -57,6 +68,8 @@ struct Layer {
     mutating func clear() {
         previousHits = hits
         hits.removeAll()
+        padState = .clear
+        hasNewHits = false
     }
 
     mutating func undo() {
