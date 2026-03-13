@@ -69,10 +69,10 @@ extension GenesisEngine {
 
     func handleCC(number: Int, value: Int) {
         switch number {
-        case 82: // Master volume (MiniLab fader 1)
-            setMasterVolume(Float(value) / 127.0)
-        case 74: // Pad volume (knob 1)
-            audio.layers[audio.activePadIndex].volume = Float(value) / 127.0
+        case 82: // Master volume (MiniLab fader 1) — 0 to +6dB
+            setMasterVolume(Float(value) / 127.0 * 2.0)
+        case 74: // Pad volume (knob 1) — 0 to +6dB
+            audio.layers[audio.activePadIndex].volume = Float(value) / 127.0 * 2.0
         case 71: // Pan (knob 2)
             audio.layers[audio.activePadIndex].pan = Float(value) / 127.0
         case 76: // HP cutoff (knob 3)
@@ -258,13 +258,19 @@ extension GenesisEngine {
             pendingLevels[i] = max(pendingLevels[i], frameLevels[i])
         }
 
-        // Apply headroom (-12 dB) and master volume, then track peak
-        let headroom: Float = 0.25  // -12 dB
+        // Apply master volume
         var peak: Float = 0
-        let gain = headroom * audio.masterVolume
         for i in 0..<frameCount {
-            outputBufferL[i] *= gain
-            outputBufferR[i] *= gain
+            outputBufferL[i] *= audio.masterVolume
+            outputBufferR[i] *= audio.masterVolume
+        }
+
+        // Peak limiter — soft-knee, prevents harsh digital clipping
+        // Uses tanh for smooth saturation near ceiling
+        let ceiling: Float = 1.0
+        for i in 0..<frameCount {
+            outputBufferL[i] = ceiling * tanhf(outputBufferL[i] / ceiling)
+            outputBufferR[i] = ceiling * tanhf(outputBufferR[i] / ceiling)
             peak = max(peak, abs(outputBufferL[i]), abs(outputBufferR[i]))
         }
 
