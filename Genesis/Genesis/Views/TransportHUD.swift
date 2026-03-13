@@ -44,7 +44,7 @@ struct TransportHUD: View {
                 }
             }
 
-            // Row 2: Master volume — hero box
+            // Row 2: Master volume + live dB meter
             HStack(spacing: 8) {
                 Text("MASTER VOL")
                     .font(.system(size: 12, design: .monospaced).bold())
@@ -64,6 +64,25 @@ struct TransportHUD: View {
                         RoundedRectangle(cornerRadius: 4)
                             .fill(Theme.orange.opacity(0.05))
                     )
+
+                Text(formatMasterDb(engine.masterLevelDb))
+                    .font(.system(size: 28, design: .monospaced).bold())
+                    .foregroundColor(engine.masterLevelDb > -1 ? Theme.red : .white)
+                    .shadow(color: (engine.masterLevelDb > -1 ? Theme.red : .white).opacity(0.5), radius: 8)
+                    .padding(.horizontal, 10)
+                    .padding(.vertical, 2)
+                    .background(
+                        RoundedRectangle(cornerRadius: 4)
+                            .stroke((engine.masterLevelDb > -1 ? Theme.red : Theme.orange).opacity(0.3), lineWidth: 1)
+                    )
+                    .background(
+                        RoundedRectangle(cornerRadius: 4)
+                            .fill((engine.masterLevelDb > -1 ? Theme.red : Theme.orange).opacity(0.05))
+                    )
+                Text("dB")
+                    .font(.system(size: 12, design: .monospaced).bold())
+                    .foregroundColor(Theme.orange)
+                    .shadow(color: Theme.orange.opacity(0.5), radius: 8)
             }
 
             // Row 3: Status badges
@@ -96,5 +115,10 @@ struct TransportHUD: View {
         }
         .padding(12)
         .frame(maxWidth: .infinity, alignment: .leading)
+    }
+
+    private func formatMasterDb(_ db: Float) -> String {
+        if db == -.infinity || db < -60 { return "-inf" }
+        return String(format: "%+.1f", db)
     }
 }
