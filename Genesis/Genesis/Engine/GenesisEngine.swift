@@ -306,6 +306,14 @@ class GenesisEngine: ObservableObject {
         os_unfair_lock_unlock(&audioLock)
     }
 
+    func toggleQueuePad(_ index: Int) {
+        guard index >= 0, index < layers.count else { return }
+        layers[index].queued.toggle()
+        os_unfair_lock_lock(&audioLock)
+        audio.layers[index].queued = layers[index].queued
+        os_unfair_lock_unlock(&audioLock)
+    }
+
     func muteAll() {
         os_unfair_lock_lock(&audioLock)
         for i in 0..<PadBank.padCount {

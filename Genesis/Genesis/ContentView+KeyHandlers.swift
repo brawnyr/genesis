@@ -216,11 +216,8 @@ extension ContentView {
             interpreter.appendLine("pad \(engine.activePadIndex + 1) → \(padName(engine.activePadIndex))", kind: .state)
         case Key.f:
             let idx = engine.activePadIndex
-            if hasShift {
-                // Shift+F: queue pad to fire at beat 1 of next loop
-                engine.queuePad(idx)
-                interpreter.appendLine("pad \(idx + 1) \(padName(idx)) queued", kind: .state)
-            }
+            engine.toggleQueuePad(idx)
+            interpreter.appendLine("pad \(idx + 1) \(padName(idx)) \(engine.layers[idx].queued ? "queued" : "queue cancelled")", kind: .state)
         case Key.q:
             if hasCmd && hasShift {
                 // Cmd+Shift+Q: mute all pads + master
