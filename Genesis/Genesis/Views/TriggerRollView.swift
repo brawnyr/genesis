@@ -75,7 +75,7 @@ struct TriggerRollView: View {
                         VStack(alignment: .leading, spacing: 1) {
                             HStack(spacing: 4) {
                                 Text(name)
-                                    .font(.system(size: 12, design: .monospaced).bold())
+                                    .font(.system(size: isActive ? 16 : 12, design: .monospaced).bold())
                                     .foregroundColor(Theme.red)
                                     .shadow(color: Theme.red.opacity(isActive ? 0.6 : 0.2), radius: 6)
                                 Text("\(Int(layer.volume * 100))%")
