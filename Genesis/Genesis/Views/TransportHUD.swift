@@ -119,12 +119,6 @@ struct TransportHUD: View {
                         .shadow(color: Theme.red.opacity(0.5), radius: 8)
                 }
 
-                if engine.transport.isPlaying {
-                    Text("BEAT \(engine.transport.currentBeat)")
-                        .font(.system(size: 14, design: .monospaced).bold())
-                        .foregroundColor(Theme.orange)
-                        .shadow(color: Theme.orange.opacity(0.5), radius: 8)
-                }
             }
         }
         .padding(12)
