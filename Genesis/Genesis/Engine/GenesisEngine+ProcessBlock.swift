@@ -38,7 +38,8 @@ extension GenesisEngine {
             _ = idx // allocation is the side effect
         }
 
-        pendingHits.append((padIndex: padIndex, position: audio.position, velocity: velocity))
+        let reportedVel = velocityMode == .full ? 127 : velocity
+        pendingHits.append((padIndex: padIndex, position: audio.position, velocity: reportedVel))
         pendingTriggers[padIndex] = true
     }
 
