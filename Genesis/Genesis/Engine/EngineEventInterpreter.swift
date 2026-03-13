@@ -73,7 +73,7 @@ class EngineEventInterpreter: ObservableObject {
 
     func processHits(_ hits: [(padIndex: Int, position: Int, velocity: Int)],
                      padBank: PadBank, loopDurationMs: Double,
-                     layers: [Layer] = []) {
+                     layers: [Layer] = [], masterVolume: Float = 1.0) {
         var intensities = padIntensities
         for hit in hits {
             let pad = padBank.pads[hit.padIndex]
@@ -87,8 +87,9 @@ class EngineEventInterpreter: ObservableObject {
             loopHitVelocities[hit.padIndex].append(hit.velocity)
 
             let dur = Self.formatDuration(durationMs)
+            let samplePeak = pad.sample?.peakAmplitude ?? 1.0
             let vol = hit.padIndex < layers.count ? layers[hit.padIndex].volume : 1.0
-            let level = velNorm * vol
+            let level = samplePeak * velNorm * vol * masterVolume
             let db = formatDb(linearToDb(level))
             appendLine("\(name.lowercased()) \(dur) — vel \(hit.velocity) \(db)", kind: .hit)
         }

@@ -10,6 +10,18 @@ struct Sample {
     let left: [Float]
     let right: [Float]
     let sampleRate: Double
+    let peakAmplitude: Float
+
+    init(name: String, left: [Float], right: [Float], sampleRate: Double) {
+        self.name = name
+        self.left = left
+        self.right = right
+        self.sampleRate = sampleRate
+        var peak: Float = 0
+        for s in left { peak = max(peak, abs(s)) }
+        for s in right { peak = max(peak, abs(s)) }
+        self.peakAmplitude = peak
+    }
 
     var frameCount: Int { left.count }
 
