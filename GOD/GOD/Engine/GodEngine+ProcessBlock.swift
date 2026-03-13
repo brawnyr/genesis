@@ -21,11 +21,18 @@ extension GodEngine {
               let sample = padBank.pads[padIndex].sample else { return }
         guard !audio.layers[padIndex].isMuted else { return }
 
+        let state = audio.layers[padIndex].padState
+
+        // Alive pads are locked — pressing does nothing
+        guard state != .alive else { return }
+
         audio.activePadIndex = padIndex
 
-        if record {
+        // Only record to loop if pad is red and transport is playing
+        if record && state == .red {
             audio.layers[padIndex].addHit(at: audio.position, velocity: velocity)
             audio.layers[padIndex].name = padBank.pads[padIndex].name
+            audio.layers[padIndex].hasNewHits = true
         }
 
         if audio.layers[padIndex].tcps {
@@ -64,6 +71,8 @@ extension GodEngine {
                 // Counter-clockwise — previous pad
                 audio.activePadIndex = max(audio.activePadIndex - 1, 0)
             }
+        case 18: // Swing (knob 5)
+            audio.layers[audio.activePadIndex].swing = 0.5 + (Float(value) / 127.0) * 0.25
         default:
             DispatchQueue.main.async { [weak self] in
                 self?.interpreter?.appendLine("CC \(number) = \(value)", kind: .system)
@@ -111,7 +120,8 @@ extension GodEngine {
 
             // Check each layer for hits in this block's range (before draining MIDI,
             // so live hits recorded this block don't retrigger via the loop path)
-            for layer in audio.layers where !layer.isMuted {
+            // Only alive pads replay from loop — red pads are still being recorded
+            for layer in audio.layers where !layer.isMuted && layer.padState == .alive {
                 let endPos = startPos + frameCount
                 let hits: [Hit]
 
@@ -125,11 +135,15 @@ extension GodEngine {
 
                 for hit in hits {
                     if let sample = padBank.pads[layer.index].sample {
-                        if layer.tcps {
-                            voices.removeAll { $0.padIndex == layer.index }
-                        }
+                        // Loop replay always cuts previous — each cycle sounds identical
+                        voices.removeAll { $0.padIndex == layer.index }
                         let vel = velocityMode == .full ? Float(1.0) : Float(hit.velocity) / 127.0
-                        voices.append(Voice(sample: sample, velocity: vel, padIndex: layer.index))
+                        // Sample-accurate: calculate exact frame offset within this block
+                        var offset = hit.position - startPos
+                        if offset < 0 { offset += loopLen }  // wrapped hit
+                        var voice = Voice(sample: sample, velocity: vel, padIndex: layer.index)
+                        voice.blockOffset = max(0, min(offset, frameCount - 1))
+                        voices.append(voice)
                     }
                 }
             }
@@ -146,7 +160,7 @@ extension GodEngine {
                 }
             }
 
-            // Metronome
+            // Metronome — sample-accurate click placement
             if audio.metronomeOn {
                 let beatLen = Metronome.beatLengthFramesStatic(bpm: audio.bpm, sampleRate: Transport.sampleRate)
                 for i in 0..<frameCount {
@@ -154,7 +168,9 @@ extension GodEngine {
                     if beatLen > 0 && frameInLoop % beatLen == 0 {
                         let isDownbeat = frameInLoop == 0
                         let click = Metronome.click(isDownbeat: isDownbeat)
-                        voices.append(Voice(sample: click, velocity: audio.metronomeVolume))
+                        var voice = Voice(sample: click, velocity: audio.metronomeVolume)
+                        voice.blockOffset = i
+                        voices.append(voice)
                     }
                 }
             }
@@ -217,6 +233,16 @@ extension GodEngine {
         }
 
         if wrapped {
+            // Crystal state transitions at loop boundary: red with hits → alive
+            var stateChanges: [(index: Int, newState: PadState)] = []
+            for i in 0..<PadBank.padCount {
+                if audio.layers[i].padState == .red && audio.layers[i].hasNewHits {
+                    audio.layers[i].padState = .alive
+                    audio.layers[i].hasNewHits = false
+                    stateChanges.append((index: i, newState: .alive))
+                }
+            }
+
             // Apply pending mute changes at loop boundary
             if !audio.pendingMutes.isEmpty {
                 let applied = audio.pendingMutes
@@ -239,6 +265,11 @@ extension GodEngine {
             audio.captureState = audio.capture.state
             let captureState = audio.captureState
             DispatchQueue.main.async {
+                // Sync crystal state changes to UI thread
+                for change in stateChanges {
+                    self.layers[change.index].padState = change.newState
+                }
+
                 self.capture.state = captureState
                 self.interpreter?.onLoopBoundary(
                     layers: self.layers,
@@ -260,6 +291,8 @@ extension GodEngine {
             let layerPans = audio.layers.map { $0.pan }
             let layerHPCutoffs = audio.layers.map { $0.hpCutoff }
             let layerLPCutoffs = audio.layers.map { $0.lpCutoff }
+            let layerPadStates = audio.layers.map { $0.padState }
+            let layerHasNewHits = audio.layers.map { $0.hasNewHits }
             let hits = pendingHits
             let activeIdx = audio.activePadIndex
             pendingHits.removeAll()
@@ -271,8 +304,11 @@ extension GodEngine {
 
                 if self.audio.isPlaying {
                     for hit in hits {
-                        self.layers[hit.padIndex].addHit(at: hit.position, velocity: hit.velocity)
-                        self.layers[hit.padIndex].name = self.padBank.pads[hit.padIndex].name
+                        // Only sync recorded hits to UI for red pads
+                        if layerPadStates[hit.padIndex] == .red {
+                            self.layers[hit.padIndex].addHit(at: hit.position, velocity: hit.velocity)
+                            self.layers[hit.padIndex].name = self.padBank.pads[hit.padIndex].name
+                        }
                     }
                 }
                 self.transport.position = pos
@@ -291,6 +327,8 @@ extension GodEngine {
                     self.layers[i].pan = layerPans[i]
                     self.layers[i].hpCutoff = layerHPCutoffs[i]
                     self.layers[i].lpCutoff = layerLPCutoffs[i]
+                    self.layers[i].padState = layerPadStates[i]
+                    self.layers[i].hasNewHits = layerHasNewHits[i]
                 }
                 if let interp = self.interpreter {
                     let activeVoicePads = Set(self.voices.filter { $0.padIndex >= 0 }.map(\.padIndex))
