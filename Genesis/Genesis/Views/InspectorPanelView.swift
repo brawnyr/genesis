@@ -197,7 +197,7 @@ struct InspectorPanelView: View {
                 InspectorRow(label: "LP", value: EngineEventInterpreter.formatFrequency(layer.lpCutoff),
                              highlight: layer.lpCutoff < 19999)
                 InspectorRow(label: "swing", value: "\(Int((layer.swing - 0.5) / 0.25 * 100))%",
-                             highlight: layer.swing > 0.5, labelWidth: 50)
+                             highlight: layer.swing > 0.5, labelWidth: 60)
             }
             .padding(.leading, 16)
 
