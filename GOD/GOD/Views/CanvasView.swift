@@ -5,6 +5,10 @@ struct CanvasView: View {
     @ObservedObject var engine: GodEngine
     @ObservedObject var interpreter: EngineEventInterpreter
 
+    private var hasActiveRows: Bool {
+        engine.layers.contains { !$0.hits.isEmpty || $0.padState == .red }
+    }
+
     var body: some View {
         ZStack {
             Theme.canvasBg
@@ -18,17 +22,39 @@ struct CanvasView: View {
                 }
             )
 
-            // Layer 2: GOD title + transport (middle)
-            GodTitleLayer(
-                isPlaying: engine.transport.isPlaying,
-                capture: engine.capture,
-                transport: engine.transport,
-                metronome: engine.metronome,
-                masterVolume: engine.masterVolume
-            )
+            if hasActiveRows {
+                // Compact layout: title top, trigger matrix middle, terminal bottom
+                VStack(spacing: 0) {
+                    // GOD title (compact)
+                    GodTitleLayer(
+                        isPlaying: engine.transport.isPlaying,
+                        capture: engine.capture,
+                        transport: engine.transport,
+                        metronome: engine.metronome,
+                        masterVolume: engine.masterVolume
+                    )
+                    .frame(maxHeight: 200)
 
-            // Layer 3: Terminal text (foreground, always visible)
-            TerminalTextLayer(interpreter: interpreter)
+                    // Trigger matrix
+                    TriggerMatrixView(engine: engine)
+                        .frame(maxHeight: .infinity)
+
+                    // Terminal log
+                    TerminalTextLayer(interpreter: interpreter)
+                        .frame(maxHeight: 160)
+                }
+            } else {
+                // Full layout: title + geometry fill canvas, terminal overlaid
+                GodTitleLayer(
+                    isPlaying: engine.transport.isPlaying,
+                    capture: engine.capture,
+                    transport: engine.transport,
+                    metronome: engine.metronome,
+                    masterVolume: engine.masterVolume
+                )
+
+                TerminalTextLayer(interpreter: interpreter)
+            }
         }
     }
 }
