@@ -372,10 +372,15 @@ class GenesisEngine: ObservableObject {
     // MARK: - Capture
 
     func toggleCapture() {
+        let wasOff = capture.state == .off
         capture.toggle()
         os_unfair_lock_lock(&audioLock)
         audio.captureState = capture.state
         audio.capture = capture
+        // Cut all ringing voices when looper starts so trailing notes don't bleed in
+        if wasOff && capture.state == .on {
+            voicePool.killAll()
+        }
         os_unfair_lock_unlock(&audioLock)
     }
 
