@@ -121,26 +121,56 @@ extension GodEngine {
             // Check each layer for hits in this block's range (before draining MIDI,
             // so live hits recorded this block don't retrigger via the loop path)
             // Only alive pads replay from loop — red pads are still being recorded
-            for layer in audio.layers where !layer.isMuted && layer.padState == .alive {
-                let endPos = startPos + frameCount
-                let hits: [Hit]
+            for layerIdx in 0..<audio.layers.count {
+                let layer = audio.layers[layerIdx]
+                guard !layer.isMuted, layer.padState == .alive else { continue }
 
-                if endPos <= loopLen {
-                    hits = layer.hits(inRange: startPos..<endPos)
+                let beatsPerLoop = audio.barCount * Transport.beatsPerBar
+                let sixteenthLen = SwingMath.sixteenthLength(loopLengthFrames: loopLen, beatsPerLoop: beatsPerLoop)
+                let maxOffset = SwingMath.maxSwingOffset(sixteenthLength: sixteenthLen)
+                let endPos = startPos + frameCount
+
+                // Expand scan range backward to catch hits swung into this block
+                let scanStart = startPos - maxOffset
+                let scanEnd = endPos
+
+                let hits: [Hit]
+                if scanStart < 0 {
+                    // Scan wraps backward past loop start
+                    let beforeWrap = layer.hits(inRange: (loopLen + scanStart)..<loopLen)
+                    let mainRange = layer.hits(inRange: 0..<min(scanEnd, loopLen))
+                    hits = beforeWrap + mainRange
+                } else if scanEnd <= loopLen {
+                    hits = layer.hits(inRange: scanStart..<scanEnd)
                 } else {
-                    let beforeWrap = layer.hits(inRange: startPos..<loopLen)
-                    let afterWrap = layer.hits(inRange: 0..<(endPos - loopLen))
+                    let beforeWrap = layer.hits(inRange: scanStart..<loopLen)
+                    let afterWrap = layer.hits(inRange: 0..<(scanEnd - loopLen))
                     hits = beforeWrap + afterWrap
                 }
 
                 for hit in hits {
+                    let swungFrame = SwingMath.swungPosition(
+                        hitFrame: hit.position,
+                        swing: layer.swing,
+                        sixteenthLength: sixteenthLen,
+                        loopLength: loopLen
+                    )
+
+                    // Check if swung position falls within this block
+                    let inBlock: Bool
+                    if endPos <= loopLen {
+                        inBlock = swungFrame >= startPos && swungFrame < endPos
+                    } else {
+                        // Block wraps around loop boundary
+                        inBlock = swungFrame >= startPos || swungFrame < (endPos - loopLen)
+                    }
+                    guard inBlock else { continue }
+
                     if let sample = padBank.pads[layer.index].sample {
-                        // Loop replay always cuts previous — each cycle sounds identical
                         voices.removeAll { $0.padIndex == layer.index }
                         let vel = velocityMode == .full ? Float(1.0) : Float(hit.velocity) / 127.0
-                        // Sample-accurate: calculate exact frame offset within this block
-                        var offset = hit.position - startPos
-                        if offset < 0 { offset += loopLen }  // wrapped hit
+                        var offset = swungFrame - startPos
+                        if offset < 0 { offset += loopLen }
                         var voice = Voice(sample: sample, velocity: vel, padIndex: layer.index)
                         voice.blockOffset = max(0, min(offset, frameCount - 1))
                         voices.append(voice)

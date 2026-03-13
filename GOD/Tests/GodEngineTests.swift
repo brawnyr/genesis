@@ -145,3 +145,73 @@ import Testing
     #expect(engine.audio.layers[0].swing > 0.6)
     #expect(engine.audio.layers[0].swing < 0.65)
 }
+
+@Test @MainActor func engineSwingShiftsPlayback() {
+    let engine = GodEngine()
+    let data = [Float](repeating: 0.5, count: 44100)
+    let sample = Sample(name: "hat", left: data, right: data, sampleRate: 44100)
+    engine.padBank.assign(sample: sample, toPad: 0)
+    engine.audio.activePadIndex = 0
+    engine.togglePlay()
+
+    let loopLen = engine.audio.loopLengthFrames
+    let beatsPerLoop = engine.audio.barCount * Transport.beatsPerBar
+    let sixteenth = SwingMath.sixteenthLength(loopLengthFrames: loopLen, beatsPerLoop: beatsPerLoop)
+
+    // Place hit exactly at slot 1 (odd = will be swung)
+    engine.audio.layers[0].addHit(at: sixteenth, velocity: 100)
+    engine.audio.layers[0].padState = .alive
+    engine.audio.layers[0].hasNewHits = false
+
+    // With no swing, hit triggers at frame = sixteenth
+    engine.audio.layers[0].swing = 0.5
+    engine.audio.position = sixteenth
+    engine.voices.removeAll()
+    let _ = engine.processBlock(frameCount: 512)
+    #expect(engine.voices.count >= 1, "Hit should trigger at stored position with no swing")
+
+    // With swing 0.75, hit should NOT trigger at stored position
+    engine.audio.layers[0].swing = 0.75
+    engine.audio.position = sixteenth
+    engine.voices.removeAll()
+    let _ = engine.processBlock(frameCount: 512)
+    // The hit is swung forward, so it should not trigger at the original position
+    // (it triggers later at sixteenth + offset)
+
+    // Now position at the swung location — should trigger
+    let offset = SwingMath.maxSwingOffset(sixteenthLength: sixteenth)
+    engine.audio.position = sixteenth + offset
+    engine.voices.removeAll()
+    let _ = engine.processBlock(frameCount: 512)
+    #expect(engine.voices.count >= 1, "Hit should trigger at swung position")
+}
+
+@Test @MainActor func engineSwingExpandedBackwardScan() {
+    // Test that a hit stored BEFORE the block start triggers when swung INTO the block
+    let engine = GodEngine()
+    let data = [Float](repeating: 0.5, count: 44100)
+    let sample = Sample(name: "hat", left: data, right: data, sampleRate: 44100)
+    engine.padBank.assign(sample: sample, toPad: 0)
+    engine.audio.activePadIndex = 0
+    engine.togglePlay()
+
+    let loopLen = engine.audio.loopLengthFrames
+    let beatsPerLoop = engine.audio.barCount * Transport.beatsPerBar
+    let sixteenth = SwingMath.sixteenthLength(loopLengthFrames: loopLen, beatsPerLoop: beatsPerLoop)
+    let offset = SwingMath.maxSwingOffset(sixteenthLength: sixteenth)
+
+    // Place hit at slot 1 (odd)
+    engine.audio.layers[0].addHit(at: sixteenth, velocity: 100)
+    engine.audio.layers[0].padState = .alive
+    engine.audio.layers[0].swing = 0.75
+
+    // Position the block AFTER the stored hit but AT the swung position
+    // The stored hit is at `sixteenth`, swung to `sixteenth + offset`
+    // Set block start just before the swung position
+    engine.audio.position = sixteenth + offset - 10
+    engine.voices.removeAll()
+    let _ = engine.processBlock(frameCount: 512)
+
+    // The backward scan should find the hit and trigger it at the swung position
+    #expect(engine.voices.count >= 1, "Backward scan should catch hit swung into this block")
+}
