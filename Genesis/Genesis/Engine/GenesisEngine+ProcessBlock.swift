@@ -230,6 +230,18 @@ extension GenesisEngine {
                 wrapFrame = frameCount - (audio.position - loopLen)
                 audio.position -= loopLen
                 wrapped = true
+
+                // Looper pads — trigger sample at exact wrap point (beat 1)
+                for i in 0..<PadBank.padCount {
+                    if audio.layers[i].looper, !audio.layers[i].isMuted,
+                       let sample = padBank.pads[i].sample {
+                        voicePool.killPad(i)
+                        let vel: Float = velocityMode == .full ? 1.0 : audio.layers[i].volume
+                        if let idx = voicePool.allocate(sample: sample, velocity: vel, padIndex: i) {
+                            voicePool.slots[idx].blockOffset = max(0, min(wrapFrame, frameCount - 1))
+                        }
+                    }
+                }
             }
 
         } else {
@@ -301,16 +313,6 @@ extension GenesisEngine {
         if wrapped {
             // Kill pad voices at loop boundary — let metronome clicks ring out
             voicePool.killPads()
-
-            // Looper pads — retrigger sample on beat 1 every loop
-            for i in 0..<PadBank.padCount {
-                if audio.layers[i].looper, !audio.layers[i].isMuted,
-                   let sample = padBank.pads[i].sample {
-                    voicePool.killPad(i)
-                    let vel: Float = velocityMode == .full ? 1.0 : audio.layers[i].volume
-                    let _ = voicePool.allocate(sample: sample, velocity: vel, padIndex: i)
-                }
-            }
         }
 
         // Throttle UI updates — sync position + levels ~30x/sec
