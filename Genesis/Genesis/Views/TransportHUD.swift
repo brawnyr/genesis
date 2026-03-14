@@ -31,7 +31,7 @@ struct TransportHUD: View {
             // === TOP DISPLAY — BPM + BARS like an LCD readout ===
             HStack(alignment: .lastTextBaseline, spacing: 0) {
                 Text("\(engine.transport.bpm)")
-                    .font(.custom("Futura-CondensedExtraBold", size: 52))
+                    .font(.custom("Futura-CondensedMedium", size: 40))
                     .foregroundColor(.white)
                 Text(" ")
                 Text("BPM")
@@ -39,7 +39,7 @@ struct TransportHUD: View {
                     .foregroundColor(Theme.orange)
                 Spacer()
                 Text("\(engine.transport.barCount)")
-                    .font(.custom("Futura-CondensedExtraBold", size: 52))
+                    .font(.custom("Futura-CondensedMedium", size: 40))
                     .foregroundColor(.white)
                 Text(" ")
                 Text("BAR")
@@ -61,7 +61,7 @@ struct TransportHUD: View {
                     .frame(width: 42, alignment: .leading)
                 if engine.transport.isPlaying {
                     Text(beatPosition)
-                        .font(.custom("Futura-CondensedExtraBold", size: 36))
+                        .font(.custom("Futura-CondensedMedium", size: 28))
                         .foregroundColor(.white)
                         .shadow(color: .white.opacity(0.4), radius: 6)
                     Text("  ")
@@ -70,7 +70,7 @@ struct TransportHUD: View {
                         .foregroundColor(.white.opacity(0.5))
                 } else {
                     Text("—")
-                        .font(.custom("Futura-CondensedExtraBold", size: 36))
+                        .font(.custom("Futura-CondensedMedium", size: 28))
                         .foregroundColor(.white.opacity(0.3))
                 }
             }
@@ -87,12 +87,12 @@ struct TransportHUD: View {
                     .foregroundColor(Theme.orange)
                     .frame(width: 42, alignment: .leading)
                 Text("\(Int(engine.masterVolume * 100))")
-                    .font(.custom("Futura-CondensedExtraBold", size: 36))
+                    .font(.custom("Futura-CondensedMedium", size: 28))
                     .foregroundColor(.white)
                     .shadow(color: .white.opacity(0.4), radius: 6)
                 Spacer()
                 Text(formatMasterDb(engine.masterLevelDb))
-                    .font(.custom("Futura-CondensedExtraBold", size: 36))
+                    .font(.custom("Futura-CondensedMedium", size: 28))
                     .foregroundColor(dbColor)
                     .shadow(color: dbColor.opacity(0.4), radius: 6)
                 Text(" ")
