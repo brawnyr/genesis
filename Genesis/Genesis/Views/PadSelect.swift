@@ -1,12 +1,9 @@
 // Genesis/Genesis/Views/PadSelect.swift
-// MGS2-style horizontal cylinder pad selector — spin left/right to select
+// MGS2-style horizontal wheel pad selector — all 8 visible, spin to select
 import SwiftUI
 
 struct PadSelect: View {
     @ObservedObject var engine: GenesisEngine
-
-    // Cylinder geometry
-    private let cylinderRadius: CGFloat = 200
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
@@ -18,114 +15,96 @@ struct PadSelect: View {
                 .padding(.top, 6)
                 .padding(.bottom, 2)
 
-        GeometryReader { geo in
-            let centerX = geo.size.width / 2
-            let centerY = geo.size.height / 2
+            GeometryReader { geo in
+                let totalWidth = geo.size.width
+                let active = engine.activePadIndex
 
-            ZStack {
-                ForEach(0..<PadBank.padCount, id: \.self) { padIdx in
-                    let offset = cylinderOffset(for: padIdx)
-
-                    if offset.depth > -0.15 {
+                HStack(spacing: 0) {
+                    ForEach(0..<PadBank.padCount, id: \.self) { padIdx in
+                        let wheel = wheelWeight(for: padIdx, active: active)
                         let layer = engine.layers[padIdx]
-                        let isActive = engine.activePadIndex == padIdx
+                        let isActive = padIdx == active
                         let padColor = Theme.padColor(padIdx)
                         let name = PadBank.spliceFolderNames[padIdx].uppercased()
 
-                        PadCylinderItem(
+                        PadWheelItem(
                             name: name,
                             padColor: padColor,
                             layer: layer,
                             isActive: isActive,
-                            depth: offset.depth
+                            wheel: wheel
                         )
-                        .scaleEffect(offset.scale)
-                        .opacity(offset.opacity)
-                        .offset(x: offset.x)
-                        .rotation3DEffect(
-                            .degrees(offset.tilt),
-                            axis: (x: 0, y: 1, z: 0),
-                            perspective: 0.4
-                        )
-                        .zIndex(offset.depth)
-                        .position(x: centerX, y: centerY)
+                        .frame(width: slotWidth(for: padIdx, active: active, totalWidth: totalWidth))
+                        .frame(maxHeight: .infinity)
+                        .contentShape(Rectangle())
+                        .onTapGesture {
+                            engine.activePadIndex = padIdx
+                        }
                     }
                 }
             }
         }
-        }
-        .animation(.spring(response: 0.3, dampingFraction: 0.72), value: engine.activePadIndex)
+        .animation(.spring(response: 0.3, dampingFraction: 0.75), value: engine.activePadIndex)
     }
 
-    // MARK: - Cylinder math
+    // MARK: - Wheel math
 
-    private struct CylinderOffset {
-        let x: CGFloat
-        let scale: CGFloat
-        let opacity: Double
-        let depth: Double
-        let tilt: Double
+    /// 0.0 = far from selected, 1.0 = selected
+    private func wheelWeight(for padIdx: Int, active: Int) -> Double {
+        var diff = abs(padIdx - active)
+        if diff > PadBank.padCount / 2 { diff = PadBank.padCount - diff }
+        switch diff {
+        case 0: return 1.0
+        case 1: return 0.6
+        case 2: return 0.35
+        case 3: return 0.2
+        default: return 0.15
+        }
     }
 
-    private func cylinderOffset(for padIdx: Int) -> CylinderOffset {
-        let active = engine.activePadIndex
+    /// Active pad gets more space, others compress
+    private func slotWidth(for padIdx: Int, active: Int, totalWidth: CGFloat) -> CGFloat {
+        var diff = abs(padIdx - active)
+        if diff > PadBank.padCount / 2 { diff = PadBank.padCount - diff }
 
-        var diff = padIdx - active
-        let half = PadBank.padCount / 2
-        if diff > half { diff -= PadBank.padCount }
-        if diff < -half { diff += PadBank.padCount }
-
-        let angleStep = .pi * 2.0 / Double(PadBank.padCount)
-        let angle = Double(diff) * angleStep
-
-        // X position — horizontal spin
-        let x = CGFloat(sin(angle)) * cylinderRadius
-
-        // Depth: 1 = front center, -1 = back
-        let depth = cos(angle)
-
-        // Scale: big at front, shrink into the curve
-        let scale = CGFloat(max(0.45 + 0.55 * depth, 0.3))
-
-        // Opacity
-        let opacity: Double
-        if depth > 0.7 {
-            opacity = 1.0
-        } else if depth > 0 {
-            opacity = depth / 0.7 * 0.8 + 0.15
-        } else {
-            opacity = max(depth + 0.15, 0) * 0.5
+        // Weight: active=3.0, adjacent=1.5, others=1.0
+        let weight: CGFloat
+        switch diff {
+        case 0: weight = 3.0
+        case 1: weight = 1.5
+        default: weight = 1.0
         }
 
-        // Tilt: Y-axis rotation — items turn away as they curve to the sides
-        let tilt = Double(diff) * 22.0
-
-        return CylinderOffset(x: x, scale: scale, opacity: opacity, depth: depth, tilt: tilt)
+        // Total weights for all 8 pads
+        let totalWeight: CGFloat = 3.0 + (1.5 * 2) + (1.0 * 5)
+        return totalWidth * weight / totalWeight
     }
 }
 
-// MARK: - Single pad on the cylinder
+// MARK: - Single pad on the wheel
 
-private struct PadCylinderItem: View {
+private struct PadWheelItem: View {
     let name: String
     let padColor: Color
     let layer: Layer
     let isActive: Bool
-    let depth: Double
+    let wheel: Double
 
     var body: some View {
         VStack(spacing: 4) {
+            // Pad name
             Text(name)
-                .font(.system(size: isActive ? 28 : 15, design: .monospaced).bold())
-                .foregroundColor(padColor)
-                .shadow(color: padColor.opacity(isActive ? 0.6 : 0.15), radius: isActive ? 12 : 3)
+                .font(.system(size: isActive ? 24 : max(11, 11 + 6 * wheel), design: .monospaced).bold())
+                .foregroundColor(padColor.opacity(0.3 + 0.7 * wheel))
+                .shadow(color: padColor.opacity(isActive ? 0.5 : 0.1 * wheel), radius: isActive ? 10 : 3)
 
             if isActive {
-                HStack(spacing: 6) {
-                    Text("\(Int(layer.volume * 100))%")
-                        .font(.system(size: 14, design: .monospaced).bold())
-                        .foregroundColor(layer.isMuted ? Theme.moss : Theme.text)
+                // Volume
+                Text("\(Int(layer.volume * 100))% volume")
+                    .font(.system(size: 14, design: .monospaced).bold())
+                    .foregroundColor(layer.isMuted ? Theme.moss : Theme.text)
 
+                HStack(spacing: 6) {
                     if layer.isMuted {
                         Text("MUTE")
                             .font(.system(size: 11, design: .monospaced).bold())
@@ -146,9 +125,21 @@ private struct PadCylinderItem: View {
                         .foregroundColor(Theme.text.opacity(0.35))
                         .lineLimit(1)
                 }
+            } else if wheel > 0.4 {
+                // Adjacent pads — show volume small
+                Text("\(Int(layer.volume * 100))% volume")
+                    .font(.system(size: 10, design: .monospaced))
+                    .foregroundColor(Theme.text.opacity(0.25))
             }
         }
-        .frame(width: 160)
-        .padding(.vertical, isActive ? 12 : 6)
+        .padding(.vertical, 8)
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .background(
+            isActive
+                ? RoundedRectangle(cornerRadius: 4)
+                    .fill(padColor.opacity(0.06))
+                    .shadow(color: padColor.opacity(0.12), radius: 8)
+                : nil
+        )
     }
 }
