@@ -47,7 +47,8 @@ class AudioManager {
 
         self.sourceNode = node
         audioEngine.attach(node)
-        audioEngine.connect(node, to: audioEngine.mainMixerNode, format: format)
+        // Connect directly to output — bypass mainMixerNode which hard clips at ±1.0
+        audioEngine.connect(node, to: audioEngine.outputNode, format: format)
 
         do {
             try audioEngine.start()
