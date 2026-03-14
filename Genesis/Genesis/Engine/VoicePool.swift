@@ -36,6 +36,7 @@ struct Voice {
 
     /// Mixes this voice into stereo buffers with filtering and panning.
     /// Returns (finished, peak).
+    /// Uses unsafe pointer access to eliminate bounds checks in the inner loop.
     mutating func fill(intoLeft left: inout [Float], right: inout [Float], count: Int,
                        pan: Float, volume: Float, hpCoeffs: BiquadCoefficients, lpCoeffs: BiquadCoefficients
     ) -> (finished: Bool, peak: Float) {
@@ -58,30 +59,39 @@ struct Voice {
         let targetPanL = cos(pan * .pi / 2.0)
         let targetPanR = sin(pan * .pi / 2.0)
 
-        for i in 0..<toWrite {
-            // Smooth pan to avoid zipper noise
-            prevPanL += (targetPanL - prevPanL) * 0.01
-            prevPanR += (targetPanR - prevPanR) * 0.01
+        let pos = position
+        sample.left.withUnsafeBufferPointer { sL in
+            sample.right.withUnsafeBufferPointer { sR in
+                left.withUnsafeMutableBufferPointer { outL in
+                    right.withUnsafeMutableBufferPointer { outR in
+                        for i in 0..<toWrite {
+                            // Smooth pan to avoid zipper noise
+                            prevPanL += (targetPanL - prevPanL) * 0.01
+                            prevPanR += (targetPanR - prevPanR) * 0.01
 
-            var l = sample.left[position + i] * gain
-            var r = sample.right[position + i] * gain
+                            var l = sL[pos + i] * gain
+                            var r = sR[pos + i] * gain
 
-            // HP filter
-            l = biquadProcessSample(l, coeffs: hpCoeffs, state: &hpStateL)
-            r = biquadProcessSample(r, coeffs: hpCoeffs, state: &hpStateR)
+                            // HP filter
+                            l = biquadProcessSample(l, coeffs: hpCoeffs, state: &hpStateL)
+                            r = biquadProcessSample(r, coeffs: hpCoeffs, state: &hpStateR)
 
-            // LP filter
-            l = biquadProcessSample(l, coeffs: lpCoeffs, state: &lpStateL)
-            r = biquadProcessSample(r, coeffs: lpCoeffs, state: &lpStateR)
+                            // LP filter
+                            l = biquadProcessSample(l, coeffs: lpCoeffs, state: &lpStateL)
+                            r = biquadProcessSample(r, coeffs: lpCoeffs, state: &lpStateR)
 
-            // Pan (equal-power, smoothed)
-            l *= prevPanL
-            r *= prevPanR
+                            // Pan (equal-power, smoothed)
+                            l *= prevPanL
+                            r *= prevPanR
 
-            let idx = startIdx + i
-            left[idx] += l
-            right[idx] += r
-            peak = max(peak, abs(l), abs(r))
+                            let idx = startIdx + i
+                            outL[idx] += l
+                            outR[idx] += r
+                            peak = max(peak, abs(l), abs(r))
+                        }
+                    }
+                }
+            }
         }
 
         position += toWrite

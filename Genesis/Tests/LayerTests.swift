@@ -50,9 +50,11 @@ import Testing
 @Test func layerSwingClamped() {
     var layer = Layer(index: 0, name: "KICK")
     layer.swing = 0.3
-    #expect(layer.swing == 0.5)
+    #expect(layer.swing == 0.5)  // clamped to min 0.5
+    layer.swing = 1.5
+    #expect(layer.swing == 1.0)  // clamped to max 1.0
     layer.swing = 0.9
-    #expect(layer.swing == 0.75)
+    #expect(layer.swing == 0.9)  // within range, unchanged
     layer.swing = 0.65
     #expect(layer.swing == 0.65)
 }

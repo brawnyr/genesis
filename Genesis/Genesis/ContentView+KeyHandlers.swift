@@ -72,17 +72,26 @@ extension ContentView {
         engine.padBank.pads[index].sample?.name.lowercased() ?? PadBank.spliceFolderNames[index]
     }
 
-    func loadBrowserSample() {
+    /// Refresh the cached file list for the current pad's folder.
+    /// Only re-scans the filesystem when the pad changes.
+    func refreshBrowserCache() {
         let padIndex = engine.activePadIndex
+        guard padIndex != cachedBrowserPadIndex else { return }
+        cachedBrowserPadIndex = padIndex
         let folderName = PadBank.spliceFolderNames[padIndex]
         let folderURL = PadBank.spliceBasePath.appendingPathComponent(folderName)
-        let fm = FileManager.default
-        let files = (try? fm.contentsOfDirectory(at: folderURL, includingPropertiesForKeys: nil)
+        cachedBrowserFiles = (try? FileManager.default.contentsOfDirectory(at: folderURL, includingPropertiesForKeys: nil)
             .filter { PadBank.audioExtensions.contains($0.pathExtension.lowercased()) }
             .sorted { $0.lastPathComponent < $1.lastPathComponent }) ?? []
-        guard !files.isEmpty else { return }
-        browserIndex = min(browserIndex, files.count - 1)
-        let url = files[browserIndex]
+    }
+
+    func loadBrowserSample() {
+        refreshBrowserCache()
+        let padIndex = engine.activePadIndex
+        let folderName = PadBank.spliceFolderNames[padIndex]
+        guard !cachedBrowserFiles.isEmpty else { return }
+        browserIndex = min(browserIndex, cachedBrowserFiles.count - 1)
+        let url = cachedBrowserFiles[browserIndex]
         do {
             try engine.loadSample(from: url, forPad: padIndex)
             let name = engine.padBank.pads[padIndex].sample?.name.lowercased() ?? url.lastPathComponent
@@ -93,14 +102,9 @@ extension ContentView {
     }
 
     func browserFileName() -> String? {
-        let padIndex = engine.activePadIndex
-        let folderName = PadBank.spliceFolderNames[padIndex]
-        let folderURL = PadBank.spliceBasePath.appendingPathComponent(folderName)
-        let files = (try? FileManager.default.contentsOfDirectory(at: folderURL, includingPropertiesForKeys: nil)
-            .filter { PadBank.audioExtensions.contains($0.pathExtension.lowercased()) }
-            .sorted { $0.lastPathComponent < $1.lastPathComponent }) ?? []
-        guard browserIndex >= 0, browserIndex < files.count else { return nil }
-        return files[browserIndex].deletingPathExtension().lastPathComponent.lowercased()
+        refreshBrowserCache()
+        guard browserIndex >= 0, browserIndex < cachedBrowserFiles.count else { return nil }
+        return cachedBrowserFiles[browserIndex].deletingPathExtension().lastPathComponent.lowercased()
     }
 
     func handleKey(keyCode: UInt16, chars: String?, modifiers: NSEvent.ModifierFlags) {
@@ -166,13 +170,9 @@ extension ContentView {
             }
             return
         case Key.s, Key.downArrow:
-            let padIndex = engine.activePadIndex
-            let folderName = PadBank.spliceFolderNames[padIndex]
-            let folderURL = PadBank.spliceBasePath.appendingPathComponent(folderName)
-            let fileCount = (try? FileManager.default.contentsOfDirectory(at: folderURL, includingPropertiesForKeys: nil)
-                .filter { PadBank.audioExtensions.contains($0.pathExtension.lowercased()) }.count) ?? 0
-            if fileCount > 0 {
-                browserIndex = min(browserIndex + 1, fileCount - 1)
+            refreshBrowserCache()
+            if !cachedBrowserFiles.isEmpty {
+                browserIndex = min(browserIndex + 1, cachedBrowserFiles.count - 1)
             }
             loadBrowserSample()
             if let name = browserFileName() {
@@ -212,13 +212,12 @@ extension ContentView {
             if mode == .browse {
                 let padIndex = engine.activePadIndex
                 let folder = PadBank.spliceFolderNames[padIndex]
+                // Force cache refresh on browse open
+                cachedBrowserPadIndex = -1
+                refreshBrowserCache()
                 // Auto-select current sample in the list
                 if let currentSample = engine.padBank.pads[padIndex].sample {
-                    let folderURL = PadBank.spliceBasePath.appendingPathComponent(folder)
-                    let files = (try? FileManager.default.contentsOfDirectory(at: folderURL, includingPropertiesForKeys: nil)
-                        .filter { PadBank.audioExtensions.contains($0.pathExtension.lowercased()) }
-                        .sorted { $0.lastPathComponent < $1.lastPathComponent }) ?? []
-                    if let idx = files.firstIndex(where: { $0.deletingPathExtension().lastPathComponent == currentSample.name }) {
+                    if let idx = cachedBrowserFiles.firstIndex(where: { $0.deletingPathExtension().lastPathComponent == currentSample.name }) {
                         browserIndex = idx
                     }
                 }

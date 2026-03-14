@@ -48,6 +48,8 @@ struct ContentView: View {
     @State var browserIndex: Int = 0
     @State var bpmInput = ""
     @State var bpmPresetIndex = 0
+    @State var cachedBrowserFiles: [URL] = []
+    @State var cachedBrowserPadIndex: Int = -1
 
     var body: some View {
         ZStack {

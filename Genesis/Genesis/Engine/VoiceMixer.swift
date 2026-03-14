@@ -4,6 +4,7 @@ import Foundation
 enum VoiceMixer {
     /// Mix all active voices into stereo output buffers + reverb send buffers.
     /// Returns per-pad peak levels.
+    /// Uses pre-allocated scratch buffers to avoid heap allocations on the audio thread.
     static func mix(
         pool: inout VoicePool,
         layers: [Layer],
@@ -13,6 +14,8 @@ enum VoiceMixer {
         intoRight bufferR: inout [Float],
         reverbSendL: inout [Float],
         reverbSendR: inout [Float],
+        scratchL: inout [Float],
+        scratchR: inout [Float],
         count: Int
     ) -> [Float] {
         var levels = [Float](repeating: 0, count: PadBank.padCount)
@@ -26,24 +29,25 @@ enum VoiceMixer {
             let volume = validPad ? layers[padIdx].volume : 1.0
             let reverbAmt = validPad ? layers[padIdx].reverbSend : 0.0
 
-            // Snapshot buffer state before fill so we can extract this voice's contribution
             let needsReverb = reverbAmt > 0.001
 
             if needsReverb {
-                // Record start positions for reverb extraction
+                // Render voice into scratch buffers (zeroed first), then add to both main and reverb
                 let startIdx = pool.slots[i].blockOffset
-                let snapshotL = Array(bufferL[startIdx..<count])
-                let snapshotR = Array(bufferR[startIdx..<count])
+                for j in startIdx..<count {
+                    scratchL[j] = 0
+                    scratchR[j] = 0
+                }
 
-                let (_, peak) = pool.slots[i].fill(intoLeft: &bufferL, right: &bufferR, count: count,
+                let (_, peak) = pool.slots[i].fill(intoLeft: &scratchL, right: &scratchR, count: count,
                                                      pan: pan, volume: volume, hpCoeffs: hpCoeffs, lpCoeffs: lpCoeffs)
 
-                // Extract this voice's contribution and add to reverb send
+                // Sum scratch into main output and reverb send
                 for j in startIdx..<count {
-                    let voiceL = bufferL[j] - snapshotL[j - startIdx]
-                    let voiceR = bufferR[j] - snapshotR[j - startIdx]
-                    reverbSendL[j] += voiceL * reverbAmt
-                    reverbSendR[j] += voiceR * reverbAmt
+                    bufferL[j] += scratchL[j]
+                    bufferR[j] += scratchR[j]
+                    reverbSendL[j] += scratchL[j] * reverbAmt
+                    reverbSendR[j] += scratchR[j] * reverbAmt
                 }
 
                 if validPad {

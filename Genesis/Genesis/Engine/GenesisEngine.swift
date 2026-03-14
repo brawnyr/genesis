@@ -66,6 +66,8 @@ class GenesisEngine: ObservableObject {
     var outputBufferR = [Float](repeating: 0, count: 4096)
     var reverbSendL = [Float](repeating: 0, count: 4096)
     var reverbSendR = [Float](repeating: 0, count: 4096)
+    var voiceScratchL = [Float](repeating: 0, count: 4096)
+    var voiceScratchR = [Float](repeating: 0, count: 4096)
     let reverb = ReverbProcessor()
 
     // MARK: - Cached biquad coefficients (recalculated only on cutoff change)
@@ -85,7 +87,9 @@ class GenesisEngine: ObservableObject {
     var pendingHits: [(padIndex: Int, position: Int, velocity: Int)] = []
     var pendingReplayHits: [(padIndex: Int, position: Int, velocity: Int)] = []
     var uiUpdateCounter = 0
-    private var lastClearedLayerIndex: Int?
+    var reusableSnapshot = UISnapshot()
+    private var undoStack: [(index: Int, uiHits: [Hit], audioHits: [Hit])] = []
+    private static let maxUndoDepth = 8
     private var preMuteMasterVolume: Float?
 
     // MARK: - Transport control
@@ -283,23 +287,33 @@ class GenesisEngine: ObservableObject {
 
     func clearLayer(_ index: Int) {
         guard index >= 0, index < layers.count else { return }
-        layers[index].clear()
+        // Snapshot both sides atomically before clearing
+        let uiHits = layers[index].hits
         os_unfair_lock_lock(&audioLock)
-        audio.layers[index].clear()
+        let audioHits = audio.layers[index].hits
+        audio.layers[index].hits.removeAll()
+        audio.layers[index].isRecording = false
+        audio.layers[index].hasNewHits = false
         voicePool.killPad(index)
         os_unfair_lock_unlock(&audioLock)
-        lastClearedLayerIndex = index
+        layers[index].hits.removeAll()
+        layers[index].isRecording = false
+        layers[index].hasNewHits = false
 
+        // Push onto undo stack (audio copy is authoritative)
+        undoStack.append((index: index, uiHits: uiHits, audioHits: audioHits))
+        if undoStack.count > Self.maxUndoDepth {
+            undoStack.removeFirst()
+        }
     }
 
     func undoLastClear() {
-        guard let index = lastClearedLayerIndex else { return }
-        layers[index].undo()
+        guard let entry = undoStack.popLast() else { return }
+        let index = entry.index
+        layers[index].hits = entry.uiHits
         os_unfair_lock_lock(&audioLock)
-        audio.layers[index].undo()
+        audio.layers[index].hits = entry.audioHits
         os_unfair_lock_unlock(&audioLock)
-        lastClearedLayerIndex = nil
-
     }
 
     // MARK: - Hit editing

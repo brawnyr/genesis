@@ -11,7 +11,8 @@ enum LineKind {
 }
 
 struct TerminalLine: Identifiable {
-    private static var nextID: Int = 0
+    // Safe: TerminalLine is only created on the main thread (all appendLine calls dispatch to main)
+    private nonisolated(unsafe) static var nextID: Int = 0
     let id: Int = {
         let val = nextID
         nextID += 1

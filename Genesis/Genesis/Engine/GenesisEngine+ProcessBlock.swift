@@ -1,15 +1,17 @@
 // Genesis/Genesis/Engine/GenesisEngine+ProcessBlock.swift
 import Foundation
 
-/// Lightweight snapshot of audio state for UI sync — avoids .map {} heap allocations on audio thread.
-private struct UISnapshot {
+/// Lightweight snapshot of audio state for UI sync.
+/// Pre-allocated as a persistent member of GenesisEngine and reused each cycle
+/// to avoid repeated heap allocations on the audio thread.
+struct UISnapshot {
     var pos: Int = 0
     var levels: [Float] = Array(repeating: 0, count: PadBank.padCount)
     var masterPeak: Float = 0
     var triggers: [Bool] = Array(repeating: false, count: PadBank.padCount)
     var activeIdx: Int = 0
-    var hits: [(padIndex: Int, position: Int, velocity: Int)] = []        // live MIDI hits (get recorded)
-    var replayHits: [(padIndex: Int, position: Int, velocity: Int)] = []  // loop replay hits (terminal only)
+    var hits: [(padIndex: Int, position: Int, velocity: Int)] = []
+    var replayHits: [(padIndex: Int, position: Int, velocity: Int)] = []
     var activeVoicePads: Set<Int> = []
     var layerVolumes = Array(repeating: Float(1.0), count: PadBank.padCount)
     var layerPans = Array(repeating: Float(0.5), count: PadBank.padCount)
@@ -19,6 +21,7 @@ private struct UISnapshot {
     var layerReverbSends = Array(repeating: Float(0.0), count: PadBank.padCount)
     var layerIsRecording = Array(repeating: false, count: PadBank.padCount)
     var layerHasNewHits = Array(repeating: false, count: PadBank.padCount)
+    var valid: Bool = false
 }
 
 extension GenesisEngine {
@@ -119,7 +122,9 @@ extension GenesisEngine {
     // MARK: - Audio render callback
 
     func processBlock(frameCount: Int, intoLeft destL: UnsafeMutablePointer<Float>?, intoRight destR: UnsafeMutablePointer<Float>?) {
+        // === LOCK SECTION 1: Read audio state, scan hits, drain MIDI, advance position ===
         os_unfair_lock_lock(&audioLock)
+
         // Ensure pre-allocated buffers are large enough, then zero them
         if outputBufferL.count < frameCount {
             outputBufferL = [Float](repeating: 0, count: frameCount)
@@ -132,6 +137,8 @@ extension GenesisEngine {
         }
 
         let loopLen = audio.loopLengthFrames
+        let masterVol = audio.masterVolume
+        let shouldCapture = audio.captureState == .on
 
         // Loop replay, metronome, and position advance only when playing
         var wrapped = false
@@ -264,7 +271,35 @@ extension GenesisEngine {
         // Update cached biquad coefficients (only recalculates when cutoffs change)
         updateCachedCoefficients()
 
-        // Zero reverb send buffers
+        // Snapshot layer rendering params while locked (cheap scalar copies)
+        // These local copies let us release the lock before the heavy render pass
+        var localLayerVolumes = (Float(0), Float(0), Float(0), Float(0), Float(0), Float(0), Float(0), Float(0))
+        var localLayerPans = (Float(0), Float(0), Float(0), Float(0), Float(0), Float(0), Float(0), Float(0))
+        var localLayerReverbSends = (Float(0), Float(0), Float(0), Float(0), Float(0), Float(0), Float(0), Float(0))
+        withUnsafeMutablePointer(to: &localLayerVolumes) { vPtr in
+            vPtr.withMemoryRebound(to: Float.self, capacity: PadBank.padCount) { v in
+                withUnsafeMutablePointer(to: &localLayerPans) { pPtr in
+                    pPtr.withMemoryRebound(to: Float.self, capacity: PadBank.padCount) { p in
+                        withUnsafeMutablePointer(to: &localLayerReverbSends) { rPtr in
+                            rPtr.withMemoryRebound(to: Float.self, capacity: PadBank.padCount) { r in
+                                for i in 0..<PadBank.padCount {
+                                    v[i] = audio.layers[i].volume
+                                    p[i] = audio.layers[i].pan
+                                    r[i] = audio.layers[i].reverbSend
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        os_unfair_lock_unlock(&audioLock)
+
+        // === UNLOCKED SECTION: Heavy rendering (voice mix, reverb, declick, master vol) ===
+        // voicePool, outputBuffers, reverbSend, scratch — all audio-thread-only, no lock needed
+
+        // Zero reverb send buffers and ensure scratch buffers are sized
         if reverbSendL.count < frameCount {
             reverbSendL = [Float](repeating: 0, count: frameCount)
             reverbSendR = [Float](repeating: 0, count: frameCount)
@@ -273,6 +308,10 @@ extension GenesisEngine {
                 reverbSendL[i] = 0
                 reverbSendR[i] = 0
             }
+        }
+        if voiceScratchL.count < frameCount {
+            voiceScratchL = [Float](repeating: 0, count: frameCount)
+            voiceScratchR = [Float](repeating: 0, count: frameCount)
         }
 
         // Mix all active voices — always, even when stopped (for pad auditioning)
@@ -285,6 +324,8 @@ extension GenesisEngine {
             intoRight: &outputBufferR,
             reverbSendL: &reverbSendL,
             reverbSendR: &reverbSendR,
+            scratchL: &voiceScratchL,
+            scratchR: &voiceScratchR,
             count: frameCount
         )
         for i in 0..<PadBank.padCount {
@@ -307,8 +348,8 @@ extension GenesisEngine {
         // Apply master volume and track peak
         var peak: Float = 0
         for i in 0..<frameCount {
-            outputBufferL[i] *= audio.masterVolume
-            outputBufferR[i] *= audio.masterVolume
+            outputBufferL[i] *= masterVol
+            outputBufferR[i] *= masterVol
             peak = max(peak, abs(outputBufferL[i]), abs(outputBufferR[i]))
         }
 
@@ -336,48 +377,9 @@ extension GenesisEngine {
             }
         }
 
-        // Snapshot capture state — actual append happens after lock release
-        let shouldCapture = audio.captureState == .on
-
         if wrapped {
             // Kill pad voices at loop boundary — let metronome clicks ring out
             voicePool.killPads()
-        }
-
-        // Throttle UI updates — sync position + levels ~30x/sec
-        var uiSnapshot: UISnapshot? = nil
-        uiUpdateCounter += frameCount
-        if uiUpdateCounter >= Self.uiUpdateFrameThreshold {
-            uiUpdateCounter = 0
-
-            // Snapshot audio state into stack-allocated fixed arrays (no heap allocs)
-            var snap = UISnapshot()
-            snap.pos = audio.position
-            snap.levels = pendingLevels
-            snap.masterPeak = peak
-            snap.triggers = pendingTriggers
-            snap.activeIdx = audio.activePadIndex
-            snap.hits = pendingHits
-            snap.replayHits = pendingReplayHits
-            for i in 0..<PadBank.padCount {
-                snap.layerVolumes[i] = audio.layers[i].volume
-                snap.layerPans[i] = audio.layers[i].pan
-                snap.layerHPCutoffs[i] = audio.layers[i].hpCutoff
-                snap.layerLPCutoffs[i] = audio.layers[i].lpCutoff
-                snap.layerSwings[i] = audio.layers[i].swing
-                snap.layerReverbSends[i] = audio.layers[i].reverbSend
-                snap.layerIsRecording[i] = audio.layers[i].isRecording
-                snap.layerHasNewHits[i] = audio.layers[i].hasNewHits
-                if voicePool.hasPadVoice(i) {
-                    snap.activeVoicePads.insert(i)
-                }
-            }
-
-            pendingHits.removeAll(keepingCapacity: true)
-            pendingReplayHits.removeAll(keepingCapacity: true)
-            pendingLevels = Array(repeating: 0, count: PadBank.padCount)
-            pendingTriggers = Array(repeating: false, count: PadBank.padCount)
-            uiSnapshot = snap
         }
 
         // Copy into destination audio buffers
@@ -387,6 +389,51 @@ extension GenesisEngine {
                 destR[i] = outputBufferR[i]
             }
         }
+
+        // === LOCK SECTION 2: Brief re-lock for UI snapshot (reads audio.position etc.) ===
+        os_unfair_lock_lock(&audioLock)
+
+        uiUpdateCounter += frameCount
+        reusableSnapshot.valid = false
+        if uiUpdateCounter >= Self.uiUpdateFrameThreshold {
+            uiUpdateCounter = 0
+
+            // Reuse pre-allocated snapshot — swap arrays instead of copying to avoid CoW allocs
+            reusableSnapshot.pos = audio.position
+            reusableSnapshot.masterPeak = peak
+            reusableSnapshot.activeIdx = audio.activePadIndex
+
+            // Swap levels/triggers (reusable gets current data, pending gets the old zeroed arrays back)
+            swap(&reusableSnapshot.levels, &pendingLevels)
+            swap(&reusableSnapshot.triggers, &pendingTriggers)
+
+            // Swap hit arrays — snapshot takes accumulated hits, pending gets snapshot's old (empty) arrays
+            swap(&reusableSnapshot.hits, &pendingHits)
+            swap(&reusableSnapshot.replayHits, &pendingReplayHits)
+
+            // Zero the pending arrays for next cycle
+            for i in 0..<PadBank.padCount {
+                pendingLevels[i] = 0
+                pendingTriggers[i] = false
+            }
+
+            reusableSnapshot.activeVoicePads.removeAll(keepingCapacity: true)
+            for i in 0..<PadBank.padCount {
+                reusableSnapshot.layerVolumes[i] = audio.layers[i].volume
+                reusableSnapshot.layerPans[i] = audio.layers[i].pan
+                reusableSnapshot.layerHPCutoffs[i] = audio.layers[i].hpCutoff
+                reusableSnapshot.layerLPCutoffs[i] = audio.layers[i].lpCutoff
+                reusableSnapshot.layerSwings[i] = audio.layers[i].swing
+                reusableSnapshot.layerReverbSends[i] = audio.layers[i].reverbSend
+                reusableSnapshot.layerIsRecording[i] = audio.layers[i].isRecording
+                reusableSnapshot.layerHasNewHits[i] = audio.layers[i].hasNewHits
+                if voicePool.hasPadVoice(i) {
+                    reusableSnapshot.activeVoicePads.insert(i)
+                }
+            }
+            reusableSnapshot.valid = true
+        }
+
         os_unfair_lock_unlock(&audioLock)
 
         // === Everything below runs OUTSIDE the audio lock ===
@@ -415,7 +462,12 @@ extension GenesisEngine {
             }
         }
 
-        if let snap = uiSnapshot {
+        if reusableSnapshot.valid {
+            // Copy snapshot for dispatch — the reusable one stays owned by the engine
+            let snap = reusableSnapshot
+            reusableSnapshot.hits.removeAll(keepingCapacity: true)
+            reusableSnapshot.replayHits.removeAll(keepingCapacity: true)
+
             DispatchQueue.main.async { [weak self] in
                 guard let self else { return }
                 self.activePadIndex = snap.activeIdx

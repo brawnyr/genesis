@@ -1,4 +1,5 @@
 import Testing
+import Foundation
 @testable import Genesis
 
 private func activeVoiceCount(_ engine: GenesisEngine, pad: Int) -> Int {
@@ -24,14 +25,14 @@ private func totalActiveVoices(_ engine: GenesisEngine) -> Int {
     // Active pad should now be 3 (set by audio thread)
     #expect(engine.audio.activePadIndex == 3)
 
-    // CC 74 (volume knob) should target the active pad (3), not pad 0
+    // CC 74 (reverb send knob) should target the active pad (3), not pad 0
     engine.midiRingBuffer.write(.cc(number: 74, value: 64))
     let _ = engine.processBlock(frameCount: 512)
 
-    // Layer 3 volume should be ~0.5 (64/127), layer 0 should be unchanged at 1.0
-    #expect(engine.audio.layers[3].volume < 0.6)
-    #expect(engine.audio.layers[3].volume > 0.4)
-    #expect(engine.audio.layers[0].volume == 0.25)
+    // Layer 3 reverb send should be ~0.5 (64/127), layer 0 should be unchanged at 0.0
+    #expect(engine.audio.layers[3].reverbSend < 0.6)
+    #expect(engine.audio.layers[3].reverbSend > 0.4)
+    #expect(engine.audio.layers[0].reverbSend == 0.0)
 }
 
 @Test @MainActor func engineChokeChopsVoices() {
@@ -142,16 +143,16 @@ private func totalActiveVoices(_ engine: GenesisEngine) -> Int {
     let _ = engine.processBlock(frameCount: 512)
     #expect(engine.audio.layers[0].swing == 0.5)
 
-    // CC 18 value 127 → swing 0.75 (max)
+    // CC 18 value 127 → swing 1.0 (max: full sixteenth push)
     engine.midiRingBuffer.write(.cc(number: 18, value: 127))
     let _ = engine.processBlock(frameCount: 512)
-    #expect(abs(engine.audio.layers[0].swing - 0.75) < 0.01)
+    #expect(abs(engine.audio.layers[0].swing - 1.0) < 0.01)
 
-    // CC 18 value 64 → swing ~0.625
+    // CC 18 value 64 → swing ~0.75 (midpoint)
     engine.midiRingBuffer.write(.cc(number: 18, value: 64))
     let _ = engine.processBlock(frameCount: 512)
-    #expect(engine.audio.layers[0].swing > 0.6)
-    #expect(engine.audio.layers[0].swing < 0.65)
+    #expect(engine.audio.layers[0].swing > 0.74)
+    #expect(engine.audio.layers[0].swing < 0.76)
 }
 
 @Test @MainActor func engineSwingShiftsPlayback() {
@@ -183,9 +184,9 @@ private func totalActiveVoices(_ engine: GenesisEngine) -> Int {
     engine.voicePool.killAll()
     let _ = engine.processBlock(frameCount: 512)
 
-    // Now position at the swung location — should trigger
-    let offset = SwingMath.maxSwingOffset(sixteenthLength: sixteenth)
-    engine.audio.position = sixteenth + offset
+    // Now position at the actual swung location — swing 0.75 offsets by 0.5 * sixteenth
+    let swungOffset = Int(roundf((0.75 - 0.5) * 2.0 * Float(sixteenth)))
+    engine.audio.position = sixteenth + swungOffset
     engine.voicePool.killAll()
     let _ = engine.processBlock(frameCount: 512)
     #expect(totalActiveVoices(engine) >= 1, "Hit should trigger at swung position")
@@ -203,14 +204,16 @@ private func totalActiveVoices(_ engine: GenesisEngine) -> Int {
     let loopLen = engine.audio.loopLengthFrames
     let beatsPerLoop = engine.audio.barCount * Transport.beatsPerBar
     let sixteenth = SwingMath.sixteenthLength(loopLengthFrames: loopLen, beatsPerLoop: beatsPerLoop)
-    let offset = SwingMath.maxSwingOffset(sixteenthLength: sixteenth)
 
     // Place hit at slot 1 (odd)
     engine.audio.layers[0].addHit(at: sixteenth, velocity: 100)
     engine.audio.layers[0].swing = 0.75
 
+    // Swing 0.75 offsets by 0.5 * sixteenth
+    let swungOffset = Int(roundf((0.75 - 0.5) * 2.0 * Float(sixteenth)))
+
     // Position the block AFTER the stored hit but AT the swung position
-    engine.audio.position = sixteenth + offset - 10
+    engine.audio.position = sixteenth + swungOffset - 10
     engine.voicePool.killAll()
     let _ = engine.processBlock(frameCount: 512)
 

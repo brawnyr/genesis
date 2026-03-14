@@ -1,4 +1,5 @@
 import Testing
+import Foundation
 @testable import Genesis
 
 @Test func swungPositionNoSwing() {
@@ -16,7 +17,8 @@ import Testing
     let sixteenth = 5512
     let hitFrame = sixteenth
     let result = SwingMath.swungPosition(hitFrame: hitFrame, swing: 0.66, sixteenthLength: sixteenth, loopLength: 88200)
-    let expectedOffset = Int(Float(0.66 - 0.5) * Float(sixteenth))
+    // Formula: offset = roundf((swing - 0.5) * 2.0 * sixteenthLength)
+    let expectedOffset = Int(roundf(Float(0.66 - 0.5) * 2.0 * Float(sixteenth)))
     #expect(result == hitFrame + expectedOffset)
 }
 
@@ -32,5 +34,6 @@ import Testing
 @Test func maxSwingOffsetCalculation() {
     let sixteenth = 5512
     let maxOffset = SwingMath.maxSwingOffset(sixteenthLength: sixteenth)
-    #expect(maxOffset == Int(0.25 * Float(sixteenth)))
+    // Full sixteenth push at max swing
+    #expect(maxOffset == sixteenth)
 }
