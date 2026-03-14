@@ -93,7 +93,7 @@ struct GHUD: View {
 
             // === VOLUME + dB ===
             HStack(alignment: .lastTextBaseline, spacing: 0) {
-                Text("VOL")
+                Text("MASTER VOL")
                     .font(.system(size: 12, design: .monospaced).bold())
                     .foregroundColor(Theme.terracotta)
                     .shadow(color: Theme.terracotta.opacity(0.3), radius: 4)
@@ -127,7 +127,7 @@ struct GHUD: View {
                         .fill(engine.metronome.isOn ? Theme.terracotta : Theme.subtle)
                         .frame(width: 7, height: 7)
                         .shadow(color: engine.metronome.isOn ? Theme.terracotta.opacity(0.4) : .clear, radius: 3)
-                    Text("MET")
+                    Text("METRONOME")
                         .font(.system(size: 12, design: .monospaced).bold())
                         .foregroundColor(engine.metronome.isOn ? Theme.terracotta : Theme.subtle)
                 }
