@@ -1,4 +1,4 @@
-// Genesis/Genesis/Views/InspectorPanelView.swift
+// Genesis/Genesis/Views/PadInspectPanel.swift
 import SwiftUI
 
 // MARK: - Inspector helper views
@@ -86,7 +86,7 @@ struct ChokeBadge: View {
 
 // MARK: - Right-side panel (CC readout + sample browser)
 
-struct InspectorPanelView: View {
+struct PadInspectPanel: View {
     @ObservedObject var engine: GenesisEngine
     @Binding var browsingPad: Bool
     @Binding var browserIndex: Int
@@ -98,6 +98,12 @@ struct InspectorPanelView: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
+            Text("PAD_INSPECT_PANEL")
+                .font(.system(size: 11, design: .monospaced).bold())
+                .foregroundColor(Theme.orange)
+                .shadow(color: Theme.orange.opacity(0.5), radius: 6)
+                .padding(.bottom, 6)
+
             padReadoutView
         }
         .padding(18)

@@ -1,7 +1,7 @@
-// Genesis/Genesis/Views/TransportHUD.swift
+// Genesis/Genesis/Views/GHUD.swift
 import SwiftUI
 
-struct TransportHUD: View {
+struct GHUD: View {
     @ObservedObject var engine: GenesisEngine
 
     private var isLooping: Bool { engine.capture.state == .on }
@@ -28,25 +28,32 @@ struct TransportHUD: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
 
+            // === TITLE ===
+            Text("GHUD")
+                .font(.system(size: 11, design: .monospaced).bold())
+                .foregroundColor(Theme.orange)
+                .shadow(color: Theme.orange.opacity(0.5), radius: 6)
+                .padding(.bottom, 6)
+
             // === TOP DISPLAY — BPM + BARS like an LCD readout ===
             HStack(alignment: .lastTextBaseline, spacing: 0) {
                 Text("\(engine.transport.bpm)")
-                    .font(.custom("HelveticaNeue-Light", size: 40))
+                    .font(.system(size: 36, design: .monospaced).bold())
                     .foregroundColor(.white)
                     .shadow(color: .white.opacity(0.4), radius: 6)
                 Text(" ")
                 Text("BPM")
-                    .font(.custom("HelveticaNeue-Medium", size: 14))
+                    .font(.system(size: 12, design: .monospaced).bold())
                     .foregroundColor(Theme.orange)
                     .shadow(color: Theme.orange.opacity(0.5), radius: 6)
                 Spacer()
                 Text("\(engine.transport.barCount)")
-                    .font(.custom("HelveticaNeue-Light", size: 40))
+                    .font(.system(size: 36, design: .monospaced).bold())
                     .foregroundColor(.white)
                     .shadow(color: .white.opacity(0.4), radius: 6)
                 Text(" ")
                 Text("BAR")
-                    .font(.custom("HelveticaNeue-Medium", size: 14))
+                    .font(.system(size: 12, design: .monospaced).bold())
                     .foregroundColor(Theme.orange)
                     .shadow(color: Theme.orange.opacity(0.5), radius: 6)
             }
@@ -59,22 +66,23 @@ struct TransportHUD: View {
             // === LOOP POSITION — the counter ===
             HStack(alignment: .lastTextBaseline, spacing: 0) {
                 Text("LOOP")
-                    .font(.custom("HelveticaNeue-Medium", size: 13))
+                    .font(.system(size: 12, design: .monospaced).bold())
                     .foregroundColor(Theme.orange)
                     .shadow(color: Theme.orange.opacity(0.5), radius: 6)
                     .frame(width: 48, alignment: .leading)
                 if engine.transport.isPlaying {
                     Text(beatPosition)
-                        .font(.custom("HelveticaNeue-Light", size: 28))
+                        .font(.system(size: 24, design: .monospaced).bold())
                         .foregroundColor(.white)
                         .shadow(color: .white.opacity(0.4), radius: 6)
                     Text("  ")
                     Text(String(format: "%.1fs", secondsElapsed))
-                        .font(.custom("HelveticaNeue-Medium", size: 13))
+                        .font(.system(size: 12, design: .monospaced))
                         .foregroundColor(.white.opacity(0.5))
+                        .shadow(color: .white.opacity(0.3), radius: 4)
                 } else {
                     Text("—")
-                        .font(.custom("HelveticaNeue-Light", size: 28))
+                        .font(.system(size: 24, design: .monospaced).bold())
                         .foregroundColor(.white.opacity(0.3))
                 }
             }
@@ -87,22 +95,22 @@ struct TransportHUD: View {
             // === VOLUME + dB — side by side ===
             HStack(alignment: .lastTextBaseline, spacing: 0) {
                 Text("VOL")
-                    .font(.custom("HelveticaNeue-Medium", size: 13))
+                    .font(.system(size: 12, design: .monospaced).bold())
                     .foregroundColor(Theme.orange)
                     .shadow(color: Theme.orange.opacity(0.5), radius: 6)
                     .frame(width: 48, alignment: .leading)
                 Text("\(Int(engine.masterVolume * 100))")
-                    .font(.custom("HelveticaNeue-Light", size: 28))
+                    .font(.system(size: 24, design: .monospaced).bold())
                     .foregroundColor(.white)
                     .shadow(color: .white.opacity(0.4), radius: 6)
                 Spacer()
                 Text(formatMasterDb(engine.masterLevelDb))
-                    .font(.custom("HelveticaNeue-Light", size: 28))
+                    .font(.system(size: 24, design: .monospaced).bold())
                     .foregroundColor(dbColor)
                     .shadow(color: dbColor.opacity(0.4), radius: 6)
                 Text(" ")
                 Text("dB")
-                    .font(.custom("HelveticaNeue-Medium", size: 13))
+                    .font(.system(size: 12, design: .monospaced).bold())
                     .foregroundColor(Theme.orange)
                     .shadow(color: Theme.orange.opacity(0.5), radius: 6)
             }
@@ -121,7 +129,7 @@ struct TransportHUD: View {
                         .frame(width: 7, height: 7)
                         .shadow(color: engine.metronome.isOn ? Theme.orange.opacity(0.6) : .clear, radius: 4)
                     Text("MET")
-                        .font(.custom("HelveticaNeue-Medium", size: 13))
+                        .font(.system(size: 12, design: .monospaced).bold())
                         .foregroundColor(engine.metronome.isOn ? Theme.orange : Theme.orange.opacity(0.3))
                         .shadow(color: engine.metronome.isOn ? Theme.orange.opacity(0.5) : .clear, radius: 6)
                 }
@@ -134,8 +142,9 @@ struct TransportHUD: View {
                             .frame(width: 7, height: 7)
                             .shadow(color: Theme.red.opacity(0.6), radius: 4)
                         Text("REC")
-                            .font(.custom("HelveticaNeue-Medium", size: 13))
+                            .font(.system(size: 12, design: .monospaced).bold())
                             .foregroundColor(Theme.red)
+                            .shadow(color: Theme.red.opacity(0.5), radius: 6)
                     }
                 }
 

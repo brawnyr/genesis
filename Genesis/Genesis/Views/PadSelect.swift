@@ -1,12 +1,21 @@
-// Genesis/Genesis/Views/PadStripView.swift
+// Genesis/Genesis/Views/PadSelect.swift
 // Compact horizontal pad strip — lives at the bottom of the layout
 import SwiftUI
 
-struct PadStripView: View {
+struct PadSelect: View {
     @ObservedObject var engine: GenesisEngine
 
     var body: some View {
-        TimelineView(.periodic(from: .now, by: 0.5)) { timeline in
+        VStack(alignment: .leading, spacing: 0) {
+            Text("PAD_SELECT")
+                .font(.system(size: 11, design: .monospaced).bold())
+                .foregroundColor(Theme.orange)
+                .shadow(color: Theme.orange.opacity(0.5), radius: 6)
+                .padding(.horizontal, 6)
+                .padding(.top, 4)
+                .padding(.bottom, 2)
+
+            TimelineView(.periodic(from: .now, by: 0.5)) { timeline in
             let blink = Int(timeline.date.timeIntervalSinceReferenceDate / 0.5) % 2 == 0
 
             HStack(spacing: 2) {
@@ -70,6 +79,7 @@ struct PadStripView: View {
                 }
             }
             .padding(4)
+        }
         }
     }
 }

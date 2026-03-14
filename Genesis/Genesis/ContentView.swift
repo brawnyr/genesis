@@ -87,13 +87,13 @@ struct ContentView: View {
 
                 // Bottom bar: transport + pads + inspector
                 HStack(spacing: 0) {
-                    TransportHUD(engine: engine)
+                    GHUD(engine: engine)
                         .frame(width: 420)
 
-                    PadStripView(engine: engine)
+                    PadSelect(engine: engine)
                         .frame(maxWidth: .infinity)
 
-                    InspectorPanelView(
+                    PadInspectPanel(
                         engine: engine,
                         browsingPad: Binding(
                             get: { mode == .browse },
