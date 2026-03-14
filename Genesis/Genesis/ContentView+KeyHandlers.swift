@@ -22,6 +22,8 @@ extension ContentView {
         static let o: UInt16 = 31
         static let returnKey: UInt16 = 36
         static let escape: UInt16 = 53
+        static let upArrow: UInt16 = 126
+        static let downArrow: UInt16 = 125
         static let leftBracket: UInt16 = 33
         static let rightBracket: UInt16 = 30
 
@@ -156,14 +158,14 @@ extension ContentView {
 
     func handleBrowseKey(keyCode: UInt16, chars: String?) {
         switch keyCode {
-        case Key.w:
+        case Key.w, Key.upArrow:
             browserIndex = max(0, browserIndex - 1)
             loadBrowserSample()
             if let name = browserFileName() {
                 interpreter.appendLine("browse → \(name)", kind: .browse)
             }
             return
-        case Key.s:
+        case Key.s, Key.downArrow:
             let padIndex = engine.activePadIndex
             let folderName = PadBank.spliceFolderNames[padIndex]
             let folderURL = PadBank.spliceBasePath.appendingPathComponent(folderName)
