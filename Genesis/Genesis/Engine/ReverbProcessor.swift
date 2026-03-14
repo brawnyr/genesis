@@ -1,5 +1,7 @@
 // Genesis/Genesis/Engine/ReverbProcessor.swift
 // Schroeder stereo reverb — 4 parallel comb filters + 2 series allpass filters
+// Reverb is always "on" — send level controls how much signal enters.
+// When sends drop to zero, feedback decays rapidly so the tail dies.
 import Foundation
 
 final class ReverbProcessor {
@@ -11,11 +13,16 @@ final class ReverbProcessor {
     private static let allpassDelays = [225, 556]
     private static let allpassDelaysR = [241, 572]
 
-    // Comb feedback (controls decay time)
-    private let combFeedback: Float = 0.84
+    // Full comb feedback (controls decay time when fully engaged)
+    private let maxFeedback: Float = 0.84
+    // Minimum feedback when damping (tail dies in ~50ms)
+    private let minFeedback: Float = 0.3
 
     // Allpass coefficient
     private let allpassGain: Float = 0.5
+
+    // Smoothed damping — avoids zipper noise on fast CC moves
+    private var currentDamping: Float = 0.0
 
     // Delay line buffers — L
     private var combBuffersL: [[Float]]
@@ -41,16 +48,24 @@ final class ReverbProcessor {
         allpassIndexR = [Int](repeating: 0, count: Self.allpassDelaysR.count)
     }
 
-    /// Process stereo reverb in-place on send buffers, then add wet signal to output.
-    /// sendL/sendR contain the reverb send signal. outputL/outputR are the main mix to add into.
+    /// Process stereo reverb. `damping` (0.0–1.0) controls how alive the tail stays.
+    /// When damping is 1.0, full reverb. When 0.0, tail decays rapidly.
+    /// sendL/sendR = reverb input signal. outputL/outputR = main mix to add wet into.
     func process(
         sendL: UnsafePointer<Float>,
         sendR: UnsafePointer<Float>,
         intoLeft outputL: inout [Float],
         intoRight outputR: inout [Float],
-        count: Int
+        count: Int,
+        damping: Float
     ) {
         for i in 0..<count {
+            // Smooth damping to avoid clicks (~5ms slew at 44.1kHz)
+            currentDamping += (damping - currentDamping) * 0.005
+
+            // Scale comb feedback by damping — tail dies when damping drops
+            let feedback = minFeedback + (maxFeedback - minFeedback) * currentDamping
+
             let inL = sendL[i]
             let inR = sendR[i]
 
@@ -59,7 +74,7 @@ final class ReverbProcessor {
             for c in 0..<Self.combDelays.count {
                 let idx = combIndexL[c]
                 let delayed = combBuffersL[c][idx]
-                combBuffersL[c][idx] = inL + delayed * combFeedback
+                combBuffersL[c][idx] = inL + delayed * feedback
                 combIndexL[c] = (idx + 1) % Self.combDelays[c]
                 combOutL += delayed
             }
@@ -70,7 +85,7 @@ final class ReverbProcessor {
             for c in 0..<Self.combDelaysR.count {
                 let idx = combIndexR[c]
                 let delayed = combBuffersR[c][idx]
-                combBuffersR[c][idx] = inR + delayed * combFeedback
+                combBuffersR[c][idx] = inR + delayed * feedback
                 combIndexR[c] = (idx + 1) % Self.combDelaysR[c]
                 combOutR += delayed
             }
@@ -104,6 +119,7 @@ final class ReverbProcessor {
     }
 
     func reset() {
+        currentDamping = 0.0
         for c in 0..<combBuffersL.count {
             combBuffersL[c] = [Float](repeating: 0, count: combBuffersL[c].count)
             combIndexL[c] = 0

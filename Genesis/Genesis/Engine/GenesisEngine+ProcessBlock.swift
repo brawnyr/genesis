@@ -291,6 +291,14 @@ extension GenesisEngine {
             pendingLevels[i] = max(pendingLevels[i], frameLevels[i])
         }
 
+        // Compute reverb damping from max active send — tail dies when all sends are zero
+        var maxSend: Float = 0
+        for i in 0..<PadBank.padCount {
+            if !audio.layers[i].isMuted && audio.layers[i].volume > 0.001 {
+                maxSend = max(maxSend, audio.layers[i].reverbSend)
+            }
+        }
+
         // Process reverb send and add wet signal to output
         reverbSendL.withUnsafeBufferPointer { sendLPtr in
             reverbSendR.withUnsafeBufferPointer { sendRPtr in
@@ -299,7 +307,8 @@ extension GenesisEngine {
                     sendR: sendRPtr.baseAddress!,
                     intoLeft: &outputBufferL,
                     intoRight: &outputBufferR,
-                    count: frameCount
+                    count: frameCount,
+                    damping: maxSend
                 )
             }
         }
