@@ -207,7 +207,7 @@ class GenesisEngine: ObservableObject {
 
     func setSwing(_ index: Int, swing: Float) {
         guard index >= 0, index < layers.count else { return }
-        layers[index].swing = swing  // didSet clamps to 0.5–0.75
+        layers[index].swing = swing  // didSet clamps to 0.5–1.0
         os_unfair_lock_lock(&audioLock)
         audio.layers[index].swing = layers[index].swing
         os_unfair_lock_unlock(&audioLock)

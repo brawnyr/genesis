@@ -15,14 +15,16 @@ enum SwingMath {
         // Only push odd slots (offbeats: the "and"s)
         guard nearestSlot % 2 == 1 else { return hitFrame }
 
-        // Push the offbeat forward by the swing amount
-        let offset = Int((swing - 0.5) * Float(sixteenthLength))
+        // Push the offbeat forward — full range: 0% to 100% of a sixteenth
+        // swing 0.5 = straight, swing 0.75 = triplet feel (2:1), swing 1.0 = max push
+        let offset = Int(roundf((swing - 0.5) * 2.0 * Float(sixteenthLength)))
         let swung = hitFrame + offset
         return ((swung % loopLength) + loopLength) % loopLength
     }
 
     static func maxSwingOffset(sixteenthLength: Int) -> Int {
-        return Int(0.25 * Float(sixteenthLength))
+        // Full sixteenth push at max swing
+        return sixteenthLength
     }
 
     static func sixteenthLength(loopLengthFrames: Int, beatsPerLoop: Int) -> Int {

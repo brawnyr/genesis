@@ -149,7 +149,7 @@ class EngineEventInterpreter: ObservableObject {
                 prevPads[i].lp = layers[i].lpCutoff
             }
             if layers[i].swing != prevPads[i].swing {
-                let pct = Int((layers[i].swing - 0.5) / 0.25 * 100)
+                let pct = Int((layers[i].swing - 0.5) / 0.5 * 100)
                 appendLine("pad \(i + 1) swing → \(pct)%", kind: .state)
                 prevPads[i].swing = layers[i].swing
             }

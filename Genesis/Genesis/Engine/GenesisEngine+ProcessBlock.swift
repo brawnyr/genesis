@@ -92,7 +92,7 @@ extension GenesisEngine {
         case 83: // Metronome volume (MiniLab fader 2)
             audio.metronomeVolume = Float(value) / 127.0
         case 18: // Swing (knob 5)
-            audio.layers[audio.activePadIndex].swing = 0.5 + (Float(value) / 127.0) * 0.25
+            audio.layers[audio.activePadIndex].swing = 0.5 + (Float(value) / 127.0) * 0.5
         default:
             DispatchQueue.main.async { [weak self] in
                 self?.interpreter?.appendLine("CC \(number) = \(value)", kind: .system)

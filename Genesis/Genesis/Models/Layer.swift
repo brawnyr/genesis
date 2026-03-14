@@ -23,7 +23,7 @@ struct Layer {
     var choke: Bool = true
     var looper: Bool = false
     var swing: Float = 0.5 {
-        didSet { swing = max(0.5, min(0.75, swing)) }
+        didSet { swing = max(0.5, min(1.0, swing)) }
     }
     private var previousHits: [Hit]?
 
@@ -80,7 +80,7 @@ struct Layer {
         var parts: [String] = []
         if isMuted { parts.append("MUTE") }
         if looper { parts.append("loop:ON") }
-        let swingPct = Int((swing - 0.5) / 0.25 * 100)
+        let swingPct = Int((swing - 0.5) / 0.5 * 100)
         if swingPct != 0 { parts.append("sw:\(swingPct)%") }
         let pan = EngineEventInterpreter.formatPan(pan)
         if pan != "C" { parts.append("pan:\(pan)") }
