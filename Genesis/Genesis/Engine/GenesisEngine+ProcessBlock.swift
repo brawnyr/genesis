@@ -1,6 +1,18 @@
 // Genesis/Genesis/Engine/GenesisEngine+ProcessBlock.swift
 import Foundation
 
+/// Soft clipper — tanh-style saturation. Transparent below ±0.8, smoothly
+/// tames peaks above that. Never exceeds ±1.0.
+@inline(__always)
+private func softClip(_ x: Float) -> Float {
+    if x > 0.8 {
+        return 0.8 + 0.2 * tanhf((x - 0.8) * 5.0)
+    } else if x < -0.8 {
+        return -0.8 + 0.2 * tanhf((x + 0.8) * 5.0)
+    }
+    return x
+}
+
 /// Lightweight snapshot of audio state for UI sync — avoids .map {} heap allocations on audio thread.
 private struct UISnapshot {
     var pos: Int = 0
@@ -304,11 +316,11 @@ extension GenesisEngine {
             }
         }
 
-        // Apply master volume and track peak
+        // Apply master volume + soft clip to tame internal peaks
         var peak: Float = 0
         for i in 0..<frameCount {
-            outputBufferL[i] *= audio.masterVolume
-            outputBufferR[i] *= audio.masterVolume
+            outputBufferL[i] = softClip(outputBufferL[i] * audio.masterVolume)
+            outputBufferR[i] = softClip(outputBufferR[i] * audio.masterVolume)
             peak = max(peak, abs(outputBufferL[i]), abs(outputBufferR[i]))
         }
 
