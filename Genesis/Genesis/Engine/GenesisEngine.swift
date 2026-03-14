@@ -92,6 +92,8 @@ class GenesisEngine: ObservableObject {
     // Signal listener — detects clipping and reports which pads are responsible
     var clipDetectEnabled = true
     var clipCooldown: Int = 0  // frames remaining before next clip report (throttle)
+    var prevSampleL: Float = 0  // for discontinuity detection
+    var prevSampleR: Float = 0
     private var undoStack: [(index: Int, uiHits: [Hit], audioHits: [Hit])] = []
     private static let maxUndoDepth = 8
     private var preMuteMasterVolume: Float?
