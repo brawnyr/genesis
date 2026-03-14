@@ -20,105 +20,112 @@ struct TransportHUD: View {
         return "\(beatStr) / \(sec)"
     }
 
+    private var dbColor: Color {
+        let db = engine.masterLevelDb
+        if db > 0 { return Theme.red }
+        if db > -6 { return Theme.orange }
+        return .white
+    }
+
     var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            // Row 1: BPM big + bar count
-            HStack(alignment: .firstTextBaseline, spacing: 16) {
+        VStack(alignment: .leading, spacing: 6) {
+
+            // BPM
+            HStack(alignment: .firstTextBaseline, spacing: 8) {
                 Text("\(engine.transport.bpm)")
-                    .font(.system(size: 32, design: .monospaced).bold())
+                    .font(.system(size: 36, weight: .heavy, design: .monospaced))
                     .foregroundColor(.white)
-                    .shadow(color: .white.opacity(0.5), radius: 8)
+                    .shadow(color: .white.opacity(0.6), radius: 2, x: 0, y: 1)
+                    .shadow(color: .white.opacity(0.3), radius: 8)
                 Text("BPM")
-                    .font(.system(size: 14, design: .monospaced).bold())
+                    .font(.system(size: 14, weight: .bold, design: .monospaced))
                     .foregroundColor(Theme.orange)
-                    .shadow(color: Theme.orange.opacity(0.5), radius: 8)
+                    .shadow(color: Theme.orange.opacity(0.6), radius: 6)
+            }
 
+            // BAR
+            HStack(alignment: .firstTextBaseline, spacing: 8) {
                 Text("\(engine.transport.barCount)")
-                    .font(.system(size: 32, design: .monospaced).bold())
+                    .font(.system(size: 36, weight: .heavy, design: .monospaced))
                     .foregroundColor(.white)
-                    .shadow(color: .white.opacity(0.5), radius: 8)
+                    .shadow(color: .white.opacity(0.6), radius: 2, x: 0, y: 1)
+                    .shadow(color: .white.opacity(0.3), radius: 8)
                 Text("BAR")
-                    .font(.system(size: 14, design: .monospaced).bold())
+                    .font(.system(size: 14, weight: .bold, design: .monospaced))
                     .foregroundColor(Theme.orange)
-                    .shadow(color: Theme.orange.opacity(0.5), radius: 8)
+                    .shadow(color: Theme.orange.opacity(0.6), radius: 6)
+            }
 
+            // LOOP position
+            HStack(alignment: .firstTextBaseline, spacing: 8) {
+                Text("LOOP")
+                    .font(.system(size: 14, weight: .bold, design: .monospaced))
+                    .foregroundColor(Theme.orange)
+                    .shadow(color: Theme.orange.opacity(0.6), radius: 6)
                 if engine.transport.isPlaying {
-                    Text("LOOP")
-                        .font(.system(size: 14, design: .monospaced).bold())
-                        .foregroundColor(Theme.orange)
-                        .shadow(color: Theme.orange.opacity(0.5), radius: 8)
                     Text(loopPositionString)
-                        .font(.system(size: 14, design: .monospaced).bold())
+                        .font(.system(size: 20, weight: .heavy, design: .monospaced))
                         .foregroundColor(.white)
-                        .shadow(color: .white.opacity(0.5), radius: 8)
+                        .shadow(color: .white.opacity(0.6), radius: 2, x: 0, y: 1)
+                        .shadow(color: .white.opacity(0.3), radius: 8)
+                } else {
+                    Text("—")
+                        .font(.system(size: 20, weight: .heavy, design: .monospaced))
+                        .foregroundColor(.white)
+                        .shadow(color: .white.opacity(0.3), radius: 6)
                 }
             }
 
-            // Row 2: Master volume + live dB meter
-            HStack(spacing: 8) {
-                Text("MASTER VOL")
-                    .font(.system(size: 12, design: .monospaced).bold())
+            // MASTER VOL
+            HStack(alignment: .firstTextBaseline, spacing: 8) {
+                Text("VOL")
+                    .font(.system(size: 14, weight: .bold, design: .monospaced))
                     .foregroundColor(Theme.orange)
-                    .shadow(color: Theme.orange.opacity(0.5), radius: 8)
+                    .shadow(color: Theme.orange.opacity(0.6), radius: 6)
                 Text("\(Int(engine.masterVolume * 100))")
-                    .font(.system(size: 28, design: .monospaced).bold())
+                    .font(.system(size: 30, weight: .heavy, design: .monospaced))
                     .foregroundColor(.white)
-                    .shadow(color: .white.opacity(0.5), radius: 8)
-                    .padding(.horizontal, 10)
-                    .padding(.vertical, 2)
-                    .background(
-                        RoundedRectangle(cornerRadius: 4)
-                            .stroke(Theme.orange.opacity(0.3), lineWidth: 1)
-                    )
-                    .background(
-                        RoundedRectangle(cornerRadius: 4)
-                            .fill(Theme.orange.opacity(0.05))
-                    )
-
-                Text(formatMasterDb(engine.masterLevelDb))
-                    .font(.system(size: 28, design: .monospaced).bold())
-                    .foregroundColor(engine.masterLevelDb > 0 ? Theme.red : .white)
-                    .shadow(color: (engine.masterLevelDb > 0 ? Theme.red : .white).opacity(0.5), radius: 8)
-                    .padding(.horizontal, 10)
-                    .padding(.vertical, 2)
-                    .background(
-                        RoundedRectangle(cornerRadius: 4)
-                            .stroke((engine.masterLevelDb > 0 ? Theme.red : Theme.orange).opacity(0.3), lineWidth: 1)
-                    )
-                    .background(
-                        RoundedRectangle(cornerRadius: 4)
-                            .fill((engine.masterLevelDb > 0 ? Theme.red : Theme.orange).opacity(0.05))
-                    )
-                Text("dB")
-                    .font(.system(size: 12, design: .monospaced).bold())
-                    .foregroundColor(Theme.orange)
-                    .shadow(color: Theme.orange.opacity(0.5), radius: 8)
+                    .shadow(color: .white.opacity(0.6), radius: 2, x: 0, y: 1)
+                    .shadow(color: .white.opacity(0.3), radius: 8)
             }
 
-            // Row 3: Status badges
-            HStack(spacing: 10) {
-                HStack(spacing: 4) {
-                    Text("METRONOME")
-                        .font(.system(size: 14, design: .monospaced).bold())
-                        .foregroundColor(Theme.orange)
-                        .shadow(color: Theme.orange.opacity(0.5), radius: 8)
-                    Text(engine.metronome.isOn ? "ON" : "OFF")
-                        .font(.system(size: 14, design: .monospaced).bold())
-                        .foregroundColor(.white)
-                        .shadow(color: .white.opacity(0.5), radius: 8)
-                }
+            // dB
+            HStack(alignment: .firstTextBaseline, spacing: 8) {
+                Text(formatMasterDb(engine.masterLevelDb))
+                    .font(.system(size: 30, weight: .heavy, design: .monospaced))
+                    .foregroundColor(dbColor)
+                    .shadow(color: dbColor.opacity(0.6), radius: 2, x: 0, y: 1)
+                    .shadow(color: dbColor.opacity(0.3), radius: 8)
+                Text("dB")
+                    .font(.system(size: 14, weight: .bold, design: .monospaced))
+                    .foregroundColor(Theme.orange)
+                    .shadow(color: Theme.orange.opacity(0.6), radius: 6)
+            }
 
-                if isLooping {
-                    Text("LOOPER")
-                        .font(.system(size: 14, design: .monospaced).bold())
-                        .foregroundColor(Theme.red)
-                        .shadow(color: Theme.red.opacity(0.5), radius: 8)
-                }
+            // METRONOME
+            HStack(spacing: 8) {
+                Text("METRONOME")
+                    .font(.system(size: 14, weight: .bold, design: .monospaced))
+                    .foregroundColor(Theme.orange)
+                    .shadow(color: Theme.orange.opacity(0.6), radius: 6)
+                Text(engine.metronome.isOn ? "ON" : "OFF")
+                    .font(.system(size: 14, weight: .heavy, design: .monospaced))
+                    .foregroundColor(.white)
+                    .shadow(color: .white.opacity(0.6), radius: 2, x: 0, y: 1)
+                    .shadow(color: .white.opacity(0.3), radius: 6)
+            }
 
+            // LOOPER
+            if isLooping {
+                Text("LOOPER")
+                    .font(.system(size: 14, weight: .heavy, design: .monospaced))
+                    .foregroundColor(Theme.red)
+                    .shadow(color: Theme.red.opacity(0.7), radius: 2, x: 0, y: 1)
+                    .shadow(color: Theme.red.opacity(0.5), radius: 8)
             }
         }
-        .padding(12)
-        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(14)
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
     }
 
     private func formatMasterDb(_ db: Float) -> String {
