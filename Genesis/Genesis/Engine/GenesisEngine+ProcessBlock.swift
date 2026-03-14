@@ -72,7 +72,7 @@ extension GenesisEngine {
         switch number {
         case 82: // Master volume (MiniLab fader 1)
             setMasterVolume(Float(value) / 127.0)
-        case 74: // Pad volume (knob 1)
+        case 74, 85: // Pad volume (knob 1 / CC 85)
             audio.layers[audio.activePadIndex].volume = Float(value) / 127.0
         case 71: // Pan (knob 2)
             audio.layers[audio.activePadIndex].pan = Float(value) / 127.0
