@@ -10,136 +10,119 @@ struct TransportHUD: View {
         Double(engine.transport.position) / Transport.sampleRate
     }
 
-    private var beatPosition: String {
-        EngineEventInterpreter.formatBeatPosition(
+    private var loopPositionString: String {
+        let beatStr = EngineEventInterpreter.formatBeatPosition(
             framePosition: engine.transport.position,
             loopLengthFrames: engine.transport.loopLengthFrames,
             barCount: engine.transport.barCount
         )
-    }
-
-    private var dbColor: Color {
-        let db = engine.masterLevelDb
-        if db > 0 { return Theme.red }
-        if db > -6 { return Theme.orange }
-        return .white
+        let sec = String(format: "%.1fs", secondsElapsed)
+        return "\(beatStr) / \(sec)"
     }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 10) {
-
-            // === LOOP POSITION — the hero ===
-            if engine.transport.isPlaying {
-                VStack(alignment: .leading, spacing: 2) {
-                    Text(beatPosition)
-                        .font(.system(size: 64, weight: .black, design: .monospaced))
-                        .foregroundColor(.white)
-                        .shadow(color: .white.opacity(0.8), radius: 1, x: 0, y: 1)
-                        .shadow(color: .white.opacity(0.4), radius: 8)
-                        .shadow(color: Theme.orange.opacity(0.3), radius: 20)
-                    Text(String(format: "%.1fs", secondsElapsed))
-                        .font(.system(size: 16, weight: .bold, design: .monospaced))
-                        .foregroundColor(.white)
-                        .shadow(color: .white.opacity(0.5), radius: 6)
-                }
-            } else {
-                Text("—")
-                    .font(.system(size: 64, weight: .black, design: .monospaced))
+        VStack(alignment: .leading, spacing: 8) {
+            // Row 1: BPM big + bar count
+            HStack(alignment: .firstTextBaseline, spacing: 16) {
+                Text("\(engine.transport.bpm)")
+                    .font(.system(size: 32, design: .monospaced).bold())
                     .foregroundColor(.white)
-                    .shadow(color: .white.opacity(0.3), radius: 6)
-            }
-
-            // === INDICATORS — looper + metronome ===
-            HStack(spacing: 20) {
-                if isLooping {
-                    LooperIndicator()
-                }
-
-                HStack(spacing: 6) {
-                    Circle()
-                        .fill(engine.metronome.isOn ? Theme.green : .white.opacity(0.3))
-                        .frame(width: 10, height: 10)
-                        .shadow(color: engine.metronome.isOn ? Theme.green.opacity(0.8) : .clear, radius: 6)
-                    Text("MET")
-                        .font(.system(size: 16, weight: .heavy, design: .monospaced))
-                        .foregroundColor(engine.metronome.isOn ? Theme.green : .white)
-                        .shadow(color: engine.metronome.isOn ? Theme.green.opacity(0.5) : .white.opacity(0.3), radius: 6)
-                }
-            }
-
-            // === VOLUME + dB ===
-            HStack(spacing: 14) {
-                Text("VOL")
-                    .font(.system(size: 16, weight: .heavy, design: .monospaced))
+                    .shadow(color: .white.opacity(0.5), radius: 8)
+                Text("BPM")
+                    .font(.system(size: 14, design: .monospaced).bold())
                     .foregroundColor(Theme.orange)
-                    .shadow(color: Theme.orange.opacity(0.5), radius: 6)
-                Text("\(Int(engine.masterVolume * 100))")
-                    .font(.system(size: 32, weight: .black, design: .monospaced))
+                    .shadow(color: Theme.orange.opacity(0.5), radius: 8)
+
+                Text("\(engine.transport.barCount)")
+                    .font(.system(size: 32, design: .monospaced).bold())
                     .foregroundColor(.white)
-                    .shadow(color: .white.opacity(0.5), radius: 6)
+                    .shadow(color: .white.opacity(0.5), radius: 8)
+                Text("BAR")
+                    .font(.system(size: 14, design: .monospaced).bold())
+                    .foregroundColor(Theme.orange)
+                    .shadow(color: Theme.orange.opacity(0.5), radius: 8)
+
+                if engine.transport.isPlaying {
+                    Text("LOOP")
+                        .font(.system(size: 14, design: .monospaced).bold())
+                        .foregroundColor(Theme.orange)
+                        .shadow(color: Theme.orange.opacity(0.5), radius: 8)
+                    Text(loopPositionString)
+                        .font(.system(size: 14, design: .monospaced).bold())
+                        .foregroundColor(.white)
+                        .shadow(color: .white.opacity(0.5), radius: 8)
+                }
+            }
+
+            // Row 2: Master volume + live dB meter
+            HStack(spacing: 8) {
+                Text("MASTER VOL")
+                    .font(.system(size: 12, design: .monospaced).bold())
+                    .foregroundColor(Theme.orange)
+                    .shadow(color: Theme.orange.opacity(0.5), radius: 8)
+                Text("\(Int(engine.masterVolume * 100))")
+                    .font(.system(size: 28, design: .monospaced).bold())
+                    .foregroundColor(.white)
+                    .shadow(color: .white.opacity(0.5), radius: 8)
+                    .padding(.horizontal, 10)
+                    .padding(.vertical, 2)
+                    .background(
+                        RoundedRectangle(cornerRadius: 4)
+                            .stroke(Theme.orange.opacity(0.3), lineWidth: 1)
+                    )
+                    .background(
+                        RoundedRectangle(cornerRadius: 4)
+                            .fill(Theme.orange.opacity(0.05))
+                    )
 
                 Text(formatMasterDb(engine.masterLevelDb))
-                    .font(.system(size: 32, weight: .black, design: .monospaced))
-                    .foregroundColor(dbColor)
-                    .shadow(color: dbColor.opacity(0.5), radius: 6)
+                    .font(.system(size: 28, design: .monospaced).bold())
+                    .foregroundColor(engine.masterLevelDb > 0 ? Theme.red : .white)
+                    .shadow(color: (engine.masterLevelDb > 0 ? Theme.red : .white).opacity(0.5), radius: 8)
+                    .padding(.horizontal, 10)
+                    .padding(.vertical, 2)
+                    .background(
+                        RoundedRectangle(cornerRadius: 4)
+                            .stroke((engine.masterLevelDb > 0 ? Theme.red : Theme.orange).opacity(0.3), lineWidth: 1)
+                    )
+                    .background(
+                        RoundedRectangle(cornerRadius: 4)
+                            .fill((engine.masterLevelDb > 0 ? Theme.red : Theme.orange).opacity(0.05))
+                    )
                 Text("dB")
-                    .font(.system(size: 16, weight: .heavy, design: .monospaced))
+                    .font(.system(size: 12, design: .monospaced).bold())
                     .foregroundColor(Theme.orange)
-                    .shadow(color: Theme.orange.opacity(0.5), radius: 6)
+                    .shadow(color: Theme.orange.opacity(0.5), radius: 8)
             }
 
-            // === BPM + BARS ===
-            HStack(spacing: 14) {
-                Text("\(engine.transport.bpm)")
-                    .font(.system(size: 22, weight: .heavy, design: .monospaced))
-                    .foregroundColor(.white)
-                    .shadow(color: .white.opacity(0.5), radius: 6)
-                Text("BPM")
-                    .font(.system(size: 14, weight: .bold, design: .monospaced))
-                    .foregroundColor(Theme.orange)
-                    .shadow(color: Theme.orange.opacity(0.5), radius: 6)
-                Text("\(engine.transport.barCount)")
-                    .font(.system(size: 22, weight: .heavy, design: .monospaced))
-                    .foregroundColor(.white)
-                    .shadow(color: .white.opacity(0.5), radius: 6)
-                Text("BAR")
-                    .font(.system(size: 14, weight: .bold, design: .monospaced))
-                    .foregroundColor(Theme.orange)
-                    .shadow(color: Theme.orange.opacity(0.5), radius: 6)
+            // Row 3: Status badges
+            HStack(spacing: 10) {
+                HStack(spacing: 4) {
+                    Text("METRONOME")
+                        .font(.system(size: 14, design: .monospaced).bold())
+                        .foregroundColor(Theme.orange)
+                        .shadow(color: Theme.orange.opacity(0.5), radius: 8)
+                    Text(engine.metronome.isOn ? "ON" : "OFF")
+                        .font(.system(size: 14, design: .monospaced).bold())
+                        .foregroundColor(.white)
+                        .shadow(color: .white.opacity(0.5), radius: 8)
+                }
+
+                if isLooping {
+                    Text("LOOPER")
+                        .font(.system(size: 14, design: .monospaced).bold())
+                        .foregroundColor(Theme.red)
+                        .shadow(color: Theme.red.opacity(0.5), radius: 8)
+                }
+
             }
         }
-        .padding(14)
-        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+        .padding(12)
+        .frame(maxWidth: .infinity, alignment: .leading)
     }
 
     private func formatMasterDb(_ db: Float) -> String {
-        if db == -.infinity || db < -60 { return "—" }
+        if db == -.infinity || db < -60 { return "-inf" }
         return String(format: "%+.1f", db)
-    }
-}
-
-// MARK: - Looper 3-stage pulsing indicator
-
-struct LooperIndicator: View {
-    @State private var phase: Int = 0
-
-    private let symbols = ["◉", "◎", "●"]
-    private let timer = Timer.publish(every: 0.35, on: .main, in: .common).autoconnect()
-
-    var body: some View {
-        HStack(spacing: 6) {
-            Text(symbols[phase])
-                .font(.system(size: 18))
-                .foregroundColor(Theme.red)
-                .shadow(color: Theme.red.opacity(0.9), radius: 4)
-                .shadow(color: Theme.red.opacity(0.5), radius: 12)
-            Text("REC")
-                .font(.system(size: 16, weight: .heavy, design: .monospaced))
-                .foregroundColor(Theme.red)
-                .shadow(color: Theme.red.opacity(0.6), radius: 6)
-        }
-        .onReceive(timer) { _ in
-            phase = (phase + 1) % symbols.count
-        }
     }
 }
