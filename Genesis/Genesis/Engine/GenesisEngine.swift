@@ -1,11 +1,6 @@
 import Foundation
 import os
 
-enum ToggleMode: String {
-    case instant = "instant"
-    case nextLoop = "next loop"
-}
-
 enum VelocityMode: String {
     case pressure = "pressure"
     case full = "full"
@@ -24,10 +19,6 @@ struct AudioState {
     var captureState: GenesisCapture.State = .off
     var capture = GenesisCapture()
     var activePadIndex: Int = 0
-    var toggleMode: ToggleMode = .instant
-    var pendingMutes: [Int: Bool] = [:]
-    var pendingVolumes: [Int: Float] = [:]
-    var pendingLoopers: [Int: Bool] = [:]
     var masterVolume: Float = 1.0
 
     var loopLengthFrames: Int {
@@ -59,11 +50,7 @@ class GenesisEngine: ObservableObject {
             os_unfair_lock_unlock(&audioLock)
         }
     }
-    @Published var toggleMode: ToggleMode = .instant
     @Published var velocityMode: VelocityMode = .pressure
-    @Published var pendingMutes: [Int: Bool] = [:]
-    @Published var pendingVolumes: [Int: Float] = [:]
-    @Published var pendingLoopers: [Int: Bool] = [:]
     var interpreter: EngineEventInterpreter?
 
     // MARK: - Audio thread state (never touch @Published from here)
@@ -209,17 +196,10 @@ class GenesisEngine: ObservableObject {
     func setLayerVolume(_ index: Int, volume: Float) {
         guard index >= 0, index < layers.count else { return }
         let clamped = max(0, min(1.0, volume))
-        if toggleMode == .nextLoop {
-            pendingVolumes[index] = clamped
-            os_unfair_lock_lock(&audioLock)
-            audio.pendingVolumes[index] = clamped
-            os_unfair_lock_unlock(&audioLock)
-        } else {
-            layers[index].volume = clamped
-            os_unfair_lock_lock(&audioLock)
-            audio.layers[index].volume = clamped
-            os_unfair_lock_unlock(&audioLock)
-        }
+        layers[index].volume = clamped
+        os_unfair_lock_lock(&audioLock)
+        audio.layers[index].volume = clamped
+        os_unfair_lock_unlock(&audioLock)
     }
 
     func setSwing(_ index: Int, swing: Float) {
@@ -236,55 +216,9 @@ class GenesisEngine: ObservableObject {
 
     func toggleMute(layer index: Int) {
         guard index >= 0, index < layers.count else { return }
-        if toggleMode == .instant {
-            layers[index].isMuted.toggle()
-            os_unfair_lock_lock(&audioLock)
-            audio.layers[index].isMuted = layers[index].isMuted
-            os_unfair_lock_unlock(&audioLock)
-        } else {
-            // Next loop mode: queue the change
-            let currentEffective = pendingMutes[index] ?? layers[index].isMuted
-            let newState = !currentEffective
-            if newState == layers[index].isMuted {
-                // Toggling back to current state = cancel pending
-                pendingMutes.removeValue(forKey: index)
-                audio.pendingMutes.removeValue(forKey: index)
-            } else {
-                pendingMutes[index] = newState
-                audio.pendingMutes[index] = newState
-            }
-        }
-    }
-
-    /// The effective mute state accounting for pending changes
-    func effectiveMuteState(layer index: Int) -> Bool {
-        pendingMutes[index] ?? layers[index].isMuted
-    }
-
-    func cycleToggleMode() {
-        toggleMode = toggleMode == .instant ? .nextLoop : .instant
+        layers[index].isMuted.toggle()
         os_unfair_lock_lock(&audioLock)
-        audio.toggleMode = toggleMode
-        if toggleMode == .instant {
-            for (index, muteState) in pendingMutes {
-                layers[index].isMuted = muteState
-                audio.layers[index].isMuted = muteState
-            }
-            for (index, vol) in pendingVolumes {
-                layers[index].volume = vol
-                audio.layers[index].volume = vol
-            }
-            for (index, looper) in pendingLoopers {
-                layers[index].looper = looper
-                audio.layers[index].looper = looper
-            }
-            pendingMutes.removeAll()
-            audio.pendingMutes.removeAll()
-            pendingVolumes.removeAll()
-            audio.pendingVolumes.removeAll()
-            pendingLoopers.removeAll()
-            audio.pendingLoopers.removeAll()
-        }
+        audio.layers[index].isMuted = layers[index].isMuted
         os_unfair_lock_unlock(&audioLock)
     }
 
@@ -299,22 +233,6 @@ class GenesisEngine: ObservableObject {
         layers[index].isRecording.toggle()
         os_unfair_lock_lock(&audioLock)
         audio.layers[index].isRecording = layers[index].isRecording
-        os_unfair_lock_unlock(&audioLock)
-    }
-
-    func queuePad(_ index: Int) {
-        guard index >= 0, index < layers.count else { return }
-        layers[index].queued = true
-        os_unfair_lock_lock(&audioLock)
-        audio.layers[index].queued = true
-        os_unfair_lock_unlock(&audioLock)
-    }
-
-    func toggleQueuePad(_ index: Int) {
-        guard index >= 0, index < layers.count else { return }
-        layers[index].queued.toggle()
-        os_unfair_lock_lock(&audioLock)
-        audio.layers[index].queued = layers[index].queued
         os_unfair_lock_unlock(&audioLock)
     }
 
@@ -338,28 +256,12 @@ class GenesisEngine: ObservableObject {
 
     func toggleLooper(pad index: Int) {
         guard index >= 0, index < layers.count else { return }
-        if toggleMode == .nextLoop {
-            let currentEffective = pendingLoopers[index] ?? layers[index].looper
-            let newState = !currentEffective
-            if newState == layers[index].looper {
-                pendingLoopers.removeValue(forKey: index)
-                os_unfair_lock_lock(&audioLock)
-                audio.pendingLoopers.removeValue(forKey: index)
-                os_unfair_lock_unlock(&audioLock)
-            } else {
-                pendingLoopers[index] = newState
-                os_unfair_lock_lock(&audioLock)
-                audio.pendingLoopers[index] = newState
-                os_unfair_lock_unlock(&audioLock)
-            }
-        } else {
-            var layer = layers[index]
-            layer.looper.toggle()
-            layers[index] = layer
-            os_unfair_lock_lock(&audioLock)
-            audio.layers[index].looper = layer.looper
-            os_unfair_lock_unlock(&audioLock)
-        }
+        var layer = layers[index]
+        layer.looper.toggle()
+        layers[index] = layer
+        os_unfair_lock_lock(&audioLock)
+        audio.layers[index].looper = layer.looper
+        os_unfair_lock_unlock(&audioLock)
     }
 
     func syncChokeToPadBank() {

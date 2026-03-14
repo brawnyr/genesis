@@ -14,7 +14,6 @@ struct Layer {
     var hits: [Hit] = []
     var isMuted: Bool = false
     var isRecording: Bool = false
-    var queued: Bool = false       // fire at beat 1 of next loop
     var hasNewHits: Bool = false
     var volume: Float = 0.25  // -12 dB default
     var pan: Float = 0.5            // 0.0 = left, 0.5 = center, 1.0 = right
@@ -65,7 +64,6 @@ struct Layer {
         previousHits = hits
         hits.removeAll()
         isRecording = false
-        queued = false
         hasNewHits = false
     }
 

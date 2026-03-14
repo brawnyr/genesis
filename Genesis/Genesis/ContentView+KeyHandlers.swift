@@ -222,9 +222,6 @@ extension ContentView {
         case Key.d:
             engine.activePadIndex = (engine.activePadIndex + 1) % PadBank.padCount
             interpreter.appendLine("pad \(engine.activePadIndex + 1) → \(padName(engine.activePadIndex))", kind: .state)
-        case Key.f:
-            engine.cycleToggleMode()
-            interpreter.appendLine("queued \(engine.toggleMode == .nextLoop ? "on" : "off")", kind: .state)
         case Key.q:
             if hasCmd && hasShift {
                 // Cmd+Shift+Q: mute all pads + master
@@ -239,16 +236,8 @@ extension ContentView {
                 // Q: toggle mute on selected pad
                 let idx = engine.activePadIndex
                 engine.toggleMute(layer: idx)
-                if engine.toggleMode == .nextLoop {
-                    if let pending = engine.pendingMutes[idx] {
-                        interpreter.appendLine("pad \(idx + 1) \(padName(idx)) \(pending ? "mute" : "unmute") queued for next loop", kind: .state)
-                    } else {
-                        interpreter.appendLine("pad \(idx + 1) \(padName(idx)) queue cancelled", kind: .state)
-                    }
-                } else {
-                    let muted = engine.layers[idx].isMuted
-                    interpreter.appendLine("pad \(idx + 1) \(padName(idx)) \(muted ? "muted" : "unmuted")", kind: .state)
-                }
+                let muted = engine.layers[idx].isMuted
+                interpreter.appendLine("pad \(idx + 1) \(padName(idx)) \(muted ? "muted" : "unmuted")", kind: .state)
             }
         case Key.c:
             let name = padName(engine.activePadIndex)
@@ -291,16 +280,8 @@ extension ContentView {
         case Key.r:
             let idx = engine.activePadIndex
             engine.toggleLooper(pad: idx)
-            if engine.toggleMode == .nextLoop {
-                if let pending = engine.pendingLoopers[idx] {
-                    interpreter.appendLine("pad \(idx + 1) \(padName(idx)) looper \(pending ? "on" : "off") queued for next loop", kind: .state)
-                } else {
-                    interpreter.appendLine("pad \(idx + 1) \(padName(idx)) looper queue cancelled", kind: .state)
-                }
-            } else {
-                let looper = engine.layers[idx].looper
-                interpreter.appendLine("pad \(idx + 1) \(padName(idx)) looper \(looper ? "on" : "off")", kind: .state)
-            }
+            let looper = engine.layers[idx].looper
+            interpreter.appendLine("pad \(idx + 1) \(padName(idx)) looper \(looper ? "on" : "off")", kind: .state)
         case Key.o:
             if let oracle = interpreter.oracle {
                 oracle.isEnabled.toggle()

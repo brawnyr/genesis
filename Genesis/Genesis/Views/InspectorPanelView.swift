@@ -83,45 +83,6 @@ struct ChokeBadge: View {
     }
 }
 
-struct ToggleModeBadge: View {
-    let mode: ToggleMode
-
-    private var isNextLoop: Bool { mode == .nextLoop }
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 4) {
-            HStack(spacing: 8) {
-                Text("QUEUED")
-                    .foregroundColor(.white)
-                    .shadow(color: .white.opacity(0.5), radius: 8)
-                    .frame(width: 60, alignment: .leading)
-                Text(isNextLoop ? "ON" : "OFF")
-                    .font(.system(size: 15, design: .monospaced).bold())
-                    .foregroundColor(isNextLoop ? Theme.blue : .white)
-                    .padding(.horizontal, 10)
-                    .padding(.vertical, 3)
-                    .background(
-                        RoundedRectangle(cornerRadius: 3)
-                            .fill(isNextLoop ? Theme.blue.opacity(0.15) : Color.clear)
-                    )
-                    .overlay(
-                        RoundedRectangle(cornerRadius: 3)
-                            .stroke(isNextLoop ? Theme.blue.opacity(0.3) : Color.white.opacity(0.1), lineWidth: 1)
-                    )
-                    .shadow(color: isNextLoop ? Theme.blue.opacity(0.5) : .clear, radius: 8)
-            }
-            .font(.system(size: 16, design: .monospaced))
-
-            Text(isNextLoop
-                 ? "queues changes for next loop"
-                 : "changes happen instantly")
-                .font(.system(size: 10, design: .monospaced))
-                .foregroundColor(.white.opacity(0.7))
-                .shadow(color: .white.opacity(0.4), radius: 6)
-        }
-        .padding(.vertical, 3)
-    }
-}
 
 // MARK: - Right-side panel (CC readout + sample browser)
 
@@ -213,9 +174,6 @@ struct InspectorPanelView: View {
             ChokeBadge(isOn: layer.choke)
                 .padding(.leading, 16)
 
-            ToggleModeBadge(mode: engine.toggleMode)
-                .padding(.leading, 16)
-                .padding(.top, 4)
 
             Spacer()
         }

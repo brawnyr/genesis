@@ -107,7 +107,7 @@ struct HotkeyHUD: View {
 
                 // Pads — orange
                 HotkeyGroup(color: Theme.orange, items: [
-                    ("A/D", "pad ←→"), ("F", "queued"),
+                    ("A/D", "pad ←→"),
                     ("T", "browse"), ("W/S", "nav"),
                 ])
 
