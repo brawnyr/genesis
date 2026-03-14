@@ -10,14 +10,12 @@ struct TransportHUD: View {
         Double(engine.transport.position) / Transport.sampleRate
     }
 
-    private var loopPositionString: String {
-        let beatStr = EngineEventInterpreter.formatBeatPosition(
+    private var beatPosition: String {
+        EngineEventInterpreter.formatBeatPosition(
             framePosition: engine.transport.position,
             loopLengthFrames: engine.transport.loopLengthFrames,
             barCount: engine.transport.barCount
         )
-        let sec = String(format: "%.1fs", secondsElapsed)
-        return "\(beatStr) / \(sec)"
     }
 
     private var dbColor: Color {
@@ -27,111 +25,118 @@ struct TransportHUD: View {
         return .white
     }
 
-    // Fonts
-    private static let bigNum = Font.custom("Futura-CondensedExtraBold", size: 38)
-    private static let medNum = Font.custom("Futura-CondensedExtraBold", size: 28)
-    private static let label = Font.custom("DINCondensed-Bold", size: 16)
-    private static let labelSmall = Font.custom("DINCondensed-Bold", size: 14)
-    private static let status = Font.custom("AvenirNextCondensed-Heavy", size: 15)
-
     var body: some View {
-        VStack(alignment: .leading, spacing: 5) {
+        VStack(alignment: .leading, spacing: 0) {
 
-            // BPM
-            HStack(alignment: .firstTextBaseline, spacing: 6) {
+            // === TOP DISPLAY — BPM + BARS like an LCD readout ===
+            HStack(alignment: .lastTextBaseline, spacing: 0) {
                 Text("\(engine.transport.bpm)")
-                    .font(Self.bigNum)
+                    .font(.custom("Futura-CondensedExtraBold", size: 52))
                     .foregroundColor(.white)
-                    .shadow(color: .white.opacity(0.7), radius: 1, x: 0, y: 1)
-                    .shadow(color: .white.opacity(0.25), radius: 10)
+                Text(" ")
                 Text("BPM")
-                    .font(Self.label)
+                    .font(.custom("DINCondensed-Bold", size: 18))
                     .foregroundColor(Theme.orange)
-                    .shadow(color: Theme.orange.opacity(0.6), radius: 6)
-            }
-
-            // BAR
-            HStack(alignment: .firstTextBaseline, spacing: 6) {
+                Spacer()
                 Text("\(engine.transport.barCount)")
-                    .font(Self.bigNum)
+                    .font(.custom("Futura-CondensedExtraBold", size: 52))
                     .foregroundColor(.white)
-                    .shadow(color: .white.opacity(0.7), radius: 1, x: 0, y: 1)
-                    .shadow(color: .white.opacity(0.25), radius: 10)
+                Text(" ")
                 Text("BAR")
-                    .font(Self.label)
+                    .font(.custom("DINCondensed-Bold", size: 18))
                     .foregroundColor(Theme.orange)
-                    .shadow(color: Theme.orange.opacity(0.6), radius: 6)
             }
+            .shadow(color: .white.opacity(0.4), radius: 6)
+            .padding(.bottom, 4)
 
-            // LOOP position
-            HStack(alignment: .firstTextBaseline, spacing: 6) {
+            // Thin rule
+            Rectangle().fill(Theme.orange.opacity(0.2)).frame(height: 1)
+                .padding(.bottom, 6)
+
+            // === LOOP POSITION — the counter ===
+            HStack(alignment: .lastTextBaseline, spacing: 0) {
                 Text("LOOP")
-                    .font(Self.label)
+                    .font(.custom("DINCondensed-Bold", size: 15))
                     .foregroundColor(Theme.orange)
-                    .shadow(color: Theme.orange.opacity(0.6), radius: 6)
+                    .frame(width: 42, alignment: .leading)
                 if engine.transport.isPlaying {
-                    Text(loopPositionString)
-                        .font(Self.medNum)
+                    Text(beatPosition)
+                        .font(.custom("Futura-CondensedExtraBold", size: 36))
                         .foregroundColor(.white)
-                        .shadow(color: .white.opacity(0.7), radius: 1, x: 0, y: 1)
-                        .shadow(color: .white.opacity(0.25), radius: 10)
+                        .shadow(color: .white.opacity(0.4), radius: 6)
+                    Text("  ")
+                    Text(String(format: "%.1fs", secondsElapsed))
+                        .font(.custom("AvenirNextCondensed-Heavy", size: 16))
+                        .foregroundColor(.white.opacity(0.5))
                 } else {
                     Text("—")
-                        .font(Self.medNum)
-                        .foregroundColor(.white)
-                        .shadow(color: .white.opacity(0.2), radius: 6)
+                        .font(.custom("Futura-CondensedExtraBold", size: 36))
+                        .foregroundColor(.white.opacity(0.3))
                 }
             }
+            .padding(.bottom, 4)
 
-            // VOL
-            HStack(alignment: .firstTextBaseline, spacing: 6) {
+            // Thin rule
+            Rectangle().fill(Theme.orange.opacity(0.2)).frame(height: 1)
+                .padding(.bottom, 6)
+
+            // === VOLUME + dB — side by side ===
+            HStack(alignment: .lastTextBaseline, spacing: 0) {
                 Text("VOL")
-                    .font(Self.label)
+                    .font(.custom("DINCondensed-Bold", size: 15))
                     .foregroundColor(Theme.orange)
-                    .shadow(color: Theme.orange.opacity(0.6), radius: 6)
+                    .frame(width: 42, alignment: .leading)
                 Text("\(Int(engine.masterVolume * 100))")
-                    .font(Self.medNum)
+                    .font(.custom("Futura-CondensedExtraBold", size: 36))
                     .foregroundColor(.white)
-                    .shadow(color: .white.opacity(0.7), radius: 1, x: 0, y: 1)
-                    .shadow(color: .white.opacity(0.25), radius: 10)
-            }
-
-            // dB
-            HStack(alignment: .firstTextBaseline, spacing: 6) {
+                    .shadow(color: .white.opacity(0.4), radius: 6)
+                Spacer()
                 Text(formatMasterDb(engine.masterLevelDb))
-                    .font(Self.medNum)
+                    .font(.custom("Futura-CondensedExtraBold", size: 36))
                     .foregroundColor(dbColor)
-                    .shadow(color: dbColor.opacity(0.7), radius: 1, x: 0, y: 1)
-                    .shadow(color: dbColor.opacity(0.25), radius: 10)
+                    .shadow(color: dbColor.opacity(0.4), radius: 6)
+                Text(" ")
                 Text("dB")
-                    .font(Self.labelSmall)
+                    .font(.custom("DINCondensed-Bold", size: 15))
                     .foregroundColor(Theme.orange)
-                    .shadow(color: Theme.orange.opacity(0.6), radius: 6)
             }
+            .padding(.bottom, 4)
 
-            // METRONOME
-            HStack(spacing: 6) {
-                Text("METRONOME")
-                    .font(Self.status)
-                    .foregroundColor(Theme.orange)
-                    .shadow(color: Theme.orange.opacity(0.6), radius: 6)
-                Text(engine.metronome.isOn ? "ON" : "OFF")
-                    .font(Self.status)
-                    .foregroundColor(.white)
-                    .shadow(color: .white.opacity(0.7), radius: 1, x: 0, y: 1)
-                    .shadow(color: .white.opacity(0.25), radius: 6)
-            }
+            // Thin rule
+            Rectangle().fill(Theme.orange.opacity(0.2)).frame(height: 1)
+                .padding(.bottom, 6)
 
-            // LOOPER
-            if isLooping {
-                Text("LOOPER")
-                    .font(Self.status)
-                    .foregroundColor(Theme.red)
-                    .shadow(color: Theme.red.opacity(0.7), radius: 1, x: 0, y: 1)
-                    .shadow(color: Theme.red.opacity(0.4), radius: 8)
+            // === STATUS ROW ===
+            HStack(spacing: 16) {
+                // Metronome
+                HStack(spacing: 4) {
+                    Circle()
+                        .fill(engine.metronome.isOn ? Theme.orange : Theme.orange.opacity(0.15))
+                        .frame(width: 7, height: 7)
+                        .shadow(color: engine.metronome.isOn ? Theme.orange.opacity(0.6) : .clear, radius: 4)
+                    Text("MET")
+                        .font(.custom("DINCondensed-Bold", size: 15))
+                        .foregroundColor(engine.metronome.isOn ? Theme.orange : Theme.orange.opacity(0.3))
+                }
+
+                // Looper
+                if isLooping {
+                    HStack(spacing: 4) {
+                        Circle()
+                            .fill(Theme.red)
+                            .frame(width: 7, height: 7)
+                            .shadow(color: Theme.red.opacity(0.6), radius: 4)
+                        Text("REC")
+                            .font(.custom("DINCondensed-Bold", size: 15))
+                            .foregroundColor(Theme.red)
+                    }
+                }
+
+                Spacer()
             }
         }
-        .padding(14)
+        .padding(.horizontal, 16)
+        .padding(.vertical, 10)
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
     }
 

@@ -71,11 +71,9 @@ struct ContentView: View {
                 HStack(spacing: 0) {
                     TransportHUD(engine: engine)
                         .frame(width: 420)
-                        .background(Theme.canvasBg)
 
                     PadStripView(engine: engine)
                         .frame(maxWidth: .infinity)
-                        .background(Theme.canvasBg)
 
                     InspectorPanelView(
                         engine: engine,
@@ -87,6 +85,7 @@ struct ContentView: View {
                     )
                 }
                 .frame(height: 220)
+                .background(Theme.canvasBg)
             }
 
         }
