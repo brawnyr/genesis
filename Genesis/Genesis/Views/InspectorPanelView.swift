@@ -98,11 +98,7 @@ struct InspectorPanelView: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
-            if browsingPad {
-                SampleBrowserView(engine: engine, padIndex: activeIndex, isOpen: $browsingPad, selectedIndex: $browserIndex)
-            } else {
-                padReadoutView
-            }
+            padReadoutView
         }
         .padding(18)
         .frame(width: 260, alignment: .topLeading)

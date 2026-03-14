@@ -208,7 +208,18 @@ extension ContentView {
         case Key.t:
             mode = mode == .browse ? .normal : .browse
             if mode == .browse {
-                let folder = PadBank.spliceFolderNames[engine.activePadIndex]
+                let padIndex = engine.activePadIndex
+                let folder = PadBank.spliceFolderNames[padIndex]
+                // Auto-select current sample in the list
+                if let currentSample = engine.padBank.pads[padIndex].sample {
+                    let folderURL = PadBank.spliceBasePath.appendingPathComponent(folder)
+                    let files = (try? FileManager.default.contentsOfDirectory(at: folderURL, includingPropertiesForKeys: nil)
+                        .filter { PadBank.audioExtensions.contains($0.pathExtension.lowercased()) }
+                        .sorted { $0.lastPathComponent < $1.lastPathComponent }) ?? []
+                    if let idx = files.firstIndex(where: { $0.deletingPathExtension().lastPathComponent == currentSample.name }) {
+                        browserIndex = idx
+                    }
+                }
                 interpreter.appendLine("browser open → \(folder)", kind: .browse)
                 if let name = browserFileName() {
                     interpreter.appendLine("browse → \(name)", kind: .browse)

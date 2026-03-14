@@ -62,10 +62,30 @@ struct ContentView: View {
                 // Hotkey HUD — top
                 HotkeyHUD()
 
-                // Terminal — full width, main visual
-                TerminalTextLayer(interpreter: interpreter, engine: engine)
-                    .frame(maxWidth: .infinity, maxHeight: .infinity)
-                    .background(Theme.canvasBg)
+                // Terminal — full width, main visual + browser overlay
+                ZStack(alignment: .topTrailing) {
+                    TerminalTextLayer(interpreter: interpreter, engine: engine)
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+
+                    // Sample browser — upper right overlay
+                    if mode == .browse {
+                        SampleBrowserView(
+                            engine: engine,
+                            padIndex: engine.activePadIndex,
+                            isOpen: Binding(
+                                get: { mode == .browse },
+                                set: { mode = $0 ? .browse : .normal }
+                            ),
+                            selectedIndex: $browserIndex
+                        )
+                        .frame(width: 240)
+                        .padding(12)
+                        .background(Color(red: 0.071, green: 0.067, blue: 0.059).opacity(0.95))
+                        .cornerRadius(4)
+                        .padding(12)
+                    }
+                }
+                .background(Theme.canvasBg)
 
                 // Bottom bar: transport + pads + inspector
                 HStack(spacing: 0) {
