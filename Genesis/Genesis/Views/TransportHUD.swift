@@ -27,101 +27,108 @@ struct TransportHUD: View {
         return .white
     }
 
+    // Fonts
+    private static let bigNum = Font.custom("Futura-CondensedExtraBold", size: 38)
+    private static let medNum = Font.custom("Futura-CondensedExtraBold", size: 28)
+    private static let label = Font.custom("DINCondensed-Bold", size: 16)
+    private static let labelSmall = Font.custom("DINCondensed-Bold", size: 14)
+    private static let status = Font.custom("AvenirNextCondensed-Heavy", size: 15)
+
     var body: some View {
-        VStack(alignment: .leading, spacing: 6) {
+        VStack(alignment: .leading, spacing: 5) {
 
             // BPM
-            HStack(alignment: .firstTextBaseline, spacing: 8) {
+            HStack(alignment: .firstTextBaseline, spacing: 6) {
                 Text("\(engine.transport.bpm)")
-                    .font(.system(size: 36, weight: .heavy, design: .monospaced))
+                    .font(Self.bigNum)
                     .foregroundColor(.white)
-                    .shadow(color: .white.opacity(0.6), radius: 2, x: 0, y: 1)
-                    .shadow(color: .white.opacity(0.3), radius: 8)
+                    .shadow(color: .white.opacity(0.7), radius: 1, x: 0, y: 1)
+                    .shadow(color: .white.opacity(0.25), radius: 10)
                 Text("BPM")
-                    .font(.system(size: 14, weight: .bold, design: .monospaced))
+                    .font(Self.label)
                     .foregroundColor(Theme.orange)
                     .shadow(color: Theme.orange.opacity(0.6), radius: 6)
             }
 
             // BAR
-            HStack(alignment: .firstTextBaseline, spacing: 8) {
+            HStack(alignment: .firstTextBaseline, spacing: 6) {
                 Text("\(engine.transport.barCount)")
-                    .font(.system(size: 36, weight: .heavy, design: .monospaced))
+                    .font(Self.bigNum)
                     .foregroundColor(.white)
-                    .shadow(color: .white.opacity(0.6), radius: 2, x: 0, y: 1)
-                    .shadow(color: .white.opacity(0.3), radius: 8)
+                    .shadow(color: .white.opacity(0.7), radius: 1, x: 0, y: 1)
+                    .shadow(color: .white.opacity(0.25), radius: 10)
                 Text("BAR")
-                    .font(.system(size: 14, weight: .bold, design: .monospaced))
+                    .font(Self.label)
                     .foregroundColor(Theme.orange)
                     .shadow(color: Theme.orange.opacity(0.6), radius: 6)
             }
 
             // LOOP position
-            HStack(alignment: .firstTextBaseline, spacing: 8) {
+            HStack(alignment: .firstTextBaseline, spacing: 6) {
                 Text("LOOP")
-                    .font(.system(size: 14, weight: .bold, design: .monospaced))
+                    .font(Self.label)
                     .foregroundColor(Theme.orange)
                     .shadow(color: Theme.orange.opacity(0.6), radius: 6)
                 if engine.transport.isPlaying {
                     Text(loopPositionString)
-                        .font(.system(size: 20, weight: .heavy, design: .monospaced))
+                        .font(Self.medNum)
                         .foregroundColor(.white)
-                        .shadow(color: .white.opacity(0.6), radius: 2, x: 0, y: 1)
-                        .shadow(color: .white.opacity(0.3), radius: 8)
+                        .shadow(color: .white.opacity(0.7), radius: 1, x: 0, y: 1)
+                        .shadow(color: .white.opacity(0.25), radius: 10)
                 } else {
                     Text("—")
-                        .font(.system(size: 20, weight: .heavy, design: .monospaced))
+                        .font(Self.medNum)
                         .foregroundColor(.white)
-                        .shadow(color: .white.opacity(0.3), radius: 6)
+                        .shadow(color: .white.opacity(0.2), radius: 6)
                 }
             }
 
-            // MASTER VOL
-            HStack(alignment: .firstTextBaseline, spacing: 8) {
+            // VOL
+            HStack(alignment: .firstTextBaseline, spacing: 6) {
                 Text("VOL")
-                    .font(.system(size: 14, weight: .bold, design: .monospaced))
+                    .font(Self.label)
                     .foregroundColor(Theme.orange)
                     .shadow(color: Theme.orange.opacity(0.6), radius: 6)
                 Text("\(Int(engine.masterVolume * 100))")
-                    .font(.system(size: 30, weight: .heavy, design: .monospaced))
+                    .font(Self.medNum)
                     .foregroundColor(.white)
-                    .shadow(color: .white.opacity(0.6), radius: 2, x: 0, y: 1)
-                    .shadow(color: .white.opacity(0.3), radius: 8)
+                    .shadow(color: .white.opacity(0.7), radius: 1, x: 0, y: 1)
+                    .shadow(color: .white.opacity(0.25), radius: 10)
             }
 
             // dB
-            HStack(alignment: .firstTextBaseline, spacing: 8) {
+            HStack(alignment: .firstTextBaseline, spacing: 6) {
                 Text(formatMasterDb(engine.masterLevelDb))
-                    .font(.system(size: 30, weight: .heavy, design: .monospaced))
+                    .font(Self.medNum)
                     .foregroundColor(dbColor)
-                    .shadow(color: dbColor.opacity(0.6), radius: 2, x: 0, y: 1)
-                    .shadow(color: dbColor.opacity(0.3), radius: 8)
+                    .shadow(color: dbColor.opacity(0.7), radius: 1, x: 0, y: 1)
+                    .shadow(color: dbColor.opacity(0.25), radius: 10)
                 Text("dB")
-                    .font(.system(size: 14, weight: .bold, design: .monospaced))
+                    .font(Self.labelSmall)
                     .foregroundColor(Theme.orange)
                     .shadow(color: Theme.orange.opacity(0.6), radius: 6)
             }
 
             // METRONOME
-            HStack(spacing: 8) {
+            HStack(spacing: 6) {
                 Text("METRONOME")
-                    .font(.system(size: 14, weight: .bold, design: .monospaced))
+                    .font(Self.status)
                     .foregroundColor(Theme.orange)
                     .shadow(color: Theme.orange.opacity(0.6), radius: 6)
                 Text(engine.metronome.isOn ? "ON" : "OFF")
-                    .font(.system(size: 14, weight: .heavy, design: .monospaced))
+                    .font(Self.status)
                     .foregroundColor(.white)
-                    .shadow(color: .white.opacity(0.6), radius: 2, x: 0, y: 1)
-                    .shadow(color: .white.opacity(0.3), radius: 6)
+                    .shadow(color: .white.opacity(0.7), radius: 1, x: 0, y: 1)
+                    .shadow(color: .white.opacity(0.25), radius: 6)
             }
 
             // LOOPER
             if isLooping {
                 Text("LOOPER")
-                    .font(.system(size: 14, weight: .heavy, design: .monospaced))
+                    .font(Self.status)
                     .foregroundColor(Theme.red)
-                    .shadow(color: Theme.red.opacity(0.7), radius: 2, x: 0, y: 1)
-                    .shadow(color: Theme.red.opacity(0.5), radius: 8)
+                    .shadow(color: Theme.red.opacity(0.7), radius: 1, x: 0, y: 1)
+                    .shadow(color: Theme.red.opacity(0.4), radius: 8)
             }
         }
         .padding(14)
