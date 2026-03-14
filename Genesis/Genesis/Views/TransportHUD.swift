@@ -31,19 +31,19 @@ struct TransportHUD: View {
             // === TOP DISPLAY — BPM + BARS like an LCD readout ===
             HStack(alignment: .lastTextBaseline, spacing: 0) {
                 Text("\(engine.transport.bpm)")
-                    .font(.custom("Didot-Bold", size: 40))
+                    .font(.custom("HelveticaNeue-Light", size: 40))
                     .foregroundColor(.white)
                 Text(" ")
                 Text("BPM")
-                    .font(.custom("Didot", size: 18))
+                    .font(.custom("HelveticaNeue-Medium", size: 14))
                     .foregroundColor(Theme.orange)
                 Spacer()
                 Text("\(engine.transport.barCount)")
-                    .font(.custom("Didot-Bold", size: 40))
+                    .font(.custom("HelveticaNeue-Light", size: 40))
                     .foregroundColor(.white)
                 Text(" ")
                 Text("BAR")
-                    .font(.custom("Didot", size: 18))
+                    .font(.custom("HelveticaNeue-Medium", size: 14))
                     .foregroundColor(Theme.orange)
             }
             .shadow(color: .white.opacity(0.4), radius: 6)
@@ -56,21 +56,21 @@ struct TransportHUD: View {
             // === LOOP POSITION — the counter ===
             HStack(alignment: .lastTextBaseline, spacing: 0) {
                 Text("LOOP")
-                    .font(.custom("Didot", size: 15))
+                    .font(.custom("HelveticaNeue-Medium", size: 13))
                     .foregroundColor(Theme.orange)
                     .frame(width: 42, alignment: .leading)
                 if engine.transport.isPlaying {
                     Text(beatPosition)
-                        .font(.custom("Didot-Bold", size: 28))
+                        .font(.custom("HelveticaNeue-Light", size: 28))
                         .foregroundColor(.white)
                         .shadow(color: .white.opacity(0.4), radius: 6)
                     Text("  ")
                     Text(String(format: "%.1fs", secondsElapsed))
-                        .font(.custom("Didot", size: 16))
+                        .font(.custom("HelveticaNeue-Medium", size: 13))
                         .foregroundColor(.white.opacity(0.5))
                 } else {
                     Text("—")
-                        .font(.custom("Didot-Bold", size: 28))
+                        .font(.custom("HelveticaNeue-Light", size: 28))
                         .foregroundColor(.white.opacity(0.3))
                 }
             }
@@ -83,21 +83,21 @@ struct TransportHUD: View {
             // === VOLUME + dB — side by side ===
             HStack(alignment: .lastTextBaseline, spacing: 0) {
                 Text("VOL")
-                    .font(.custom("Didot", size: 15))
+                    .font(.custom("HelveticaNeue-Medium", size: 13))
                     .foregroundColor(Theme.orange)
                     .frame(width: 42, alignment: .leading)
                 Text("\(Int(engine.masterVolume * 100))")
-                    .font(.custom("Didot-Bold", size: 28))
+                    .font(.custom("HelveticaNeue-Light", size: 28))
                     .foregroundColor(.white)
                     .shadow(color: .white.opacity(0.4), radius: 6)
                 Spacer()
                 Text(formatMasterDb(engine.masterLevelDb))
-                    .font(.custom("Didot-Bold", size: 28))
+                    .font(.custom("HelveticaNeue-Light", size: 28))
                     .foregroundColor(dbColor)
                     .shadow(color: dbColor.opacity(0.4), radius: 6)
                 Text(" ")
                 Text("dB")
-                    .font(.custom("Didot", size: 15))
+                    .font(.custom("HelveticaNeue-Medium", size: 13))
                     .foregroundColor(Theme.orange)
             }
             .padding(.bottom, 4)
@@ -115,7 +115,7 @@ struct TransportHUD: View {
                         .frame(width: 7, height: 7)
                         .shadow(color: engine.metronome.isOn ? Theme.orange.opacity(0.6) : .clear, radius: 4)
                     Text("MET")
-                        .font(.custom("Didot", size: 15))
+                        .font(.custom("HelveticaNeue-Medium", size: 13))
                         .foregroundColor(engine.metronome.isOn ? Theme.orange : Theme.orange.opacity(0.3))
                 }
 
@@ -127,7 +127,7 @@ struct TransportHUD: View {
                             .frame(width: 7, height: 7)
                             .shadow(color: Theme.red.opacity(0.6), radius: 4)
                         Text("REC")
-                            .font(.custom("Didot", size: 15))
+                            .font(.custom("HelveticaNeue-Medium", size: 13))
                             .foregroundColor(Theme.red)
                     }
                 }
