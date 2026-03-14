@@ -86,7 +86,7 @@ struct ContentView: View {
                         browserIndex: $browserIndex
                     )
                 }
-                .frame(height: 160)
+                .frame(height: 220)
             }
 
         }
