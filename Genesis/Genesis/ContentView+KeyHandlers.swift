@@ -11,7 +11,6 @@ extension ContentView {
         static let s: UInt16 = 1
         static let q: UInt16 = 12
         static let c: UInt16 = 8
-        static let f: UInt16 = 3
         static let g: UInt16 = 5
         static let t: UInt16 = 17
         static let b: UInt16 = 11
@@ -19,7 +18,6 @@ extension ContentView {
         static let x: UInt16 = 7
         static let p: UInt16 = 35
             static let m: UInt16 = 46
-        static let n: UInt16 = 45
         static let r: UInt16 = 15
         static let o: UInt16 = 31
         static let returnKey: UInt16 = 36
@@ -267,8 +265,6 @@ extension ContentView {
         case Key.z:
             engine.undoLastClear()
             interpreter.appendLine("undo clear → pad \(engine.activePadIndex + 1)", kind: .state)
-        case Key.n:
-            break
         case Key.m:
             engine.toggleMetronome()
             interpreter.appendLine("metronome \(engine.metronome.isOn ? "on" : "off")", kind: .transport)
