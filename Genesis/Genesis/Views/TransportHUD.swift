@@ -33,20 +33,23 @@ struct TransportHUD: View {
                 Text("\(engine.transport.bpm)")
                     .font(.custom("HelveticaNeue-Light", size: 40))
                     .foregroundColor(.white)
+                    .shadow(color: .white.opacity(0.4), radius: 6)
                 Text(" ")
                 Text("BPM")
                     .font(.custom("HelveticaNeue-Medium", size: 14))
                     .foregroundColor(Theme.orange)
+                    .shadow(color: Theme.orange.opacity(0.5), radius: 6)
                 Spacer()
                 Text("\(engine.transport.barCount)")
                     .font(.custom("HelveticaNeue-Light", size: 40))
                     .foregroundColor(.white)
+                    .shadow(color: .white.opacity(0.4), radius: 6)
                 Text(" ")
                 Text("BAR")
                     .font(.custom("HelveticaNeue-Medium", size: 14))
                     .foregroundColor(Theme.orange)
+                    .shadow(color: Theme.orange.opacity(0.5), radius: 6)
             }
-            .shadow(color: .white.opacity(0.4), radius: 6)
             .padding(.bottom, 4)
 
             // Thin rule
@@ -58,7 +61,8 @@ struct TransportHUD: View {
                 Text("LOOP")
                     .font(.custom("HelveticaNeue-Medium", size: 13))
                     .foregroundColor(Theme.orange)
-                    .frame(width: 42, alignment: .leading)
+                    .shadow(color: Theme.orange.opacity(0.5), radius: 6)
+                    .frame(width: 48, alignment: .leading)
                 if engine.transport.isPlaying {
                     Text(beatPosition)
                         .font(.custom("HelveticaNeue-Light", size: 28))
@@ -85,7 +89,8 @@ struct TransportHUD: View {
                 Text("VOL")
                     .font(.custom("HelveticaNeue-Medium", size: 13))
                     .foregroundColor(Theme.orange)
-                    .frame(width: 42, alignment: .leading)
+                    .shadow(color: Theme.orange.opacity(0.5), radius: 6)
+                    .frame(width: 48, alignment: .leading)
                 Text("\(Int(engine.masterVolume * 100))")
                     .font(.custom("HelveticaNeue-Light", size: 28))
                     .foregroundColor(.white)
@@ -99,6 +104,7 @@ struct TransportHUD: View {
                 Text("dB")
                     .font(.custom("HelveticaNeue-Medium", size: 13))
                     .foregroundColor(Theme.orange)
+                    .shadow(color: Theme.orange.opacity(0.5), radius: 6)
             }
             .padding(.bottom, 4)
 
@@ -117,6 +123,7 @@ struct TransportHUD: View {
                     Text("MET")
                         .font(.custom("HelveticaNeue-Medium", size: 13))
                         .foregroundColor(engine.metronome.isOn ? Theme.orange : Theme.orange.opacity(0.3))
+                        .shadow(color: engine.metronome.isOn ? Theme.orange.opacity(0.5) : .clear, radius: 6)
                 }
 
                 // Looper
