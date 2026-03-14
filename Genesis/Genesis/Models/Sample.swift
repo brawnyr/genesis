@@ -17,6 +17,15 @@ struct Sample {
         Double(frameCount) / sampleRate * 1000.0
     }
 
+    /// Peak amplitude in dBFS. 0dB = full scale, positive = over unity.
+    var peakDb: Float {
+        var peak: Float = 0
+        for i in 0..<frameCount {
+            peak = max(peak, abs(left[i]), abs(right[i]))
+        }
+        return peak > 0 ? 20 * log10(peak) : -100
+    }
+
     static func load(from url: URL) throws -> Sample {
         let file = try AVAudioFile(forReading: url)
         let sourceFormat = file.processingFormat

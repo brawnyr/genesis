@@ -148,6 +148,13 @@ struct PadInspectPanel: View {
                 if let sample = pad.sample {
                     InspectorRow(label: "file", value: sample.name.lowercased(), labelWidth: 50)
                     InspectorRow(label: "dur", value: String(format: "%.2fs", sample.durationMs / 1000.0), labelWidth: 50)
+                    let samplePeakDb = sample.peakDb
+                    InspectorRow(
+                        label: "peak",
+                        value: String(format: "%.1fdB", samplePeakDb),
+                        highlight: samplePeakDb > -1.0,
+                        labelWidth: 50
+                    )
                     if let bpm = engine.detectedBPMs[activeIndex] {
                         InspectorRow(label: "bpm", value: "\(Int(bpm))", highlight: true, labelWidth: 50)
                     } else {
