@@ -64,6 +64,9 @@ class GenesisEngine: ObservableObject {
 
     var outputBufferL = [Float](repeating: 0, count: 4096)
     var outputBufferR = [Float](repeating: 0, count: 4096)
+    var reverbSendL = [Float](repeating: 0, count: 4096)
+    var reverbSendR = [Float](repeating: 0, count: 4096)
+    let reverb = ReverbProcessor()
 
     // MARK: - Cached biquad coefficients (recalculated only on cutoff change)
 

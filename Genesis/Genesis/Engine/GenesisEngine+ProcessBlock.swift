@@ -16,6 +16,7 @@ private struct UISnapshot {
     var layerHPCutoffs = Array(repeating: Layer.hpBypassFrequency, count: PadBank.padCount)
     var layerLPCutoffs = Array(repeating: Layer.lpBypassFrequency, count: PadBank.padCount)
     var layerSwings = Array(repeating: Float(0.5), count: PadBank.padCount)
+    var layerReverbSends = Array(repeating: Float(0.0), count: PadBank.padCount)
     var layerIsRecording = Array(repeating: false, count: PadBank.padCount)
     var layerHasNewHits = Array(repeating: false, count: PadBank.padCount)
 }
@@ -72,7 +73,9 @@ extension GenesisEngine {
         switch number {
         case 82: // Master volume (MiniLab fader 1)
             setMasterVolume(Float(value) / 127.0)
-        case 74, 85: // Pad volume (knob 1 / CC 85)
+        case 74: // Reverb send (knob 1)
+            audio.layers[audio.activePadIndex].reverbSend = Float(value) / 127.0
+        case 85: // Pad volume (CC 85)
             audio.layers[audio.activePadIndex].volume = Float(value) / 127.0
         case 71: // Pan (knob 2)
             audio.layers[audio.activePadIndex].pan = Float(value) / 127.0
@@ -261,6 +264,17 @@ extension GenesisEngine {
         // Update cached biquad coefficients (only recalculates when cutoffs change)
         updateCachedCoefficients()
 
+        // Zero reverb send buffers
+        if reverbSendL.count < frameCount {
+            reverbSendL = [Float](repeating: 0, count: frameCount)
+            reverbSendR = [Float](repeating: 0, count: frameCount)
+        } else {
+            for i in 0..<frameCount {
+                reverbSendL[i] = 0
+                reverbSendR[i] = 0
+            }
+        }
+
         // Mix all active voices — always, even when stopped (for pad auditioning)
         let frameLevels = VoiceMixer.mix(
             pool: &voicePool,
@@ -269,10 +283,25 @@ extension GenesisEngine {
             cachedLP: cachedLPCoeffs,
             intoLeft: &outputBufferL,
             intoRight: &outputBufferR,
+            reverbSendL: &reverbSendL,
+            reverbSendR: &reverbSendR,
             count: frameCount
         )
         for i in 0..<PadBank.padCount {
             pendingLevels[i] = max(pendingLevels[i], frameLevels[i])
+        }
+
+        // Process reverb send and add wet signal to output
+        reverbSendL.withUnsafeBufferPointer { sendLPtr in
+            reverbSendR.withUnsafeBufferPointer { sendRPtr in
+                reverb.process(
+                    sendL: sendLPtr.baseAddress!,
+                    sendR: sendRPtr.baseAddress!,
+                    intoLeft: &outputBufferL,
+                    intoRight: &outputBufferR,
+                    count: frameCount
+                )
+            }
         }
 
         // Apply master volume and track peak
@@ -336,6 +365,7 @@ extension GenesisEngine {
                 snap.layerHPCutoffs[i] = audio.layers[i].hpCutoff
                 snap.layerLPCutoffs[i] = audio.layers[i].lpCutoff
                 snap.layerSwings[i] = audio.layers[i].swing
+                snap.layerReverbSends[i] = audio.layers[i].reverbSend
                 snap.layerIsRecording[i] = audio.layers[i].isRecording
                 snap.layerHasNewHits[i] = audio.layers[i].hasNewHits
                 if voicePool.hasPadVoice(i) {
@@ -413,6 +443,7 @@ extension GenesisEngine {
                     self.layers[i].hpCutoff = snap.layerHPCutoffs[i]
                     self.layers[i].lpCutoff = snap.layerLPCutoffs[i]
                     self.layers[i].swing = snap.layerSwings[i]
+                    self.layers[i].reverbSend = snap.layerReverbSends[i]
                     self.layers[i].isRecording = snap.layerIsRecording[i]
                     self.layers[i].hasNewHits = snap.layerHasNewHits[i]
                 }

@@ -49,6 +49,7 @@ class EngineEventInterpreter: ObservableObject {
         var hp: Float = Layer.hpBypassFrequency
         var lp: Float = Layer.lpBypassFrequency
         var swing: Float = 0.5
+        var reverbSend: Float = 0.0
     }
     private var prevPads: [PrevPadState] = Array(repeating: PrevPadState(), count: PadBank.padCount)
     private var prevPlaying: Bool = false
@@ -151,6 +152,10 @@ class EngineEventInterpreter: ObservableObject {
                 let pct = Int((layers[i].swing - 0.5) / 0.25 * 100)
                 appendLine("pad \(i + 1) swing → \(pct)%", kind: .state)
                 prevPads[i].swing = layers[i].swing
+            }
+            if abs(layers[i].reverbSend - prevPads[i].reverbSend) > 0.005 {
+                appendLine("pad \(i + 1) reverb → \(Int(layers[i].reverbSend * 100))%", kind: .state)
+                prevPads[i].reverbSend = layers[i].reverbSend
             }
         }
 

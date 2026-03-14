@@ -174,6 +174,8 @@ struct PadInspectPanel: View {
                              highlight: layer.hpCutoff > 21)
                 InspectorRow(label: "LP", value: EngineEventInterpreter.formatFrequency(layer.lpCutoff),
                              highlight: layer.lpCutoff < 19999)
+                InspectorRow(label: "rev", value: "\(Int(layer.reverbSend * 100))%",
+                             highlight: layer.reverbSend > 0.01, labelWidth: 60)
                 InspectorRow(label: "swing", value: "\(Int((layer.swing - 0.5) / 0.25 * 100))%",
                              highlight: layer.swing > 0.5, labelWidth: 60)
             }

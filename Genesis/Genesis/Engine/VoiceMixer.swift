@@ -2,7 +2,7 @@
 import Foundation
 
 enum VoiceMixer {
-    /// Mix all active voices into stereo output buffers.
+    /// Mix all active voices into stereo output buffers + reverb send buffers.
     /// Returns per-pad peak levels.
     static func mix(
         pool: inout VoicePool,
@@ -11,6 +11,8 @@ enum VoiceMixer {
         cachedLP: [BiquadCoefficients],
         intoLeft bufferL: inout [Float],
         intoRight bufferR: inout [Float],
+        reverbSendL: inout [Float],
+        reverbSendR: inout [Float],
         count: Int
     ) -> [Float] {
         var levels = [Float](repeating: 0, count: PadBank.padCount)
@@ -22,10 +24,37 @@ enum VoiceMixer {
             let lpCoeffs = validPad ? cachedLP[padIdx] : .bypass
             let pan = validPad ? layers[padIdx].pan : 0.5
             let volume = validPad ? layers[padIdx].volume : 1.0
-            let (_, peak) = pool.slots[i].fill(intoLeft: &bufferL, right: &bufferR, count: count,
-                                                 pan: pan, volume: volume, hpCoeffs: hpCoeffs, lpCoeffs: lpCoeffs)
-            if validPad {
-                levels[padIdx] = max(levels[padIdx], peak)
+            let reverbAmt = validPad ? layers[padIdx].reverbSend : 0.0
+
+            // Snapshot buffer state before fill so we can extract this voice's contribution
+            let needsReverb = reverbAmt > 0.001
+
+            if needsReverb {
+                // Record start positions for reverb extraction
+                let startIdx = pool.slots[i].blockOffset
+                let snapshotL = Array(bufferL[startIdx..<count])
+                let snapshotR = Array(bufferR[startIdx..<count])
+
+                let (_, peak) = pool.slots[i].fill(intoLeft: &bufferL, right: &bufferR, count: count,
+                                                     pan: pan, volume: volume, hpCoeffs: hpCoeffs, lpCoeffs: lpCoeffs)
+
+                // Extract this voice's contribution and add to reverb send
+                for j in startIdx..<count {
+                    let voiceL = bufferL[j] - snapshotL[j - startIdx]
+                    let voiceR = bufferR[j] - snapshotR[j - startIdx]
+                    reverbSendL[j] += voiceL * reverbAmt
+                    reverbSendR[j] += voiceR * reverbAmt
+                }
+
+                if validPad {
+                    levels[padIdx] = max(levels[padIdx], peak)
+                }
+            } else {
+                let (_, peak) = pool.slots[i].fill(intoLeft: &bufferL, right: &bufferR, count: count,
+                                                     pan: pan, volume: volume, hpCoeffs: hpCoeffs, lpCoeffs: lpCoeffs)
+                if validPad {
+                    levels[padIdx] = max(levels[padIdx], peak)
+                }
             }
         }
         return levels

@@ -19,6 +19,7 @@ struct Layer {
     var pan: Float = 0.5            // 0.0 = left, 0.5 = center, 1.0 = right
     var hpCutoff: Float = Layer.hpBypassFrequency      // Hz — 20 = no effect
     var lpCutoff: Float = Layer.lpBypassFrequency   // Hz — 20000 = no effect
+    var reverbSend: Float = 0.0  // 0.0 = dry, 1.0 = full send
     var choke: Bool = true
     var looper: Bool = false
     var swing: Float = 0.5 {
@@ -83,6 +84,7 @@ struct Layer {
         if swingPct != 0 { parts.append("sw:\(swingPct)%") }
         let pan = EngineEventInterpreter.formatPan(pan)
         if pan != "C" { parts.append("pan:\(pan)") }
+        if reverbSend > 0.01 { parts.append("rev:\(Int(reverbSend * 100))%") }
         if hpCutoff > 21 { parts.append("hp:\(EngineEventInterpreter.formatFrequency(hpCutoff))") }
         if lpCutoff < 19999 { parts.append("lp:\(EngineEventInterpreter.formatFrequency(lpCutoff))") }
         return parts.isEmpty ? "" : parts.joined(separator: " ")
