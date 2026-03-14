@@ -8,7 +8,8 @@ private struct UISnapshot {
     var masterPeak: Float = 0
     var triggers: [Bool] = Array(repeating: false, count: PadBank.padCount)
     var activeIdx: Int = 0
-    var hits: [(padIndex: Int, position: Int, velocity: Int)] = []
+    var hits: [(padIndex: Int, position: Int, velocity: Int)] = []        // live MIDI hits (get recorded)
+    var replayHits: [(padIndex: Int, position: Int, velocity: Int)] = []  // loop replay hits (terminal only)
     var activeVoicePads: Set<Int> = []
     var layerVolumes = Array(repeating: Float(1.0), count: PadBank.padCount)
     var layerPans = Array(repeating: Float(0.5), count: PadBank.padCount)
@@ -188,8 +189,8 @@ extension GenesisEngine {
                         if let idx = voicePool.allocate(sample: sample, velocity: vel, padIndex: layer.index) {
                             voicePool.slots[idx].blockOffset = max(0, min(offset, frameCount - 1))
                         }
-                        // Log loop-replayed hits to terminal
-                        pendingHits.append((padIndex: layer.index, position: hit.position, velocity: hit.velocity))
+                        // Log loop-replayed hits to terminal (not added to layers — already recorded)
+                        pendingReplayHits.append((padIndex: layer.index, position: hit.position, velocity: hit.velocity))
                     }
                 }
             }
@@ -363,6 +364,7 @@ extension GenesisEngine {
             snap.triggers = pendingTriggers
             snap.activeIdx = audio.activePadIndex
             snap.hits = pendingHits
+            snap.replayHits = pendingReplayHits
             for i in 0..<PadBank.padCount {
                 snap.layerVolumes[i] = audio.layers[i].volume
                 snap.layerPans[i] = audio.layers[i].pan
@@ -377,6 +379,7 @@ extension GenesisEngine {
             }
 
             pendingHits.removeAll(keepingCapacity: true)
+            pendingReplayHits.removeAll(keepingCapacity: true)
             pendingLevels = Array(repeating: 0, count: PadBank.padCount)
             pendingTriggers = Array(repeating: false, count: PadBank.padCount)
             uiSnapshot = snap
@@ -476,7 +479,8 @@ extension GenesisEngine {
                 }
                 if let interp = self.interpreter {
                     interp.activePadVoices = snap.activeVoicePads
-                    interp.processHits(snap.hits, padBank: self.padBank, loopDurationMs: self.loopDurationMs,
+                    let allHits = snap.hits + snap.replayHits
+                    interp.processHits(allHits, padBank: self.padBank, loopDurationMs: self.loopDurationMs,
                                        loopLengthFrames: self.transport.loopLengthFrames, barCount: self.transport.barCount)
                     interp.processStateDiff(
                         layers: self.layers,

@@ -93,6 +93,7 @@ class GenesisEngine: ObservableObject {
     var pendingLevels: [Float] = Array(repeating: 0, count: PadBank.padCount)
     var pendingTriggers: [Bool] = Array(repeating: false, count: PadBank.padCount)
     var pendingHits: [(padIndex: Int, position: Int, velocity: Int)] = []
+    var pendingReplayHits: [(padIndex: Int, position: Int, velocity: Int)] = []
     var uiUpdateCounter = 0
     private var lastClearedLayerIndex: Int?
     private var preMuteMasterVolume: Float?
