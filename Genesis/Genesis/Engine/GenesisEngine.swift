@@ -261,6 +261,13 @@ class GenesisEngine: ObservableObject {
         layers[index] = layer
         os_unfair_lock_lock(&audioLock)
         audio.layers[index].looper = layer.looper
+        // Fire the sample immediately when looper is turned on
+        if layer.looper, !audio.layers[index].isMuted,
+           let sample = padBank.pads[index].sample {
+            voicePool.killPad(index)
+            let vel: Float = velocityMode == .full ? 1.0 : audio.layers[index].volume
+            let _ = voicePool.allocate(sample: sample, velocity: vel, padIndex: index)
+        }
         os_unfair_lock_unlock(&audioLock)
     }
 
