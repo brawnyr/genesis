@@ -12,11 +12,11 @@ struct InspectorSectionHeader: View {
             Text("▶")
                 .font(.system(size: 14, design: .monospaced))
                 .foregroundColor(color)
-                .shadow(color: color.opacity(0.7), radius: 8)
+                .shadow(color: color.opacity(0.5), radius: 4)
             Text(title)
                 .font(.system(size: 14, design: .monospaced))
-                .foregroundColor(.white)
-                .shadow(color: .white.opacity(0.5), radius: 8)
+                .foregroundColor(Theme.text)
+                .shadow(color: Theme.text.opacity(0.3), radius: 4)
                 .tracking(1.5)
         }
     }
@@ -38,12 +38,11 @@ struct InspectorRow: View {
     var body: some View {
         HStack(spacing: 0) {
             Text(label)
-                .foregroundColor(.white)
-                .shadow(color: .white.opacity(0.5), radius: 8)
+                .foregroundColor(Theme.text.opacity(0.7))
                 .frame(width: labelWidth, alignment: .leading)
             Text(value)
-                .foregroundColor(highlight ? Theme.orange : .white)
-                .shadow(color: highlight ? Theme.orange.opacity(0.6) : .white.opacity(0.5), radius: 8)
+                .foregroundColor(highlight ? Theme.terracotta : Theme.text)
+                .shadow(color: highlight ? Theme.terracotta.opacity(0.4) : .clear, radius: 4)
         }
         .font(.system(size: 16, design: .monospaced))
         .padding(.vertical, 3)
@@ -56,27 +55,25 @@ struct ChokeBadge: View {
     var body: some View {
         HStack(spacing: 8) {
             Text("CHOKE")
-                .foregroundColor(.white)
-                .shadow(color: .white.opacity(0.5), radius: 8)
+                .foregroundColor(Theme.text.opacity(0.7))
                 .frame(width: 50, alignment: .leading)
             Text(isOn ? "ON" : "OFF")
                 .font(.system(size: 15, design: .monospaced).bold())
-                .foregroundColor(isOn ? Theme.orange : .white)
+                .foregroundColor(isOn ? Theme.terracotta : Theme.text.opacity(0.5))
                 .padding(.horizontal, 10)
                 .padding(.vertical, 3)
                 .background(
                     RoundedRectangle(cornerRadius: 3)
-                        .fill(isOn ? Theme.orange.opacity(0.15) : Color.clear)
+                        .fill(isOn ? Theme.terracotta.opacity(0.12) : Color.clear)
                 )
                 .overlay(
                     RoundedRectangle(cornerRadius: 3)
-                        .stroke(isOn ? Theme.orange.opacity(0.3) : Color.white.opacity(0.1), lineWidth: 1)
+                        .stroke(isOn ? Theme.terracotta.opacity(0.25) : Theme.subtle.opacity(0.3), lineWidth: 1)
                 )
-                .shadow(color: isOn ? Theme.orange.opacity(0.5) : .clear, radius: 8)
+                .shadow(color: isOn ? Theme.terracotta.opacity(0.3) : .clear, radius: 4)
             Text(isOn ? "(cuts previous note)" : "(stacks)")
                 .font(.system(size: 11, design: .monospaced))
-                .foregroundColor(.white.opacity(0.7))
-                .shadow(color: .white.opacity(0.4), radius: 6)
+                .foregroundColor(Theme.text.opacity(0.5))
         }
         .font(.system(size: 16, design: .monospaced))
         .padding(.vertical, 3)
@@ -84,7 +81,7 @@ struct ChokeBadge: View {
 }
 
 
-// MARK: - Right-side panel (CC readout + sample browser)
+// MARK: - Right-side panel (pad readout + sample browser)
 
 struct PadInspectPanel: View {
     @ObservedObject var engine: GenesisEngine
@@ -98,17 +95,35 @@ struct PadInspectPanel: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
-            Text("PAD_INSPECT_PANEL")
+            Text("INSPECT")
                 .font(.system(size: 11, design: .monospaced).bold())
-                .foregroundColor(Theme.orange)
-                .shadow(color: Theme.orange.opacity(0.5), radius: 6)
+                .foregroundColor(Theme.terracotta)
+                .shadow(color: Theme.terracotta.opacity(0.3), radius: 4)
                 .padding(.bottom, 6)
 
             padReadoutView
+
+            // Integrated sample browser
+            if browsingPad {
+                Rectangle()
+                    .fill(Theme.text.opacity(0.06))
+                    .frame(height: 1)
+                    .padding(.vertical, 10)
+
+                SampleBrowserView(
+                    engine: engine,
+                    padIndex: engine.activePadIndex,
+                    isOpen: $browsingPad,
+                    selectedIndex: $browserIndex
+                )
+            }
+
+            Spacer()
         }
         .padding(18)
         .frame(width: 260, alignment: .topLeading)
-        .background(Color(red: 0.071, green: 0.067, blue: 0.059))
+        .frame(maxHeight: .infinity)
+        .background(Theme.canvasBg)
     }
 
     private var padReadoutView: some View {
@@ -116,17 +131,17 @@ struct PadInspectPanel: View {
             // Channel name — hero
             Text(folderName.uppercased())
                 .font(.system(size: 28, design: .monospaced).bold())
-                .foregroundColor(layer.isMuted ? Theme.ice : Theme.red)
+                .foregroundColor(layer.isMuted ? Theme.moss : Theme.clay)
                 .tracking(2)
-                .shadow(color: (layer.isMuted ? Theme.ice : Theme.red).opacity(0.5), radius: 25)
+                .shadow(color: (layer.isMuted ? Theme.moss : Theme.clay).opacity(0.3), radius: 8)
 
             Rectangle()
-                .fill(Color.white.opacity(0.04))
+                .fill(Theme.text.opacity(0.06))
                 .frame(height: 1)
                 .padding(.vertical, 10)
 
             // SAMPLE section
-            InspectorSectionHeader(title: "SAMPLE", color: Theme.blue.opacity(0.5))
+            InspectorSectionHeader(title: "SAMPLE", color: Theme.sage.opacity(0.6))
                 .padding(.bottom, 6)
 
             VStack(alignment: .leading, spacing: 0) {
@@ -145,12 +160,12 @@ struct PadInspectPanel: View {
             .padding(.leading, 16)
 
             Rectangle()
-                .fill(Color.white.opacity(0.04))
+                .fill(Theme.text.opacity(0.06))
                 .frame(height: 1)
                 .padding(.vertical, 10)
 
             // PARAMS section
-            InspectorSectionHeader(title: "PARAMS", color: Theme.orange.opacity(0.5))
+            InspectorSectionHeader(title: "PARAMS", color: Theme.terracotta.opacity(0.6))
                 .padding(.bottom, 6)
 
             VStack(alignment: .leading, spacing: 0) {
@@ -165,19 +180,16 @@ struct PadInspectPanel: View {
             .padding(.leading, 16)
 
             Rectangle()
-                .fill(Color.white.opacity(0.04))
+                .fill(Theme.text.opacity(0.06))
                 .frame(height: 1)
                 .padding(.vertical, 10)
 
             // MODE section
-            InspectorSectionHeader(title: "MODE", color: Theme.orange.opacity(0.5))
+            InspectorSectionHeader(title: "MODE", color: Theme.terracotta.opacity(0.6))
                 .padding(.bottom, 6)
 
             ChokeBadge(isOn: layer.choke)
                 .padding(.leading, 16)
-
-
-            Spacer()
         }
     }
 }

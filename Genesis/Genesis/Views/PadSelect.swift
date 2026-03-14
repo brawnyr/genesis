@@ -10,7 +10,7 @@ struct PadSelect: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
-            Text("CHANNELS")
+            Text("PAD_SELECT")
                 .font(.system(size: 11, design: .monospaced).bold())
                 .foregroundColor(Theme.terracotta)
                 .shadow(color: Theme.terracotta.opacity(0.3), radius: 4)

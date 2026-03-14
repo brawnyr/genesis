@@ -17,26 +17,25 @@ struct SampleBrowserView: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 4) {
             HStack {
-                Text(folderName.uppercased())
+                Text("BROWSER")
                     .font(.system(size: 12, design: .monospaced).bold())
-                    .foregroundColor(Theme.orange)
-                    .shadow(color: Theme.orange.opacity(0.5), radius: 8)
+                    .foregroundColor(Theme.terracotta)
+                    .shadow(color: Theme.terracotta.opacity(0.3), radius: 4)
                 Spacer()
                 Text("[T] close")
                     .font(.system(size: 9, design: .monospaced))
                     .foregroundColor(Theme.subtle)
-                    .shadow(color: Theme.subtle.opacity(0.3), radius: 4)
             }
 
-            Divider()
-                .background(Theme.subtle.opacity(0.3))
+            Rectangle()
+                .fill(Theme.text.opacity(0.06))
+                .frame(height: 1)
                 .padding(.vertical, 2)
 
             if files.isEmpty {
                 Text("empty folder")
                     .font(.system(size: 10, design: .monospaced))
                     .foregroundColor(Theme.subtle)
-                    .shadow(color: Theme.subtle.opacity(0.3), radius: 4)
                     .padding(.top, 4)
 
                 Button {
@@ -44,8 +43,8 @@ struct SampleBrowserView: View {
                 } label: {
                     Text("OPEN FILE...")
                         .font(.system(size: 11, design: .monospaced).bold())
-                        .foregroundColor(Theme.blue)
-                        .shadow(color: Theme.blue.opacity(0.5), radius: 8)
+                        .foregroundColor(Theme.sage)
+                        .shadow(color: Theme.sage.opacity(0.3), radius: 4)
                 }
                 .buttonStyle(.plain)
                 .padding(.top, 8)
@@ -58,14 +57,14 @@ struct SampleBrowserView: View {
                                 let isSelected = idx == selectedIndex
                                 Text(name.lowercased().prefix(18))
                                     .font(.system(size: 10, design: .monospaced))
-                                    .foregroundColor(isSelected ? Theme.orange : Color(white: 0.5))
-                                    .shadow(color: isSelected ? Theme.orange.opacity(0.5) : Color(white: 0.3).opacity(0.3), radius: isSelected ? 8 : 4)
+                                    .foregroundColor(isSelected ? Theme.terracotta : Theme.text.opacity(0.4))
+                                    .shadow(color: isSelected ? Theme.terracotta.opacity(0.3) : .clear, radius: 3)
                                     .padding(.vertical, 2)
                                     .padding(.horizontal, 4)
                                     .frame(maxWidth: .infinity, alignment: .leading)
                                     .background(
                                         isSelected
-                                            ? Theme.orange.opacity(0.1)
+                                            ? Theme.terracotta.opacity(0.08)
                                             : Color.clear
                                     )
                                     .cornerRadius(2)
@@ -86,18 +85,17 @@ struct SampleBrowserView: View {
             Spacer()
 
             if !files.isEmpty {
-                Divider()
-                    .background(Theme.subtle.opacity(0.3))
+                Rectangle()
+                    .fill(Theme.text.opacity(0.06))
+                    .frame(height: 1)
 
                 HStack(spacing: 8) {
                     Text("W↑ S↓")
                         .font(.system(size: 8, design: .monospaced))
                         .foregroundColor(Theme.subtle)
-                        .shadow(color: Theme.subtle.opacity(0.3), radius: 4)
                     Text("⏎ close")
                         .font(.system(size: 8, design: .monospaced))
                         .foregroundColor(Theme.subtle)
-                        .shadow(color: Theme.subtle.opacity(0.3), radius: 4)
                 }
                 .padding(.top, 4)
             }

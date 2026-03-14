@@ -58,52 +58,38 @@ struct ContentView: View {
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
 
-            VStack(spacing: 0) {
-                // Hotkey HUD — top
-                HotkeyHUD()
+            HStack(spacing: 0) {
+                // Left: main content area
+                VStack(spacing: 0) {
+                    // Hotkey HUD — top
+                    HotkeyHUD()
 
-                // Terminal — full width, with browser docked right
-                HStack(spacing: 0) {
+                    // Terminal
                     TerminalTextLayer(interpreter: interpreter, engine: engine)
                         .frame(maxWidth: .infinity, maxHeight: .infinity)
+                        .background(Theme.canvasBg)
 
-                    // Sample browser — docked right, flush with inspector below
-                    if mode == .browse {
-                        SampleBrowserView(
-                            engine: engine,
-                            padIndex: engine.activePadIndex,
-                            isOpen: Binding(
-                                get: { mode == .browse },
-                                set: { mode = $0 ? .browse : .normal }
-                            ),
-                            selectedIndex: $browserIndex
-                        )
-                        .frame(width: 260)
-                        .padding(18)
-                        .background(Color(red: 0.071, green: 0.067, blue: 0.059))
+                    // Bottom bar: transport + pads
+                    HStack(spacing: 0) {
+                        GHUD(engine: engine)
+                            .frame(width: 420)
+
+                        PadSelect(engine: engine)
+                            .frame(maxWidth: .infinity)
                     }
+                    .frame(height: 220)
+                    .background(Theme.canvasBg)
                 }
-                .background(Theme.canvasBg)
 
-                // Bottom bar: transport + pads + inspector
-                HStack(spacing: 0) {
-                    GHUD(engine: engine)
-                        .frame(width: 420)
-
-                    PadSelect(engine: engine)
-                        .frame(maxWidth: .infinity)
-
-                    PadInspectPanel(
-                        engine: engine,
-                        browsingPad: Binding(
-                            get: { mode == .browse },
-                            set: { mode = $0 ? .browse : .normal }
-                        ),
-                        browserIndex: $browserIndex
-                    )
-                }
-                .frame(height: 220)
-                .background(Theme.canvasBg)
+                // Right: full-height inspect panel with integrated browser
+                PadInspectPanel(
+                    engine: engine,
+                    browsingPad: Binding(
+                        get: { mode == .browse },
+                        set: { mode = $0 ? .browse : .normal }
+                    ),
+                    browserIndex: $browserIndex
+                )
             }
 
         }
@@ -117,42 +103,42 @@ struct HotkeyHUD: View {
     var body: some View {
         VStack(spacing: 6) {
             HStack(spacing: 20) {
-                // Transport — blue
-                HotkeyGroup(color: Theme.blue, items: [
+                // Transport — sage
+                HotkeyGroup(color: Theme.sage, items: [
                     ("SPC", "play/stop"), ("ESC", "stop"), ("G", "record"),
                 ])
 
-                // Pads — orange
-                HotkeyGroup(color: Theme.orange, items: [
+                // Pads — terracotta
+                HotkeyGroup(color: Theme.terracotta, items: [
                     ("A/D", "pad ←→"),
                     ("T", "browse"), ("W/S", "nav"),
                 ])
 
-                // Muting — red
-                HotkeyGroup(color: Theme.red, items: [
+                // Muting — clay
+                HotkeyGroup(color: Theme.clay, items: [
                     ("Q", "mute"), ("⇧Q", "master"), ("⌘⇧Q", "all"),
                 ])
             }
 
             HStack(spacing: 20) {
                 // Muting continued
-                HotkeyGroup(color: Theme.red, items: [
+                HotkeyGroup(color: Theme.clay, items: [
                     ("X", "choke"),
                 ])
 
-                // Sound — green
-                HotkeyGroup(color: Theme.green, items: [
+                // Sound — forest
+                HotkeyGroup(color: Theme.forest, items: [
                     ("NUM0-9", "vol"), ("P", "velocity"),
                     ("M", "metro"), ("R", "looper"),
                 ])
 
-                // Edit — amber
-                HotkeyGroup(color: Theme.amber, items: [
+                // Edit — wheat
+                HotkeyGroup(color: Theme.wheat, items: [
                     ("C", "clear"), ("Z", "undo"), ("B", "bpm"), ("[]", "bars"),
                 ])
 
                 // Oracle
-                HotkeyGroup(color: Theme.green, items: [
+                HotkeyGroup(color: Theme.forest, items: [
                     ("O", "oracle"),
                 ])
             }
@@ -160,7 +146,7 @@ struct HotkeyHUD: View {
         .padding(.horizontal, 20)
         .padding(.vertical, 8)
         .frame(maxWidth: .infinity)
-        .background(Color(red: 0.065, green: 0.06, blue: 0.053))
+        .background(Theme.canvasBg)
     }
 }
 
@@ -175,11 +161,10 @@ struct HotkeyGroup: View {
                     Text(key)
                         .font(.system(size: 16, design: .monospaced).bold())
                         .foregroundColor(color)
-                        .shadow(color: color.opacity(0.5), radius: 5)
+                        .shadow(color: color.opacity(0.3), radius: 4)
                     Text(action)
                         .font(.system(size: 15, design: .monospaced))
-                        .foregroundColor(.white.opacity(0.7))
-                        .shadow(color: .white.opacity(0.3), radius: 4)
+                        .foregroundColor(Theme.text.opacity(0.6))
                 }
             }
         }

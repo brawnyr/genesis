@@ -1,51 +1,62 @@
 import SwiftUI
 
 enum Theme {
-    // Background
-    static let bg = Color(red: 0.102, green: 0.098, blue: 0.090)       // #1a1917
+    // Background — warm brown, never cold black
+    static let bg = Color(red: 0.165, green: 0.145, blue: 0.125)            // #2a2520
 
-    // Text — bright white, always pops
-    static let text = Color.white
+    // Canvas — deep brown, slightly deeper than bg
+    static let canvasBg = Color(red: 0.133, green: 0.118, blue: 0.102)      // #221e1a
 
-    // Claude blue — active state, playing, channels
-    static let blue = Color(red: 0.384, green: 0.514, blue: 0.886)     // #6283e2
+    // Text — cream, warm not sterile white
+    static let text = Color(red: 0.941, green: 0.922, blue: 0.890)          // #f0ebe3
 
-    // Ice blue — frozen, not faded
-    static let ice = Color(red: 0.39, green: 0.75, blue: 1.0)          // #64beff
+    // Sage — active state, playing, channels (was "blue")
+    static let sage = Color(red: 0.478, green: 0.549, blue: 0.314)          // #7a8c50
 
-    // Orange — hot state, recording, triggers, alive
-    static let orange = Color(red: 0.855, green: 0.482, blue: 0.290)   // #da7b4a
+    // Moss — system messages, muted/frozen state (was "ice")
+    static let moss = Color(red: 0.604, green: 0.667, blue: 0.471)          // #9aaa78
 
-    // Status colors
-    static let green = Color(red: 0.373, green: 0.667, blue: 0.431)    // #5faa6e
-    static let red = Color(red: 0.831, green: 0.337, blue: 0.306)      // #d4564e
-    static let amber = Color(red: 0.831, green: 0.635, blue: 0.306)    // #d4a24e
+    // Terracotta — hot state, recording, triggers, alive (was "orange")
+    static let terracotta = Color(red: 0.769, green: 0.451, blue: 0.290)    // #c4734a
 
-    // Pad channel colors — bright, solid, clean
+    // Forest — oracle, success, positive feedback (was "green")
+    static let forest = Color(red: 0.420, green: 0.502, blue: 0.251)        // #6b8040
+
+    // Clay — warnings, pad labels, stop (was "red")
+    static let clay = Color(red: 0.710, green: 0.380, blue: 0.306)          // #b5614e
+
+    // Wheat — edit mode, secondary warnings (was "amber")
+    static let wheat = Color(red: 0.769, green: 0.604, blue: 0.322)         // #c49a52
+
+    // Subtle — warm gray for empty slots, hints, disabled
+    static let subtle = Color(red: 0.227, green: 0.208, blue: 0.188)        // #3a3530
+
+    // Pad channel colors — earth spectrum
     static let padColors: [Color] = [
-        Color(red: 0.95, green: 0.30, blue: 0.30),  // kicks — red
-        Color(red: 0.95, green: 0.60, blue: 0.20),  // snares — orange
-        Color(red: 0.95, green: 0.85, blue: 0.25),  // hats — yellow
-        Color(red: 0.30, green: 0.85, blue: 0.45),  // perc — green
-        Color(red: 0.25, green: 0.75, blue: 0.95),  // bass — cyan
-        Color(red: 0.45, green: 0.45, blue: 0.95),  // keys — blue
-        Color(red: 0.75, green: 0.40, blue: 0.95),  // vox — purple
-        Color(red: 0.95, green: 0.45, blue: 0.70),  // fx — pink
+        Color(red: 0.659, green: 0.353, blue: 0.259),  // kicks — sienna    #a85a42
+        Color(red: 0.769, green: 0.502, blue: 0.314),  // snares — clay     #c48050
+        Color(red: 0.769, green: 0.627, blue: 0.333),  // hats — wheat      #c4a055
+        Color(red: 0.478, green: 0.549, blue: 0.271),  // perc — olive      #7a8c45
+        Color(red: 0.353, green: 0.478, blue: 0.290),  // bass — forest     #5a7a4a
+        Color(red: 0.545, green: 0.431, blue: 0.306),  // keys — umber      #8b6e4e
+        Color(red: 0.627, green: 0.439, blue: 0.408),  // vox — dusty rose  #a07068
+        Color(red: 0.722, green: 0.627, blue: 0.439),  // fx — sand         #b8a070
     ]
 
     static func padColor(_ index: Int) -> Color {
         padColors[index % padColors.count]
     }
 
-    // Subtle — only for empty slots and track background
-    static let subtle = Color(white: 0.25)
-
-    // Fonts — bumped sizes for readability
+    // Fonts
     static let mono = Font.system(size: 16, design: .monospaced)
     static let monoSmall = Font.system(size: 14, design: .monospaced)
     static let monoLarge = Font.system(size: 22, design: .monospaced)
 
-    // Canvas
-    static let canvasBg = Color(red: 0.075, green: 0.071, blue: 0.063)  // #131210
-
+    // Legacy aliases — use new names in new code
+    static let blue = sage
+    static let ice = moss
+    static let orange = terracotta
+    static let green = forest
+    static let red = clay
+    static let amber = wheat
 }

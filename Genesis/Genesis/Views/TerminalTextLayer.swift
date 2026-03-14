@@ -21,8 +21,8 @@ struct TerminalTextLayer: View {
                     // Blinking cursor
                     Text("_")
                         .font(.system(size: 14, design: .monospaced))
-                        .foregroundColor(Theme.orange)
-                        .shadow(color: Theme.orange.opacity(0.6), radius: 6)
+                        .foregroundColor(Theme.terracotta)
+                        .shadow(color: Theme.terracotta.opacity(0.4), radius: 4)
                         .opacity(cursorVisible ? 0.7 : 0)
                         .id("cursor")
                 }
@@ -58,27 +58,25 @@ struct TerminalLineView: View {
             return Theme.padColor(padIdx)
         }
         switch line.kind {
-        case .system:    return Theme.ice
-        case .transport: return Theme.ice
-        case .hit:       return Theme.orange
-        case .state:     return Color.white
-        case .capture:   return Theme.orange
-        case .browse:    return Theme.ice
-        case .oracle:    return Theme.green
+        case .system:    return Theme.moss
+        case .transport: return Theme.moss
+        case .hit:       return Theme.terracotta
+        case .state:     return Theme.text
+        case .capture:   return Theme.terracotta
+        case .browse:    return Theme.moss
+        case .oracle:    return Theme.forest
         }
     }
 
     var body: some View {
         HStack(alignment: .top, spacing: 0) {
             Text(line.timeString)
-                .foregroundColor(Color(white: 0.4))
-                .shadow(color: Color(white: 0.3).opacity(0.4), radius: 3)
+                .foregroundColor(Theme.subtle.opacity(0.8))
             Text(" > ")
-                .foregroundColor(color.opacity(0.5))
-                .shadow(color: color.opacity(0.3), radius: 3)
+                .foregroundColor(color.opacity(0.4))
             Text(line.text)
                 .foregroundColor(color)
-                .shadow(color: color.opacity(0.5), radius: 6)
+                .shadow(color: color.opacity(0.3), radius: 3)
         }
         .font(.system(size: 14, design: .monospaced))
         .opacity(opacity)

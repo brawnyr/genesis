@@ -299,7 +299,7 @@ class GenesisEngine: ObservableObject {
 
     }
 
-    // MARK: - Trigger roll editing
+    // MARK: - Hit editing
 
     func addHitToLayer(_ padIndex: Int, at position: Int, velocity: Int) {
         guard padIndex >= 0, padIndex < layers.count else { return }
