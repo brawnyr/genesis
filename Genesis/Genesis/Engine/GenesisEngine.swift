@@ -11,6 +11,7 @@ enum VelocityMode: String {
 struct AudioState {
     var position: Int = 0
     var isPlaying: Bool = false
+    var isRecording: Bool = true
     var bpm: Int = 165
     var barCount: Int = 4
     var metronomeOn: Bool = true
@@ -50,6 +51,7 @@ class GenesisEngine: ObservableObject {
             os_unfair_lock_unlock(&audioLock)
         }
     }
+    @Published var isRecording: Bool = true
     @Published var velocityMode: VelocityMode = .full
     var interpreter: EngineEventInterpreter?
 
@@ -227,6 +229,13 @@ class GenesisEngine: ObservableObject {
         layers[index].isMuted.toggle()
         os_unfair_lock_lock(&audioLock)
         audio.layers[index].isMuted = layers[index].isMuted
+        os_unfair_lock_unlock(&audioLock)
+    }
+
+    func toggleRecording() {
+        isRecording.toggle()
+        os_unfair_lock_lock(&audioLock)
+        audio.isRecording = isRecording
         os_unfair_lock_unlock(&audioLock)
     }
 

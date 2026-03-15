@@ -19,6 +19,7 @@ extension ContentView {
         static let p: UInt16 = 35
             static let m: UInt16 = 46
         static let r: UInt16 = 15
+        static let y: UInt16 = 16
         static let o: UInt16 = 31
         static let returnKey: UInt16 = 36
         static let escape: UInt16 = 53
@@ -210,23 +211,30 @@ extension ContentView {
                 interpreter.appendLine("saved to ~/recordings", kind: .capture)
             }
         case Key.t:
-            mode = mode == .browse ? .normal : .browse
-            if mode == .browse {
-                let padIndex = engine.activePadIndex
-                let folder = PadBank.spliceFolderNames[padIndex]
-                // Force cache refresh on browse open
-                cachedBrowserPadIndex = -1
-                refreshBrowserCache()
-                // Auto-select current sample in the list
-                if let currentSample = engine.padBank.pads[padIndex].sample {
-                    if let idx = cachedBrowserFiles.firstIndex(where: { $0.deletingPathExtension().lastPathComponent == currentSample.name }) {
-                        browserIndex = idx
+            if hasShift {
+                // Shift+T: toggle sample browser
+                mode = mode == .browse ? .normal : .browse
+                if mode == .browse {
+                    let padIndex = engine.activePadIndex
+                    let folder = PadBank.spliceFolderNames[padIndex]
+                    cachedBrowserPadIndex = -1
+                    refreshBrowserCache()
+                    if let currentSample = engine.padBank.pads[padIndex].sample {
+                        if let idx = cachedBrowserFiles.firstIndex(where: { $0.deletingPathExtension().lastPathComponent == currentSample.name }) {
+                            browserIndex = idx
+                        }
+                    }
+                    interpreter.appendLine("browser open → \(folder)", kind: .browse)
+                    if let name = browserFileName() {
+                        interpreter.appendLine("browse → \(name)", kind: .browse)
                     }
                 }
-                interpreter.appendLine("browser open → \(folder)", kind: .browse)
-                if let name = browserFileName() {
-                    interpreter.appendLine("browse → \(name)", kind: .browse)
-                }
+            } else {
+                // T: toggle looper on active pad
+                let idx = engine.activePadIndex
+                engine.toggleLooper(pad: idx)
+                let looper = engine.layers[idx].looper
+                interpreter.appendLine("pad \(idx + 1) \(padName(idx)) looper \(looper ? "on" : "off")", kind: .state)
             }
         case Key.a, Key.leftArrow:
             engine.activePadIndex = (engine.activePadIndex - 1 + PadBank.padCount) % PadBank.padCount
@@ -267,10 +275,7 @@ extension ContentView {
         case Key.escape:
             engine.stop()
             interpreter.appendLine("■ stopped", kind: .transport)
-        case Key.leftBracket:
-            engine.cycleBarCount(forward: false)
-            interpreter.appendLine("bars → \(engine.transport.barCount)", kind: .transport)
-        case Key.rightBracket:
+        case Key.y:
             engine.cycleBarCount(forward: true)
             interpreter.appendLine("bars → \(engine.transport.barCount)", kind: .transport)
         case Key.p:
@@ -288,10 +293,8 @@ extension ContentView {
             let name = padName(engine.activePadIndex)
             interpreter.appendLine("pad \(engine.activePadIndex + 1) \(name) choke \(choke ? "on" : "off")", kind: .state)
         case Key.r:
-            let idx = engine.activePadIndex
-            engine.toggleLooper(pad: idx)
-            let looper = engine.layers[idx].looper
-            interpreter.appendLine("pad \(idx + 1) \(padName(idx)) looper \(looper ? "on" : "off")", kind: .state)
+            engine.toggleRecording()
+            interpreter.appendLine("record \(engine.isRecording ? "armed" : "off")", kind: .capture)
         case Key.o:
             if let oracle = interpreter.oracle {
                 oracle.isEnabled.toggle()

@@ -46,8 +46,8 @@ extension GenesisEngine {
 
         audio.activePadIndex = padIndex
 
-        // Record hits whenever the loop is playing — all pads always armed
-        if record && audio.isPlaying {
+        // Record hits when playing AND recording is armed
+        if record && audio.isPlaying && audio.isRecording {
             audio.layers[padIndex].addHit(at: audio.position, velocity: velocity)
             audio.layers[padIndex].name = padBank.pads[padIndex].name
             audio.layers[padIndex].hasNewHits = true

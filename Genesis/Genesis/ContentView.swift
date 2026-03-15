@@ -125,13 +125,12 @@ struct HotkeyHUD: View {
             HStack(spacing: 24) {
                 // Transport — sage
                 HotkeyGroup(color: Theme.sage, items: [
-                    ("SPC", "play/stop"), ("ESC", "stop"), ("G", "record"),
+                    ("SPC", "play/stop"), ("ESC", "stop"), ("R", "rec"),
                 ])
 
                 // Pads — chrome
                 HotkeyGroup(color: Theme.chrome, items: [
-                    ("A/D", "pad ←→"),
-                    ("T", "browse"), ("W/S", "nav"),
+                    ("←→", "pad"), ("⇧T", "browse"), ("W/S", "nav"),
                 ])
 
                 // Muting — clay
@@ -149,12 +148,12 @@ struct HotkeyHUD: View {
                 // Sound — forest
                 HotkeyGroup(color: Theme.forest, items: [
                     ("NUM0-9", "vol"), ("P", "velocity"),
-                    ("M", "metro"), ("R", "looper"),
+                    ("M", "metro"), ("T", "looper"),
                 ])
 
                 // Edit — wheat
                 HotkeyGroup(color: Theme.wheat, items: [
-                    ("C", "clear"), ("Z", "undo"), ("B", "bpm"), ("[]", "bars"),
+                    ("C", "clear"), ("Z", "undo"), ("B", "bpm"), ("Y", "bars"), ("G", "bounce"),
                 ])
 
                 // Oracle
