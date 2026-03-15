@@ -10,6 +10,7 @@ struct Sample {
     let left: [Float]
     let right: [Float]
     let sampleRate: Double
+    var peakDb: Float = 0  // cached at load time
 
     var frameCount: Int { left.count }
 
@@ -17,10 +18,10 @@ struct Sample {
         Double(frameCount) / sampleRate * 1000.0
     }
 
-    /// Peak amplitude in dBFS. 0dB = full scale, positive = over unity.
-    var peakDb: Float {
+    /// Compute peak dBFS from sample data.
+    static func computePeakDb(left: [Float], right: [Float]) -> Float {
         var peak: Float = 0
-        for i in 0..<frameCount {
+        for i in 0..<left.count {
             peak = max(peak, abs(left[i]), abs(right[i]))
         }
         return peak > 0 ? 20 * log10(peak) : -100
@@ -80,6 +81,7 @@ struct Sample {
         }
 
         let name = url.deletingPathExtension().lastPathComponent
-        return Sample(name: name, left: leftData, right: rightData, sampleRate: Transport.sampleRate)
+        let peak = computePeakDb(left: leftData, right: rightData)
+        return Sample(name: name, left: leftData, right: rightData, sampleRate: Transport.sampleRate, peakDb: peak)
     }
 }
