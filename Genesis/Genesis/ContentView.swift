@@ -60,11 +60,14 @@ struct ContentView: View {
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
 
-            HStack(spacing: 0) {
+            HStack(spacing: 1) {
                 // Left: main content area
                 VStack(spacing: 0) {
                     // Hotkey HUD — top
                     HotkeyHUD()
+
+                    // Separator between HotkeyHUD and terminal
+                    Rectangle().fill(Theme.separator).frame(height: 1)
 
                     // Terminal
                     ZStack {
@@ -80,15 +83,21 @@ struct ContentView: View {
                         }
                     }
 
+                    // Separator between terminal and bottom bar
+                    Rectangle().fill(Theme.separator).frame(height: 1)
+
                     // Bottom bar: master + pads
                     HStack(spacing: 0) {
                         GHUD(engine: engine)
-                            .frame(width: 320)
+                            .frame(width: 360)
+
+                        // Separator between GHUD and PadSelect
+                        Rectangle().fill(Theme.separator).frame(width: 1)
 
                         PadSelect(engine: engine)
                             .frame(maxWidth: .infinity)
                     }
-                    .frame(height: 220)
+                    .frame(height: 240)
                     .background(Theme.canvasBg)
                 }
 
@@ -104,7 +113,7 @@ struct ContentView: View {
             }
 
         }
-        .frame(minWidth: 900, minHeight: 600)
+        .frame(minWidth: 960, minHeight: 640)
     }
 }
 
@@ -112,15 +121,15 @@ struct ContentView: View {
 
 struct HotkeyHUD: View {
     var body: some View {
-        VStack(spacing: 6) {
-            HStack(spacing: 20) {
+        VStack(spacing: 8) {
+            HStack(spacing: 24) {
                 // Transport — sage
                 HotkeyGroup(color: Theme.sage, items: [
                     ("SPC", "play/stop"), ("ESC", "stop"), ("G", "record"),
                 ])
 
-                // Pads — terracotta
-                HotkeyGroup(color: Theme.terracotta, items: [
+                // Pads — chrome
+                HotkeyGroup(color: Theme.chrome, items: [
                     ("A/D", "pad ←→"),
                     ("T", "browse"), ("W/S", "nav"),
                 ])
@@ -131,7 +140,7 @@ struct HotkeyHUD: View {
                 ])
             }
 
-            HStack(spacing: 20) {
+            HStack(spacing: 24) {
                 // Muting continued
                 HotkeyGroup(color: Theme.clay, items: [
                     ("X", "choke"),
@@ -154,8 +163,8 @@ struct HotkeyHUD: View {
                 ])
             }
         }
-        .padding(.horizontal, 20)
-        .padding(.vertical, 8)
+        .padding(.horizontal, 24)
+        .padding(.vertical, 10)
         .frame(maxWidth: .infinity)
         .background(Theme.canvasBg)
     }
@@ -166,16 +175,16 @@ struct HotkeyGroup: View {
     let items: [(String, String)]
 
     var body: some View {
-        HStack(spacing: 10) {
+        HStack(spacing: 12) {
             ForEach(items, id: \.0) { key, action in
                 HStack(spacing: 3) {
                     Text(key)
-                        .font(.system(size: 16, design: .monospaced).bold())
+                        .font(Theme.monoLarge)
                         .foregroundColor(color)
                         .shadow(color: color.opacity(0.3), radius: 4)
                     Text(action)
-                        .font(.system(size: 15, design: .monospaced))
-                        .foregroundColor(Theme.text.opacity(0.6))
+                        .font(Theme.monoSmall)
+                        .foregroundColor(Theme.text.opacity(0.5))
                 }
             }
         }

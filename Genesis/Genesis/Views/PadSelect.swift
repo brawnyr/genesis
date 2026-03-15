@@ -8,14 +8,15 @@ struct PadSelect: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
             Text("PAD_SELECT")
-                .font(.system(size: 11, design: .monospaced).bold())
-                .foregroundColor(Theme.terracotta)
-                .shadow(color: Theme.terracotta.opacity(0.3), radius: 4)
-                .padding(.horizontal, 10)
-                .padding(.top, 6)
-                .padding(.bottom, 4)
+                .font(Theme.sectionLabel)
+                .foregroundColor(Theme.chrome)
+                .shadow(color: Theme.chrome.opacity(0.3), radius: 6)
+                .tracking(3)
+                .padding(.horizontal, 12)
+                .padding(.top, 8)
+                .padding(.bottom, 6)
 
-            HStack(spacing: 2) {
+            HStack(spacing: 3) {
                 ForEach(0..<PadBank.padCount, id: \.self) { padIdx in
                     let layer = engine.layers[padIdx]
                     let isActive = padIdx == engine.activePadIndex
@@ -54,7 +55,7 @@ private struct PadCell: View {
         VStack(spacing: 3) {
             // Pad name
             Text(name)
-                .font(.system(size: isActive ? 16 : 11, design: .monospaced).bold())
+                .font(.system(size: isActive ? 20 : 13, design: .monospaced).bold())
                 .foregroundColor(layer.isMuted ? Theme.subtle : padColor)
                 .shadow(color: isActive ? padColor.opacity(0.5) : .clear, radius: 6)
 
@@ -66,16 +67,16 @@ private struct PadCell: View {
                     RoundedRectangle(cornerRadius: 2)
                         .fill(Theme.subtle.opacity(0.4))
                     RoundedRectangle(cornerRadius: 2)
-                        .fill(layer.isMuted ? Theme.subtle : padColor.opacity(0.6))
+                        .fill(layer.isMuted ? Theme.subtle : padColor.opacity(0.75))
                         .frame(height: fillH)
                 }
             }
-            .frame(width: isActive ? 14 : 8, height: 40)
+            .frame(width: isActive ? 18 : 10, height: 50)
 
             // Volume %
             Text("\(Int(layer.volume * 100))")
-                .font(.system(size: 10, design: .monospaced))
-                .foregroundColor(Theme.text.opacity(0.5))
+                .font(Theme.monoTiny)
+                .foregroundColor(Theme.text.opacity(0.4))
 
             // Effects indicators
             HStack(spacing: 2) {
@@ -105,21 +106,21 @@ private struct PadCell: View {
             // Hit count
             if !layer.hits.isEmpty {
                 Text("\(layer.hits.count)")
-                    .font(.system(size: 9, design: .monospaced))
-                    .foregroundColor(padColor.opacity(0.4))
+                    .font(Theme.monoTiny)
+                    .foregroundColor(padColor.opacity(0.5))
             }
         }
-        .padding(.vertical, 6)
+        .padding(.vertical, 8)
         .padding(.horizontal, 2)
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .background(
             RoundedRectangle(cornerRadius: 4)
-                .fill(isActive ? padColor.opacity(0.08) : Color.clear)
-                .shadow(color: isActive ? padColor.opacity(0.15) : .clear, radius: 6)
+                .fill(isActive ? padColor.opacity(0.12) : Color.clear)
+                .shadow(color: isActive ? padColor.opacity(0.2) : .clear, radius: 8)
         )
         .overlay(
             RoundedRectangle(cornerRadius: 4)
-                .stroke(isActive ? padColor.opacity(0.3) : Color.clear, lineWidth: 1)
+                .stroke(isActive ? padColor.opacity(0.4) : Color.clear, lineWidth: 1)
         )
     }
 }
@@ -130,9 +131,9 @@ private struct EffectDot: View {
 
     var body: some View {
         Text(label)
-            .font(.system(size: 8, design: .monospaced).bold())
+            .font(Theme.monoTiny.bold())
             .foregroundColor(color)
-            .frame(width: 12, height: 12)
-            .background(Circle().fill(color.opacity(0.15)))
+            .frame(width: 16, height: 16)
+            .background(Circle().fill(color.opacity(0.2)))
     }
 }

@@ -22,58 +22,58 @@ struct BeatTrackerHUD: View {
     }
 
     var body: some View {
-        HStack(spacing: 20) {
+        HStack(spacing: 28) {
             // BPM
             HStack(alignment: .lastTextBaseline, spacing: 4) {
                 Text("\(engine.transport.bpm)")
-                    .font(.system(size: 32, design: .monospaced).bold())
-                    .foregroundColor(Theme.text)
-                    .shadow(color: Theme.text.opacity(0.3), radius: 4)
+                    .font(Theme.hero)
+                    .foregroundColor(Theme.chrome)
+                    .shadow(color: Theme.chrome.opacity(0.3), radius: 8)
                 Text("BPM")
-                    .font(.system(size: 10, design: .monospaced).bold())
-                    .foregroundColor(Theme.terracotta)
+                    .font(Theme.monoSmall.bold())
+                    .foregroundColor(Theme.sage)
             }
 
             // Divider
             Rectangle()
-                .fill(Theme.terracotta.opacity(0.3))
-                .frame(width: 1, height: 28)
+                .fill(Theme.separator)
+                .frame(width: 1, height: 36)
 
             // Beat position
             if engine.transport.isPlaying {
                 HStack(alignment: .lastTextBaseline, spacing: 4) {
                     Text(beatPosition)
-                        .font(.system(size: 32, design: .monospaced).bold())
-                        .foregroundColor(Theme.text)
-                        .shadow(color: Theme.text.opacity(0.3), radius: 4)
+                        .font(Theme.hero)
+                        .foregroundColor(Theme.chrome)
+                        .shadow(color: Theme.chrome.opacity(0.3), radius: 8)
                     Text("BEAT")
-                        .font(.system(size: 10, design: .monospaced).bold())
-                        .foregroundColor(Theme.terracotta)
+                        .font(Theme.monoSmall.bold())
+                        .foregroundColor(Theme.sage)
                 }
             } else {
                 Text("—")
-                    .font(.system(size: 32, design: .monospaced).bold())
-                    .foregroundColor(Theme.text.opacity(0.2))
+                    .font(Theme.hero)
+                    .foregroundColor(Theme.text.opacity(0.15))
             }
 
             // Divider
             Rectangle()
-                .fill(Theme.terracotta.opacity(0.3))
-                .frame(width: 1, height: 28)
+                .fill(Theme.separator)
+                .frame(width: 1, height: 36)
 
             // Bars + loop length
             HStack(alignment: .lastTextBaseline, spacing: 4) {
                 Text("\(engine.transport.barCount)")
-                    .font(.system(size: 32, design: .monospaced).bold())
-                    .foregroundColor(Theme.text)
-                    .shadow(color: Theme.text.opacity(0.3), radius: 4)
+                    .font(Theme.hero)
+                    .foregroundColor(Theme.chrome)
+                    .shadow(color: Theme.chrome.opacity(0.3), radius: 8)
                 VStack(alignment: .leading, spacing: 1) {
                     Text("BAR")
-                        .font(.system(size: 10, design: .monospaced).bold())
-                        .foregroundColor(Theme.terracotta)
+                        .font(Theme.monoSmall.bold())
+                        .foregroundColor(Theme.sage)
                     Text(String(format: "%.1fs", loopSeconds))
-                        .font(.system(size: 9, design: .monospaced))
-                        .foregroundColor(Theme.text.opacity(0.35))
+                        .font(Theme.monoTiny)
+                        .foregroundColor(Theme.text.opacity(0.3))
                 }
             }
 
@@ -82,25 +82,25 @@ struct BeatTrackerHUD: View {
                 if engine.transport.isPlaying {
                     Circle()
                         .fill(Theme.forest)
-                        .frame(width: 8, height: 8)
-                        .shadow(color: Theme.forest.opacity(0.5), radius: 4)
+                        .frame(width: 10, height: 10)
+                        .shadow(color: Theme.forest.opacity(0.5), radius: 5)
                 }
                 if engine.capture.state == .on {
                     Circle()
                         .fill(Theme.clay)
-                        .frame(width: 8, height: 8)
-                        .shadow(color: Theme.clay.opacity(0.5), radius: 4)
+                        .frame(width: 10, height: 10)
+                        .shadow(color: Theme.clay.opacity(0.5), radius: 5)
                 }
                 if engine.metronome.isOn {
                     Circle()
                         .fill(Theme.terracotta)
-                        .frame(width: 8, height: 8)
-                        .shadow(color: Theme.terracotta.opacity(0.4), radius: 4)
+                        .frame(width: 10, height: 10)
+                        .shadow(color: Theme.terracotta.opacity(0.4), radius: 5)
                 }
             }
         }
-        .padding(.horizontal, 20)
-        .padding(.vertical, 10)
+        .padding(.horizontal, 24)
+        .padding(.vertical, 12)
         .background(
             RoundedRectangle(cornerRadius: 8)
                 .fill(Theme.canvasBg.opacity(0.95))
@@ -108,7 +108,7 @@ struct BeatTrackerHUD: View {
         )
         .overlay(
             RoundedRectangle(cornerRadius: 8)
-                .stroke(Theme.terracotta.opacity(0.15), lineWidth: 1)
+                .stroke(Theme.separator, lineWidth: 1)
         )
     }
 }

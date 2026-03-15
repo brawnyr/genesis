@@ -10,7 +10,7 @@ struct TerminalTextLayer: View {
     var body: some View {
         ScrollViewReader { proxy in
             ScrollView(.vertical, showsIndicators: false) {
-                VStack(alignment: .leading, spacing: 1) {
+                VStack(alignment: .leading, spacing: 2) {
                     ForEach(Array(interpreter.lines.enumerated()), id: \.element.id) { index, line in
                         TerminalLineView(
                             line: line,
@@ -20,14 +20,14 @@ struct TerminalTextLayer: View {
 
                     // Blinking cursor
                     Text("_")
-                        .font(.system(size: 14, design: .monospaced))
+                        .font(.system(size: 17, design: .monospaced))
                         .foregroundColor(Theme.terracotta)
                         .shadow(color: Theme.terracotta.opacity(0.4), radius: 4)
                         .opacity(cursorVisible ? 0.7 : 0)
                         .id("cursor")
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
-                .padding(16)
+                .padding(20)
             }
             .onChange(of: interpreter.lines.count) { _, _ in
                 withAnimation(.easeOut(duration: 0.15)) {
@@ -71,14 +71,14 @@ struct TerminalLineView: View {
     var body: some View {
         HStack(alignment: .top, spacing: 0) {
             Text(line.timeString)
-                .foregroundColor(Theme.subtle.opacity(0.8))
+                .foregroundColor(Theme.subtle.opacity(0.6))
             Text(" > ")
                 .foregroundColor(color.opacity(0.4))
             Text(line.text)
                 .foregroundColor(color)
-                .shadow(color: color.opacity(0.3), radius: 3)
+                .shadow(color: color.opacity(0.35), radius: 4)
         }
-        .font(.system(size: 14, design: .monospaced))
+        .font(Theme.mono)
         .opacity(opacity)
     }
 }

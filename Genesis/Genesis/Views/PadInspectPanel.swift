@@ -10,14 +10,14 @@ struct InspectorSectionHeader: View {
     var body: some View {
         HStack(spacing: 6) {
             Text("▶")
-                .font(.system(size: 14, design: .monospaced))
+                .font(Theme.sectionLabel)
                 .foregroundColor(color)
                 .shadow(color: color.opacity(0.5), radius: 4)
             Text(title)
-                .font(.system(size: 14, design: .monospaced))
-                .foregroundColor(Theme.text)
-                .shadow(color: Theme.text.opacity(0.3), radius: 4)
-                .tracking(1.5)
+                .font(Theme.sectionLabel)
+                .foregroundColor(Theme.chrome)
+                .shadow(color: Theme.chrome.opacity(0.3), radius: 4)
+                .tracking(2)
         }
     }
 }
@@ -38,14 +38,14 @@ struct InspectorRow: View {
     var body: some View {
         HStack(spacing: 0) {
             Text(label)
-                .foregroundColor(Theme.text.opacity(0.7))
+                .foregroundColor(Theme.text.opacity(0.5))
                 .frame(width: labelWidth, alignment: .leading)
             Text(value)
-                .foregroundColor(highlight ? Theme.terracotta : Theme.text)
+                .foregroundColor(highlight ? Theme.terracotta : Theme.chrome)
                 .shadow(color: highlight ? Theme.terracotta.opacity(0.4) : .clear, radius: 4)
         }
-        .font(.system(size: 16, design: .monospaced))
-        .padding(.vertical, 3)
+        .font(Theme.mono)
+        .padding(.vertical, 4)
     }
 }
 
@@ -55,28 +55,28 @@ struct ChokeBadge: View {
     var body: some View {
         HStack(spacing: 8) {
             Text("CHOKE")
-                .foregroundColor(Theme.text.opacity(0.7))
+                .foregroundColor(Theme.text.opacity(0.5))
                 .frame(width: 50, alignment: .leading)
             Text(isOn ? "ON" : "OFF")
-                .font(.system(size: 15, design: .monospaced).bold())
-                .foregroundColor(isOn ? Theme.terracotta : Theme.text.opacity(0.5))
+                .font(.system(size: 16, design: .monospaced).bold())
+                .foregroundColor(isOn ? Theme.sage : Theme.text.opacity(0.5))
                 .padding(.horizontal, 10)
                 .padding(.vertical, 3)
                 .background(
                     RoundedRectangle(cornerRadius: 3)
-                        .fill(isOn ? Theme.terracotta.opacity(0.12) : Color.clear)
+                        .fill(isOn ? Theme.sage.opacity(0.12) : Color.clear)
                 )
                 .overlay(
                     RoundedRectangle(cornerRadius: 3)
-                        .stroke(isOn ? Theme.terracotta.opacity(0.25) : Theme.subtle.opacity(0.3), lineWidth: 1)
+                        .stroke(isOn ? Theme.sage.opacity(0.25) : Theme.subtle.opacity(0.3), lineWidth: 1)
                 )
-                .shadow(color: isOn ? Theme.terracotta.opacity(0.3) : .clear, radius: 4)
+                .shadow(color: isOn ? Theme.sage.opacity(0.3) : .clear, radius: 4)
             Text(isOn ? "(cuts previous note)" : "(stacks)")
-                .font(.system(size: 11, design: .monospaced))
+                .font(.system(size: 12, design: .monospaced))
                 .foregroundColor(Theme.text.opacity(0.5))
         }
-        .font(.system(size: 16, design: .monospaced))
-        .padding(.vertical, 3)
+        .font(Theme.mono)
+        .padding(.vertical, 4)
     }
 }
 
@@ -96,9 +96,10 @@ struct PadInspectPanel: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
             Text("INSPECT")
-                .font(.system(size: 11, design: .monospaced).bold())
-                .foregroundColor(Theme.terracotta)
-                .shadow(color: Theme.terracotta.opacity(0.3), radius: 4)
+                .font(Theme.sectionLabel)
+                .foregroundColor(Theme.chrome)
+                .shadow(color: Theme.chrome.opacity(0.3), radius: 6)
+                .tracking(3)
                 .padding(.bottom, 6)
 
             padReadoutView
@@ -106,7 +107,7 @@ struct PadInspectPanel: View {
             // Integrated sample browser
             if browsingPad {
                 Rectangle()
-                    .fill(Theme.text.opacity(0.06))
+                    .fill(Theme.separator)
                     .frame(height: 1)
                     .padding(.vertical, 10)
 
@@ -120,8 +121,8 @@ struct PadInspectPanel: View {
 
             Spacer()
         }
-        .padding(18)
-        .frame(width: 260, alignment: .topLeading)
+        .padding(20)
+        .frame(width: 280, alignment: .topLeading)
         .frame(maxHeight: .infinity)
         .background(Theme.canvasBg)
     }
@@ -130,13 +131,13 @@ struct PadInspectPanel: View {
         VStack(alignment: .leading, spacing: 0) {
             // Channel name — hero
             Text(folderName.uppercased())
-                .font(.system(size: 28, design: .monospaced).bold())
-                .foregroundColor(layer.isMuted ? Theme.moss : Theme.clay)
-                .tracking(2)
-                .shadow(color: (layer.isMuted ? Theme.moss : Theme.clay).opacity(0.3), radius: 8)
+                .font(Theme.title)
+                .foregroundColor(layer.isMuted ? Theme.moss : Theme.chrome)
+                .tracking(3)
+                .shadow(color: (layer.isMuted ? Theme.moss : Theme.chrome).opacity(0.3), radius: 8)
 
             Rectangle()
-                .fill(Theme.text.opacity(0.06))
+                .fill(Theme.separator)
                 .frame(height: 1)
                 .padding(.vertical, 10)
 
@@ -167,7 +168,7 @@ struct PadInspectPanel: View {
             .padding(.leading, 16)
 
             Rectangle()
-                .fill(Theme.text.opacity(0.06))
+                .fill(Theme.separator)
                 .frame(height: 1)
                 .padding(.vertical, 10)
 
@@ -189,7 +190,7 @@ struct PadInspectPanel: View {
             .padding(.leading, 16)
 
             Rectangle()
-                .fill(Theme.text.opacity(0.06))
+                .fill(Theme.separator)
                 .frame(height: 1)
                 .padding(.vertical, 10)
 
