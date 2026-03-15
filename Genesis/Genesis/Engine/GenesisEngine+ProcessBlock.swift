@@ -119,6 +119,36 @@ extension GenesisEngine {
         }
     }
 
+    // MARK: - Replay hit processing (no allocations)
+
+    private func processReplayHit(_ hit: Hit, layer: Layer, layerSwing: Float,
+                                   sixteenthLen: Int, loopLen: Int,
+                                   startPos: Int, endPos: Int, frameCount: Int) {
+        let swungFrame = SwingMath.swungPosition(
+            hitFrame: hit.position, swing: layerSwing,
+            sixteenthLength: sixteenthLen, loopLength: loopLen
+        )
+
+        let inBlock: Bool
+        if endPos <= loopLen {
+            inBlock = swungFrame >= startPos && swungFrame < endPos
+        } else {
+            inBlock = swungFrame >= startPos || swungFrame < (endPos - loopLen)
+        }
+        guard inBlock else { return }
+
+        if let sample = padBank.pads[layer.index].sample {
+            voicePool.killPad(layer.index)
+            let vel = velocityMode == .full ? Float(1.0) : Float(hit.velocity) / 127.0
+            var offset = swungFrame - startPos
+            if offset < 0 { offset += loopLen }
+            if let idx = voicePool.allocate(sample: sample, velocity: vel, padIndex: layer.index) {
+                voicePool.slots[idx].blockOffset = max(0, min(offset, frameCount - 1))
+            }
+            pendingReplayHits.append((padIndex: layer.index, position: hit.position, velocity: hit.velocity))
+        }
+    }
+
     // MARK: - Audio render callback
 
     func processBlock(frameCount: Int, intoLeft destL: UnsafeMutablePointer<Float>?, intoRight destR: UnsafeMutablePointer<Float>?) {
@@ -147,7 +177,8 @@ extension GenesisEngine {
             let startPos = audio.position
 
             // Check each layer for hits in this block's range (before draining MIDI,
-            // so live hits recorded this block don't retrigger via the loop path)
+            // so live hits recorded this block don't retrigger via the loop path).
+            // Scans in-place — no array allocations on the audio thread.
             for layerIdx in 0..<audio.layers.count {
                 let layer = audio.layers[layerIdx]
                 guard !layer.isMuted, !layer.hits.isEmpty else { continue }
@@ -161,48 +192,63 @@ extension GenesisEngine {
                 let scanStart = startPos - maxOffset
                 let scanEnd = endPos
 
-                let hits: [Hit]
+                // Iterate directly over the layer's hit array — no intermediate allocations.
+                // We scan two ranges when the window wraps around the loop boundary.
+                let allHits = layer.hits
+                let hitCount = allHits.count
+                guard hitCount > 0 else { continue }
+
+                // Scan range 1
+                let r1Start: Int
+                let r1End: Int
+                // Scan range 2 (used when scan window wraps)
+                var r2Start: Int = 0
+                var r2End: Int = 0
+
                 if scanStart < 0 {
-                    // Scan wraps backward past loop start
-                    let beforeWrap = layer.hits(inRange: (loopLen + scanStart)..<loopLen)
-                    let mainRange = layer.hits(inRange: 0..<min(scanEnd, loopLen))
-                    hits = beforeWrap + mainRange
+                    r1Start = loopLen + scanStart
+                    r1End = loopLen
+                    r2Start = 0
+                    r2End = min(scanEnd, loopLen)
                 } else if scanEnd <= loopLen {
-                    hits = layer.hits(inRange: scanStart..<scanEnd)
+                    r1Start = scanStart
+                    r1End = scanEnd
                 } else {
-                    let beforeWrap = layer.hits(inRange: scanStart..<loopLen)
-                    let afterWrap = layer.hits(inRange: 0..<(scanEnd - loopLen))
-                    hits = beforeWrap + afterWrap
+                    r1Start = scanStart
+                    r1End = loopLen
+                    r2Start = 0
+                    r2End = scanEnd - loopLen
                 }
 
-                for hit in hits {
-                    let swungFrame = SwingMath.swungPosition(
-                        hitFrame: hit.position,
-                        swing: layer.swing,
-                        sixteenthLength: sixteenthLen,
-                        loopLength: loopLen
-                    )
+                // Binary search for start of range 1
+                var lo = 0; var hi = hitCount
+                while lo < hi {
+                    let mid = (lo + hi) / 2
+                    if allHits[mid].position < r1Start { lo = mid + 1 } else { hi = mid }
+                }
 
-                    // Check if swung position falls within this block
-                    let inBlock: Bool
-                    if endPos <= loopLen {
-                        inBlock = swungFrame >= startPos && swungFrame < endPos
-                    } else {
-                        // Block wraps around loop boundary
-                        inBlock = swungFrame >= startPos || swungFrame < (endPos - loopLen)
+                // Process range 1
+                var idx = lo
+                while idx < hitCount && allHits[idx].position < r1End {
+                    processReplayHit(allHits[idx], layer: layer, layerSwing: layer.swing,
+                                     sixteenthLen: sixteenthLen, loopLen: loopLen,
+                                     startPos: startPos, endPos: endPos, frameCount: frameCount)
+                    idx += 1
+                }
+
+                // Process range 2 (if scan wraps)
+                if r2End > r2Start {
+                    lo = 0; hi = hitCount
+                    while lo < hi {
+                        let mid = (lo + hi) / 2
+                        if allHits[mid].position < r2Start { lo = mid + 1 } else { hi = mid }
                     }
-                    guard inBlock else { continue }
-
-                    if let sample = padBank.pads[layer.index].sample {
-                        voicePool.killPad(layer.index)
-                        let vel = velocityMode == .full ? Float(1.0) : Float(hit.velocity) / 127.0
-                        var offset = swungFrame - startPos
-                        if offset < 0 { offset += loopLen }
-                        if let idx = voicePool.allocate(sample: sample, velocity: vel, padIndex: layer.index) {
-                            voicePool.slots[idx].blockOffset = max(0, min(offset, frameCount - 1))
-                        }
-                        // Log loop-replayed hits to terminal (not added to layers — already recorded)
-                        pendingReplayHits.append((padIndex: layer.index, position: hit.position, velocity: hit.velocity))
+                    idx = lo
+                    while idx < hitCount && allHits[idx].position < r2End {
+                        processReplayHit(allHits[idx], layer: layer, layerSwing: layer.swing,
+                                         sixteenthLen: sixteenthLen, loopLen: loopLen,
+                                         startPos: startPos, endPos: endPos, frameCount: frameCount)
+                        idx += 1
                     }
                 }
             }
@@ -353,34 +399,9 @@ extension GenesisEngine {
             peak = max(peak, abs(outputBufferL[i]), abs(outputBufferR[i]))
         }
 
-        // Declick: apply short crossfade at loop boundary to eliminate pops
-        if wrapped {
-            let declickFrames = 88  // ~2ms at 44.1kHz
-            let fadeSamples = max(0, min(declickFrames, wrapFrame, frameCount - wrapFrame))
-            // Fade out leading into wrap point
-            for i in 0..<fadeSamples {
-                let gain = Float(i) / Float(fadeSamples)  // 0→1 going backward from wrap
-                let idx = wrapFrame - fadeSamples + i
-                if idx >= 0 {
-                    outputBufferL[idx] *= gain
-                    outputBufferR[idx] *= gain
-                }
-            }
-            // Fade in after wrap point
-            for i in 0..<fadeSamples {
-                let gain = Float(i) / Float(fadeSamples)  // 0→1
-                let idx = wrapFrame + i
-                if idx < frameCount {
-                    outputBufferL[idx] *= gain
-                    outputBufferR[idx] *= gain
-                }
-            }
-        }
-
-        if wrapped {
-            // Kill pad voices at loop boundary — let metronome clicks ring out
-            voicePool.killPads()
-        }
+        // MPC-style: voices ring through loop boundary naturally.
+        // Per-voice declick handles choke/retrigger pops.
+        // No output buffer crossfade, no blanket voice kill at wrap.
 
         // Copy into destination audio buffers
         if let destL = destL, let destR = destR {
