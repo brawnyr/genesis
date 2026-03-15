@@ -80,6 +80,7 @@ class EngineEventInterpreter: ObservableObject {
                      loopLengthFrames: Int = 0, barCount: Int = 4) {
         var intensities = padIntensities
         for hit in hits {
+            guard hit.padIndex >= 0, hit.padIndex < PadBank.padCount else { continue }
             let name = PadBank.spliceFolderNames[hit.padIndex].uppercased()
 
             let velNorm = Float(hit.velocity) / 127.0

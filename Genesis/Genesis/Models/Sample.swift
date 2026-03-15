@@ -21,7 +21,8 @@ struct Sample {
     /// Compute peak dBFS from sample data.
     static func computePeakDb(left: [Float], right: [Float]) -> Float {
         var peak: Float = 0
-        for i in 0..<left.count {
+        let count = min(left.count, right.count)
+        for i in 0..<count {
             peak = max(peak, abs(left[i]), abs(right[i]))
         }
         return peak > 0 ? 20 * log10(peak) : -100
@@ -77,6 +78,7 @@ struct Sample {
                 start: channelData[1], count: frameLen
             ))
         } else {
+            // Mono source — duplicate left channel
             rightData = leftData
         }
 

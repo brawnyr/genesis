@@ -74,19 +74,21 @@ extension GenesisEngine {
     }
 
     func handleCC(number: Int, value: Int) {
+        let padIdx = audio.activePadIndex
+        guard padIdx >= 0, padIdx < PadBank.padCount else { return }
         switch number {
         case 82: // Master volume (MiniLab fader 1)
             setMasterVolume(Float(value) / 127.0)
         case 74: // Reverb send (knob 1)
-            audio.layers[audio.activePadIndex].reverbSend = Float(value) / 127.0
+            audio.layers[padIdx].reverbSend = Float(value) / 127.0
         case 83: // Pad volume (MiniLab fader 2)
-            audio.layers[audio.activePadIndex].volume = Float(value) / 127.0
+            audio.layers[padIdx].volume = Float(value) / 127.0
         case 71: // Pan (knob 2)
-            audio.layers[audio.activePadIndex].pan = Float(value) / 127.0
+            audio.layers[padIdx].pan = Float(value) / 127.0
         case 76: // HP cutoff (knob 3)
-            audio.layers[audio.activePadIndex].hpCutoff = ccToFrequency(value)
+            audio.layers[padIdx].hpCutoff = ccToFrequency(value)
         case 77: // LP cutoff (knob 4)
-            audio.layers[audio.activePadIndex].lpCutoff = ccToFrequency(value)
+            audio.layers[padIdx].lpCutoff = ccToFrequency(value)
         case 114: // Browse encoder — pad select (relative: 1=CW, 127=CCW, 64=neutral)
             if value >= 1 && value <= 63 {
                 audio.activePadIndex = min(audio.activePadIndex + 1, PadBank.padCount - 1)
@@ -96,7 +98,7 @@ extension GenesisEngine {
         case 85: // Metronome volume (CC 85)
             audio.metronomeVolume = Float(value) / 127.0
         case 18: // Swing (knob 5)
-            audio.layers[audio.activePadIndex].swing = 0.5 + (Float(value) / 127.0) * 0.5
+            audio.layers[padIdx].swing = 0.5 + (Float(value) / 127.0) * 0.5
         case 17: // Fader 4 — kill all voices
             voicePool.killAll()
         default:
@@ -141,12 +143,13 @@ extension GenesisEngine {
         guard inBlock else { return }
 
         if let sample = padBank.pads[layer.index].sample {
-            voicePool.killPad(layer.index)
-            let vel = audio.velocityMode == .full ? Float(1.0) : Float(hit.velocity) / 127.0
             var offset = swungFrame - startPos
             if offset < 0 { offset += loopLen }
+            guard offset >= 0, offset < frameCount else { return }
+            voicePool.killPad(layer.index)
+            let vel = audio.velocityMode == .full ? Float(1.0) : Float(hit.velocity) / 127.0
             if let idx = voicePool.allocate(sample: sample, velocity: vel, padIndex: layer.index, pan: layer.pan) {
-                voicePool.slots[idx].blockOffset = max(0, min(offset, frameCount - 1))
+                voicePool.slots[idx].blockOffset = offset
             }
             pendingReplayHits.append((padIndex: layer.index, position: hit.position, velocity: hit.velocity))
         }
@@ -295,7 +298,7 @@ extension GenesisEngine {
                     if audio.layers[i].looper, !audio.layers[i].isMuted,
                        let sample = padBank.pads[i].sample {
                         voicePool.killPad(i)
-                        let vel: Float = audio.velocityMode == .full ? 1.0 : audio.layers[i].volume
+                        let vel: Float = 1.0
                         if let idx = voicePool.allocate(sample: sample, velocity: vel, padIndex: i, pan: audio.layers[i].pan) {
                             voicePool.slots[idx].blockOffset = max(0, min(wrapFrame, frameCount - 1))
                         }
@@ -384,9 +387,10 @@ extension GenesisEngine {
         // Process reverb — its own bus, tail rings out naturally
         reverbSendL.withUnsafeBufferPointer { sendLPtr in
             reverbSendR.withUnsafeBufferPointer { sendRPtr in
+                guard let sendL = sendLPtr.baseAddress, let sendR = sendRPtr.baseAddress else { return }
                 reverb.process(
-                    sendL: sendLPtr.baseAddress!,
-                    sendR: sendRPtr.baseAddress!,
+                    sendL: sendL,
+                    sendR: sendR,
                     intoLeft: &outputBufferL,
                     intoRight: &outputBufferR,
                     count: frameCount

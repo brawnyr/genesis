@@ -10,6 +10,7 @@ struct GenesisCapture {
     }
 
     var state: State = .off
+    private(set) var isWriting: Bool = false
     private var leftBuffers: [[Float]] = []
     private var rightBuffers: [[Float]] = []
 
@@ -18,6 +19,7 @@ struct GenesisCapture {
     }
 
     mutating func toggle() {
+        guard !isWriting else { return }
         switch state {
         case .off:
             state = .on

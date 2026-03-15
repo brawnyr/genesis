@@ -53,9 +53,10 @@ private struct PadCell: View {
         VStack(alignment: .leading, spacing: 1) {
             // Pad name — big
             Text(name)
-                .font(.system(size: isActive ? 22 : 17, design: .monospaced).bold())
-                .foregroundColor(layer.isMuted ? Theme.subtle : padColor)
+                .font(.system(size: 17, design: .monospaced).bold())
+                .foregroundColor(layer.isMuted ? Theme.subtle : (isActive ? padColor : padColor.opacity(0.6)))
                 .shadow(color: isActive ? padColor.opacity(0.5) : .clear, radius: 6)
+                .scaleEffect(isActive ? 1.25 : 1.0)
                 .frame(maxWidth: .infinity, alignment: .center)
                 .padding(.bottom, 2)
 

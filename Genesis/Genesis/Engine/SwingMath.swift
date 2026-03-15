@@ -19,7 +19,7 @@ enum SwingMath {
         // swing 0.5 = straight, swing 0.75 = triplet feel (2:1), swing 1.0 = max push
         let offset = Int(roundf((swing - 0.5) * 2.0 * Float(sixteenthLength)))
         let swung = hitFrame + offset
-        return ((swung % loopLength) + loopLength) % loopLength
+        return swung % loopLength
     }
 
     static func maxSwingOffset(sixteenthLength: Int) -> Int {

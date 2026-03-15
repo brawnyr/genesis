@@ -40,6 +40,9 @@ struct TerminalTextLayer: View {
                 cursorVisible.toggle()
             }
         }
+        .onDisappear {
+            cursorVisible = true
+        }
     }
 
     private func lineOpacity(index: Int, total: Int) -> Double {

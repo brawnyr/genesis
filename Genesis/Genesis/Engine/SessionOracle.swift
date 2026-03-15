@@ -237,7 +237,7 @@ class SessionOracle {
         request.timeoutInterval = 10
 
         URLSession.shared.dataTask(with: request) { [weak self] data, _, error in
-            defer { self?.pendingRequest = false }
+            defer { DispatchQueue.main.async { self?.pendingRequest = false } }
             guard let data, error == nil,
                   let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
                   let response = json["response"] as? String else { return }

@@ -107,14 +107,12 @@ struct Voice {
                             r = biquadProcessSample(r, coeffs: lpCoeffs, state: &lpStateR)
 
                             // Declick fade
-                            if isFading && fadeRem > 0 {
+                            if isFading {
+                                if fadeRem <= 0 { break }
                                 let fadeGain = Float(fadeRem) / fadeTotal
                                 l *= fadeGain
                                 r *= fadeGain
                                 fadeRem -= 1
-                            } else if isFading {
-                                // Fade complete — stop writing
-                                break
                             }
 
                             // Pan (equal-power, smoothed)

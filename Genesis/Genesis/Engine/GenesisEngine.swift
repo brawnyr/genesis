@@ -155,7 +155,9 @@ class GenesisEngine: ObservableObject {
 
     func setMasterVolume(_ value: Float) {
         let clamped = max(0, min(1.0, value))
+        os_unfair_lock_lock(&audioLock)
         audio.masterVolume = clamped
+        os_unfair_lock_unlock(&audioLock)
         DispatchQueue.main.async { [weak self] in
             self?.masterVolume = clamped
             self?.saveMasterVolume()

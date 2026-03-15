@@ -104,7 +104,8 @@ struct SampleBrowserView: View {
         .onChange(of: padIndex) { _, _ in scanFolder() }
         .onChange(of: selectedIndex) { _, newVal in
             if !files.isEmpty {
-                selectedIndex = min(max(0, newVal), files.count - 1)
+                let clamped = min(max(0, newVal), files.count - 1)
+                if clamped != newVal { selectedIndex = clamped }
             }
         }
     }

@@ -72,7 +72,8 @@ extension ContentView {
     ]}
 
     func padName(_ index: Int) -> String {
-        engine.padBank.pads[index].sample?.name.lowercased() ?? PadBank.spliceFolderNames[index]
+        guard index >= 0, index < PadBank.padCount else { return "" }
+        return engine.padBank.pads[index].sample?.name.lowercased() ?? PadBank.spliceFolderNames[index]
     }
 
     /// Refresh the cached file list for the current pad's folder.
