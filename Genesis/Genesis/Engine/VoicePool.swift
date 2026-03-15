@@ -9,6 +9,11 @@ struct Voice {
     private(set) var velocity: Float = 0
     private var position: Int = 0
 
+    // Declick: fade out over ~1ms (44 samples at 44.1kHz) when killed
+    private static let declickFrames = 44
+    private var fadeOut: Bool = false
+    private var fadeRemaining: Int = 0
+
     // Per-voice filter state (separate L/R for stereo independence)
     var hpStateL = BiquadState()
     var hpStateR = BiquadState()
@@ -26,12 +31,28 @@ struct Voice {
         self.position = 0
         self.blockOffset = 0
         self.active = true
+        self.fadeOut = false
+        self.fadeRemaining = 0
         self.hpStateL = BiquadState()
         self.hpStateR = BiquadState()
         self.lpStateL = BiquadState()
         self.lpStateR = BiquadState()
         self.prevPanL = cos(0.5 * .pi / 2.0)
         self.prevPanR = sin(0.5 * .pi / 2.0)
+    }
+
+    /// Begin a short fadeout instead of instant kill. Voice deactivates when fade completes.
+    mutating func kill() {
+        guard active, !fadeOut else { return }
+        fadeOut = true
+        fadeRemaining = Self.declickFrames
+    }
+
+    /// Hard kill — no fade. Use only when silence is already guaranteed (e.g. transport stop).
+    mutating func killHard() {
+        active = false
+        fadeOut = false
+        fadeRemaining = 0
     }
 
     /// Mixes this voice into stereo buffers with filtering and panning.
@@ -50,6 +71,7 @@ struct Voice {
         let toWrite = min(available, remaining)
         guard toWrite > 0 else {
             active = false
+            fadeOut = false
             return (true, 0)
         }
 
@@ -60,6 +82,10 @@ struct Voice {
         let targetPanR = sin(pan * .pi / 2.0)
 
         let pos = position
+        let isFading = fadeOut
+        var fadeRem = fadeRemaining
+        let fadeTotal = Float(Self.declickFrames)
+
         sample.left.withUnsafeBufferPointer { sL in
             sample.right.withUnsafeBufferPointer { sR in
                 left.withUnsafeMutableBufferPointer { outL in
@@ -80,6 +106,17 @@ struct Voice {
                             l = biquadProcessSample(l, coeffs: lpCoeffs, state: &lpStateL)
                             r = biquadProcessSample(r, coeffs: lpCoeffs, state: &lpStateR)
 
+                            // Declick fade
+                            if isFading && fadeRem > 0 {
+                                let fadeGain = Float(fadeRem) / fadeTotal
+                                l *= fadeGain
+                                r *= fadeGain
+                                fadeRem -= 1
+                            } else if isFading {
+                                // Fade complete — stop writing
+                                break
+                            }
+
                             // Pan (equal-power, smoothed)
                             l *= prevPanL
                             r *= prevPanR
@@ -94,9 +131,19 @@ struct Voice {
             }
         }
 
+        if isFading {
+            fadeRemaining = fadeRem
+            if fadeRem <= 0 {
+                active = false
+                fadeOut = false
+                return (true, peak)
+            }
+        }
+
         position += toWrite
         if position >= sample.frameCount {
             active = false
+            fadeOut = false
             return (true, peak)
         }
         return (false, peak)
@@ -119,27 +166,27 @@ struct VoicePool {
         return nil
     }
 
-    /// Kill all voices.
+    /// Kill all voices (hard — for transport stop where silence is expected).
     mutating func killAll() {
         for i in 0..<Self.capacity {
-            slots[i].active = false
+            slots[i].killHard()
         }
     }
 
-    /// Kill all voices for a specific pad.
+    /// Kill all voices for a specific pad (with declick fade).
     mutating func killPad(_ padIndex: Int) {
         for i in 0..<Self.capacity {
             if slots[i].active && slots[i].padIndex == padIndex {
-                slots[i].active = false
+                slots[i].kill()
             }
         }
     }
 
-    /// Kill all pad voices (padIndex >= 0), leaving metronome clicks (padIndex == -1) alive.
+    /// Kill all pad voices with declick (padIndex >= 0), leaving metronome clicks (padIndex == -1) alive.
     mutating func killPads() {
         for i in 0..<Self.capacity {
             if slots[i].active && slots[i].padIndex >= 0 {
-                slots[i].active = false
+                slots[i].kill()
             }
         }
     }

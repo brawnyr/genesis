@@ -345,14 +345,6 @@ extension GenesisEngine {
             }
         }
 
-        // === Signal listener: measure bus peak before master volume ===
-        var preMasterPeak: Float = 0
-        if clipDetectEnabled {
-            for i in 0..<frameCount {
-                preMasterPeak = max(preMasterPeak, abs(outputBufferL[i]), abs(outputBufferR[i]))
-            }
-        }
-
         // Apply master volume and track peak
         var peak: Float = 0
         for i in 0..<frameCount {
@@ -360,88 +352,6 @@ extension GenesisEngine {
             outputBufferR[i] *= masterVol
             peak = max(peak, abs(outputBufferL[i]), abs(outputBufferR[i]))
         }
-
-        // === Signal listener: detect clipping, near-clipping, and discontinuities ===
-        if clipDetectEnabled && clipCooldown <= 0 {
-            // Detect discontinuities (choke pops) — sudden jump > 0.3 between consecutive samples
-            var maxJump: Float = 0
-            var jumpFrame: Int = 0
-            if frameCount > 0 {
-                let firstJumpL = abs(outputBufferL[0] - prevSampleL)
-                let firstJumpR = abs(outputBufferR[0] - prevSampleR)
-                let firstJump = max(firstJumpL, firstJumpR)
-                if firstJump > maxJump { maxJump = firstJump; jumpFrame = 0 }
-            }
-            for i in 1..<frameCount {
-                let jL = abs(outputBufferL[i] - outputBufferL[i-1])
-                let jR = abs(outputBufferR[i] - outputBufferR[i-1])
-                let j = max(jL, jR)
-                if j > maxJump { maxJump = j; jumpFrame = i }
-            }
-            if frameCount > 0 {
-                prevSampleL = outputBufferL[frameCount - 1]
-                prevSampleR = outputBufferR[frameCount - 1]
-            }
-
-            // Report if: signal > 0.9 (near clip), signal > 1.0 (clip), or discontinuity > 0.3 (pop)
-            let isClipping = peak > 1.0
-            let isNearClip = peak > 0.9 && !isClipping
-            let isPop = maxJump > 0.3
-
-            if isClipping || isNearClip || isPop {
-                clipCooldown = Int(Transport.sampleRate / 4)  // max 4 reports/sec
-
-                // Gather per-pad info
-                var clipInfo: [(pad: Int, name: String, peak: Float, vol: Float, vel: Float, samplePeak: Float, voiceCount: Int)] = []
-                for p in 0..<PadBank.padCount {
-                    guard frameLevels[p] > 0.001 else { continue }
-                    let samplePeak: Float
-                    if let sample = padBank.pads[p].sample {
-                        let checkLen = min(sample.frameCount, 4096)
-                        var sp: Float = 0
-                        for j in 0..<checkLen { sp = max(sp, abs(sample.left[j]), abs(sample.right[j])) }
-                        samplePeak = sp
-                    } else {
-                        samplePeak = 0
-                    }
-                    var vc = 0
-                    for s in 0..<VoicePool.capacity {
-                        if voicePool.slots[s].active && voicePool.slots[s].padIndex == p { vc += 1 }
-                    }
-                    let maxVel: Float = vc > 0 ? voicePool.slots.filter({ $0.active && $0.padIndex == p }).map({ $0.velocity }).max() ?? 0 : 0
-                    clipInfo.append((p, padBank.pads[p].sample?.name ?? "PAD \(p+1)", frameLevels[p], audio.layers[p].volume, maxVel, samplePeak, vc))
-                }
-
-                let peakDb = peak > 0 ? 20 * log10(peak) : Float(-100)
-                let preMasterDb = preMasterPeak > 0 ? 20 * log10(preMasterPeak) : Float(-100)
-
-                let tag: String
-                if isClipping {
-                    tag = "⚠ CLIP \(String(format: "+%.1f", peakDb))dB"
-                } else if isPop {
-                    tag = "⚠ POP jump:\(String(format: "%.2f", maxJump)) @frame \(jumpFrame)"
-                } else {
-                    tag = "⚠ HOT \(String(format: "%.1f", peakDb))dB"
-                }
-
-                DispatchQueue.main.async { [weak self] in
-                    guard let interp = self?.interpreter else { return }
-                    interp.appendLine(
-                        "\(tag)  bus:\(String(format: "%.1f", preMasterDb))dB  master:\(String(format: "%.0f", masterVol * 100))%",
-                        kind: .system
-                    )
-                    for info in clipInfo {
-                        let spStr = info.samplePeak > 0.95 ? " raw:\(String(format: "%.2f", info.samplePeak))" : ""
-                        let vcStr = info.voiceCount > 1 ? " ×\(info.voiceCount)v" : ""
-                        interp.appendLine(
-                            "  pad \(info.pad+1) \(info.name.lowercased())  peak:\(String(format: "%.2f", info.peak))  vol:\(String(format: "%.0f", info.vol * 100))%  vel:\(String(format: "%.0f", info.vel * 100))%\(vcStr)\(spStr)",
-                            kind: .system
-                        )
-                    }
-                }
-            }
-        }
-        if clipCooldown > 0 { clipCooldown -= frameCount }
 
         // Declick: apply short crossfade at loop boundary to eliminate pops
         if wrapped {
