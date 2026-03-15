@@ -74,16 +74,14 @@ struct GHUD: View {
                 }
 
                 // Looper
-                if engine.capture.state == .on {
-                    HStack(spacing: 4) {
-                        Circle()
-                            .fill(Theme.clay)
-                            .frame(width: 9, height: 9)
-                            .shadow(color: Theme.clay.opacity(0.4), radius: 3)
-                        Text("REC")
-                            .font(Theme.monoSmall.bold())
-                            .foregroundColor(Theme.clay)
-                    }
+                HStack(spacing: 4) {
+                    Circle()
+                        .fill(engine.capture.state == .on ? Theme.clay : Theme.subtle)
+                        .frame(width: 9, height: 9)
+                        .shadow(color: engine.capture.state == .on ? Theme.clay.opacity(0.4) : .clear, radius: 3)
+                    Text("REC")
+                        .font(Theme.monoSmall.bold())
+                        .foregroundColor(engine.capture.state == .on ? Theme.clay : Theme.subtle)
                 }
 
                 Spacer()
