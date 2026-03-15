@@ -66,16 +66,15 @@ private struct PadCell: View, Equatable {
         VStack(alignment: .leading, spacing: 1) {
             // Pad name — big
             Text(name)
-                .font(.system(size: 17, design: .monospaced).bold())
+                .font(.system(size: isActive ? 21 : 17, design: .monospaced).bold())
                 .foregroundColor(layer.isMuted ? Theme.subtle : (isActive ? padColor : padColor.opacity(0.6)))
                 .shadow(color: isActive ? padColor.opacity(0.5) : .clear, radius: 6)
-                .scaleEffect(isActive ? 1.25 : 1.0)
                 .frame(maxWidth: .infinity, alignment: .center)
                 .padding(.bottom, 2)
 
             // Data column — textual, always visible
-            PadDataRow(label: "vol", value: "\(Int(layer.volume * 100))%", color: padColor, active: true)
-            PadDataRow(label: "pan", value: EngineEventInterpreter.formatPan(layer.pan), color: padColor, active: layer.pan != 0.5)
+            PadDataRow(label: "", value: "vol \(Int(layer.volume * 100))%", color: padColor, active: true)
+            PadDataRow(label: "", value: "pan \(EngineEventInterpreter.formatPan(layer.pan))", color: padColor, active: layer.pan != 0.5)
 
             if layer.isMuted {
                 PadDataRow(label: "", value: "MUTE", color: Theme.clay, active: true)
@@ -108,12 +107,12 @@ private struct PadCell: View, Equatable {
         .padding(.horizontal, 4)
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .background(
-            RoundedRectangle(cornerRadius: 4)
+            UnevenRoundedRectangle(topLeadingRadius: 0, bottomLeadingRadius: 12, bottomTrailingRadius: 12, topTrailingRadius: 0)
                 .fill(isActive ? padColor.opacity(0.12) : Color.clear)
                 .shadow(color: isActive ? padColor.opacity(0.2) : .clear, radius: 8)
         )
         .overlay(
-            RoundedRectangle(cornerRadius: 4)
+            UnevenRoundedRectangle(topLeadingRadius: 0, bottomLeadingRadius: 12, bottomTrailingRadius: 12, topTrailingRadius: 0)
                 .stroke(isActive ? padColor.opacity(0.4) : Color.clear, lineWidth: 1)
         )
     }
