@@ -1,5 +1,5 @@
 // Genesis/Genesis/Views/PadSelect.swift
-// All 8 pads visible with volumes and effects at all times
+// All 8 pads visible — big text, full effect data in columns
 import SwiftUI
 
 struct PadSelect: View {
@@ -14,9 +14,9 @@ struct PadSelect: View {
                 .tracking(3)
                 .padding(.horizontal, 12)
                 .padding(.top, 8)
-                .padding(.bottom, 6)
+                .padding(.bottom, 4)
 
-            HStack(spacing: 3) {
+            HStack(spacing: 2) {
                 ForEach(0..<PadBank.padCount, id: \.self) { padIdx in
                     let layer = engine.layers[padIdx]
                     let isActive = padIdx == engine.activePadIndex
@@ -27,8 +27,7 @@ struct PadSelect: View {
                         name: name,
                         padColor: padColor,
                         layer: layer,
-                        isActive: isActive,
-                        hasSample: engine.padBank.pads[padIdx].sample != nil
+                        isActive: isActive
                     )
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
                     .contentShape(Rectangle())
@@ -42,76 +41,57 @@ struct PadSelect: View {
     }
 }
 
-// MARK: - Single pad cell — always shows volume + effects
+// MARK: - Single pad cell — big name, textual data column
 
 private struct PadCell: View {
     let name: String
     let padColor: Color
     let layer: Layer
     let isActive: Bool
-    let hasSample: Bool
 
     var body: some View {
-        VStack(spacing: 3) {
-            // Pad name
+        VStack(alignment: .leading, spacing: 1) {
+            // Pad name — big
             Text(name)
-                .font(.system(size: isActive ? 20 : 13, design: .monospaced).bold())
+                .font(.system(size: isActive ? 22 : 16, design: .monospaced).bold())
                 .foregroundColor(layer.isMuted ? Theme.subtle : padColor)
                 .shadow(color: isActive ? padColor.opacity(0.5) : .clear, radius: 6)
+                .frame(maxWidth: .infinity, alignment: .center)
+                .padding(.bottom, 2)
 
-            // Volume bar
-            GeometryReader { geo in
-                let barH = geo.size.height
-                let fillH = barH * CGFloat(layer.volume)
-                ZStack(alignment: .bottom) {
-                    RoundedRectangle(cornerRadius: 2)
-                        .fill(Theme.subtle.opacity(0.4))
-                    RoundedRectangle(cornerRadius: 2)
-                        .fill(layer.isMuted ? Theme.subtle : padColor.opacity(0.75))
-                        .frame(height: fillH)
-                }
+            // Data column — textual, always visible
+            PadDataRow(label: "vol", value: "\(Int(layer.volume * 100))%", color: padColor, active: true)
+            PadDataRow(label: "pan", value: EngineEventInterpreter.formatPan(layer.pan), color: padColor, active: layer.pan != 0.5)
+
+            if layer.isMuted {
+                PadDataRow(label: "", value: "MUTE", color: Theme.clay, active: true)
             }
-            .frame(width: isActive ? 18 : 10, height: 50)
-
-            // Volume %
-            Text("\(Int(layer.volume * 100))")
-                .font(Theme.monoTiny)
-                .foregroundColor(Theme.text.opacity(0.4))
-
-            // Effects indicators
-            HStack(spacing: 2) {
-                if layer.isMuted {
-                    EffectDot(color: Theme.clay, label: "M")
-                }
-                if layer.choke {
-                    EffectDot(color: Theme.wheat, label: "C")
-                }
-                if layer.looper {
-                    EffectDot(color: Theme.forest, label: "L")
-                }
+            if layer.choke {
+                PadDataRow(label: "", value: "CHOKE", color: Theme.wheat, active: true)
             }
-
-            HStack(spacing: 2) {
-                if layer.reverbSend > 0.01 {
-                    EffectDot(color: Theme.sage, label: "R")
-                }
-                if layer.swing > 0.51 {
-                    EffectDot(color: Theme.moss, label: "S")
-                }
-                if layer.hpCutoff > 21 || layer.lpCutoff < 19999 {
-                    EffectDot(color: Theme.terracotta, label: "F")
-                }
+            if layer.looper {
+                PadDataRow(label: "", value: "LOOP", color: Theme.forest, active: true)
             }
-
-            // Hit count
+            if layer.reverbSend > 0.01 {
+                PadDataRow(label: "rev", value: "\(Int(layer.reverbSend * 100))%", color: Theme.sage, active: true)
+            }
+            if layer.swing > 0.51 {
+                PadDataRow(label: "sw", value: "\(Int((layer.swing - 0.5) / 0.5 * 100))%", color: Theme.moss, active: true)
+            }
+            if layer.hpCutoff > 21 {
+                PadDataRow(label: "hp", value: EngineEventInterpreter.formatFrequency(layer.hpCutoff), color: Theme.terracotta, active: true)
+            }
+            if layer.lpCutoff < 19999 {
+                PadDataRow(label: "lp", value: EngineEventInterpreter.formatFrequency(layer.lpCutoff), color: Theme.terracotta, active: true)
+            }
             if !layer.hits.isEmpty {
-                Text("\(layer.hits.count)")
-                    .font(Theme.monoTiny)
-                    .foregroundColor(padColor.opacity(0.5))
+                PadDataRow(label: "hits", value: "\(layer.hits.count)", color: padColor.opacity(0.6), active: true)
             }
+
+            Spacer(minLength: 0)
         }
-        .padding(.vertical, 8)
-        .padding(.horizontal, 2)
+        .padding(.vertical, 6)
+        .padding(.horizontal, 4)
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .background(
             RoundedRectangle(cornerRadius: 4)
@@ -125,15 +105,23 @@ private struct PadCell: View {
     }
 }
 
-private struct EffectDot: View {
-    let color: Color
+private struct PadDataRow: View {
     let label: String
+    let value: String
+    let color: Color
+    let active: Bool
 
     var body: some View {
-        Text(label)
-            .font(Theme.monoTiny.bold())
-            .foregroundColor(color)
-            .frame(width: 16, height: 16)
-            .background(Circle().fill(color.opacity(0.2)))
+        HStack(spacing: 0) {
+            if !label.isEmpty {
+                Text(label)
+                    .foregroundColor(Theme.text.opacity(0.3))
+                    .frame(width: 28, alignment: .leading)
+            }
+            Text(value)
+                .foregroundColor(color)
+        }
+        .font(.system(size: 12, design: .monospaced))
+        .frame(maxWidth: .infinity, alignment: .leading)
     }
 }
