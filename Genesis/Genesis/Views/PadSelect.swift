@@ -26,6 +26,7 @@ struct PadSelect: View {
                         isActive: isActive
                     ))
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    .layoutPriority(isActive ? 1 : 0)
                     .contentShape(Rectangle())
                     .onTapGesture {
                         engine.activePadIndex = padIdx
@@ -73,32 +74,32 @@ private struct PadCell: View, Equatable {
                 .padding(.bottom, 2)
 
             // Data column — textual, always visible
-            PadDataRow(label: "", value: "vol \(Int(layer.volume * 100))%", color: padColor, active: true)
-            PadDataRow(label: "", value: "pan \(EngineEventInterpreter.formatPan(layer.pan))", color: padColor, active: layer.pan != 0.5)
+            PadDataRow(value:"vol \(Int(layer.volume * 100))%", color: padColor)
+            PadDataRow(value:"pan \(EngineEventInterpreter.formatPan(layer.pan))", color: padColor)
 
             if layer.isMuted {
-                PadDataRow(label: "", value: "MUTE", color: Theme.clay, active: true)
+                PadDataRow(value:"MUTE", color: Theme.clay)
             }
             if layer.choke {
-                PadDataRow(label: "", value: "CHOKE", color: Theme.wheat, active: true)
+                PadDataRow(value:"CHOKE", color: Theme.wheat)
             }
             if layer.looper {
-                PadDataRow(label: "", value: "LOOP", color: Theme.forest, active: true)
+                PadDataRow(value:"LOOP", color: Theme.forest)
             }
             if layer.reverbSend > 0.01 {
-                PadDataRow(label: "rev", value: "\(Int(layer.reverbSend * 100))%", color: Theme.sage, active: true)
+                PadDataRow(value:"rev \(Int(layer.reverbSend * 100))%", color: Theme.sage)
             }
             if layer.swing > 0.51 {
-                PadDataRow(label: "sw", value: "\(Int((layer.swing - 0.5) / 0.5 * 100))%", color: Theme.moss, active: true)
+                PadDataRow(value:"sw \(Int((layer.swing - 0.5) / 0.5 * 100))%", color: Theme.moss)
             }
             if layer.hpCutoff > 21 {
-                PadDataRow(label: "hp", value: EngineEventInterpreter.formatFrequency(layer.hpCutoff), color: Theme.terracotta, active: true)
+                PadDataRow(value:"hp \(EngineEventInterpreter.formatFrequency(layer.hpCutoff))", color: Theme.terracotta)
             }
             if layer.lpCutoff < 19999 {
-                PadDataRow(label: "lp", value: EngineEventInterpreter.formatFrequency(layer.lpCutoff), color: Theme.terracotta, active: true)
+                PadDataRow(value:"lp \(EngineEventInterpreter.formatFrequency(layer.lpCutoff))", color: Theme.terracotta)
             }
             if !layer.hits.isEmpty {
-                PadDataRow(label: "hits", value: "\(layer.hits.count)", color: padColor.opacity(0.6), active: true)
+                PadDataRow(value:"hits \(layer.hits.count)", color: padColor.opacity(0.6))
             }
 
             Spacer(minLength: 0)
@@ -119,22 +120,15 @@ private struct PadCell: View, Equatable {
 }
 
 private struct PadDataRow: View {
-    let label: String
     let value: String
     let color: Color
-    let active: Bool
 
     var body: some View {
-        HStack(spacing: 0) {
-            if !label.isEmpty {
-                Text(label)
-                    .foregroundColor(Theme.text.opacity(0.3))
-                    .frame(width: 28, alignment: .leading)
-            }
-            Text(value)
-                .foregroundColor(color)
-        }
-        .font(Theme.mono)
-        .frame(maxWidth: .infinity, alignment: .leading)
+        Text(value)
+            .foregroundColor(color)
+            .font(Theme.mono)
+            .lineLimit(1)
+            .fixedSize(horizontal: true, vertical: false)
+            .frame(maxWidth: .infinity, alignment: .leading)
     }
 }
