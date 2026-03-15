@@ -14,7 +14,7 @@ struct AudioState {
     var bpm: Int = 165
     var barCount: Int = 4
     var metronomeOn: Bool = true
-    var metronomeVolume: Float = 0.5
+    var metronomeVolume: Float = 0.25
     var layers: [Layer] = (0..<PadBank.padCount).map { Layer(index: $0, name: "PAD \($0 + 1)") }
     var captureState: GenesisCapture.State = .off
     var capture = GenesisCapture()
