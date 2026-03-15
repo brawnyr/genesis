@@ -23,7 +23,7 @@ struct SampleBrowserView: View {
                     .shadow(color: Theme.electric.opacity(0.3), radius: 6)
                 Spacer()
                 Text("[T] close")
-                    .font(Theme.monoTiny)
+                    .font(Theme.mono)
                     .foregroundColor(Theme.text.opacity(0.3))
             }
 
@@ -34,7 +34,7 @@ struct SampleBrowserView: View {
 
             if files.isEmpty {
                 Text("empty folder")
-                    .font(Theme.monoSmall)
+                    .font(Theme.mono)
                     .foregroundColor(Theme.subtle)
                     .padding(.top, 4)
 
@@ -42,7 +42,7 @@ struct SampleBrowserView: View {
                     loadFromFilePicker()
                 } label: {
                     Text("OPEN FILE...")
-                        .font(Theme.monoSmall.bold())
+                        .font(Theme.mono.bold())
                         .foregroundColor(Theme.sage)
                         .shadow(color: Theme.sage.opacity(0.3), radius: 4)
                 }
@@ -55,7 +55,7 @@ struct SampleBrowserView: View {
                             ForEach(Array(files.enumerated()), id: \.offset) { idx, file in
                                 let name = file.deletingPathExtension().lastPathComponent
                                 let isSelected = idx == selectedIndex
-                                Text(name.lowercased().prefix(22))
+                                Text(String(name.lowercased().prefix(22)))
                                     .font(Theme.mono)
                                     .foregroundColor(isSelected ? Theme.chrome : Theme.text.opacity(0.35))
                                     .shadow(color: isSelected ? Theme.sage.opacity(0.3) : .clear, radius: 3)

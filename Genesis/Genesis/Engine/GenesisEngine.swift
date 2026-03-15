@@ -48,9 +48,9 @@ class GenesisEngine: ObservableObject {
     @Published var activePadIndex: Int = 0 {
         didSet {
             let clamped = max(0, min(PadBank.padCount - 1, activePadIndex))
-            if clamped != activePadIndex { activePadIndex = clamped; return }
+            // Only sync to audio thread — avoid recursive didSet by not re-setting self
             os_unfair_lock_lock(&audioLock)
-            audio.activePadIndex = activePadIndex
+            audio.activePadIndex = clamped
             os_unfair_lock_unlock(&audioLock)
         }
     }

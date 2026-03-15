@@ -48,6 +48,7 @@ private struct PadCell: View, Equatable {
 
     static func == (lhs: PadCell, rhs: PadCell) -> Bool {
         lhs.name == rhs.name &&
+        lhs.padColor == rhs.padColor &&
         lhs.isActive == rhs.isActive &&
         lhs.layer.volume == rhs.layer.volume &&
         lhs.layer.pan == rhs.layer.pan &&

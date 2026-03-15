@@ -25,11 +25,17 @@ final class MIDIRingBuffer {
         _writeIndex = wi &+ 1
     }
 
+    /// Number of events dropped due to ring buffer overflow (producer lapped consumer).
+    /// Monotonically increasing; check periodically if you need overflow diagnostics.
+    private(set) var droppedEvents: UInt64 = 0
+
     func drain(_ handler: (MIDIEvent) -> Void) {
         OSMemoryBarrier()
         let wi = _writeIndex
         // If producer lapped us, skip to oldest available data
         if wi &- _readIndex > UInt64(Self.capacity) {
+            let lost = (wi &- _readIndex) - UInt64(Self.capacity)
+            droppedEvents &+= lost
             _readIndex = wi &- UInt64(Self.capacity)
         }
         while _readIndex < wi {

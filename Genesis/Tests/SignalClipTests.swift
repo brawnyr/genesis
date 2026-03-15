@@ -235,10 +235,9 @@ func emulateStack(
     // At full volume 1.0
     let (_, postFull, masterFull) = emulateVoice(sample: hot, volume: 1.0, masterVolume: 1.0)
     print("Vol 1.0:        \(masterFull)")
-    // This WILL clip — 1.2 * 1.0 * 1.0 = 1.2
-    if masterFull.isClipping {
-        print("  → CLIPPING: hot sample at full volume exceeds ±1.0")
-    }
+    // Hot sample at full volume: 1.2 * 1.0 * 0.707 (center pan) ≈ 0.85 — under 1.0
+    // Equal-power panning provides natural headroom for hot samples
+    #expect(!masterFull.isClipping, "Hot sample at full vol stays under 1.0 due to pan law")
 
     // At full volume + master 0.8
     let (_, _, masterReduced) = emulateVoice(sample: hot, volume: 1.0, masterVolume: 0.8)
@@ -273,9 +272,8 @@ func emulateStack(
     print("\n=== 4-PAD STACK (same, vol 0.7) ===")
     print("Pre master:  \(preLoud)")
     print("Post master: \(postLoud)")
-    if postLoud.isClipping {
-        print("  → CLIPPING at vol 0.7 with 4 simultaneous pads")
-    }
+    // 4 pads at 0.7 will clip — verify detection
+    #expect(postLoud.isClipping, "4-pad stack at vol 0.7 should clip")
 
     // Full volume stack
     let maxPads = pads.map { ($0.sample, $0.velocity, Float(1.0), $0.pan) }
@@ -284,9 +282,7 @@ func emulateStack(
     print("\n=== 4-PAD STACK (same, vol 1.0) ===")
     print("Pre master:  \(preMax)")
     print("Post master: \(postMax)")
-    if postMax.isClipping {
-        print("  → CLIPPING at full volume with 4 simultaneous pads")
-    }
+    #expect(postMax.isClipping, "4-pad stack at full volume must clip")
 }
 
 @Test func reverbGainAccumulation() {
@@ -308,6 +304,8 @@ func emulateStack(
 
     let gainFromReverb = postRev.combinedPeak - preDry.combinedPeak
     print("Reverb adds: \(String(format: "%.4f", gainFromReverb)) peak (\(String(format: "%.1f", 20*log10(postRev.combinedPeak / preDry.combinedPeak)))dB)")
+    #expect(gainFromReverb > 0, "Reverb should add energy to the signal")
+    #expect(!postRev.isClipping, "Single voice at 0.5 vol with full reverb should not clip")
 }
 
 @Test func velocityStackingClipCheck() {
@@ -322,19 +320,8 @@ func emulateStack(
 
     print("\n=== 8x VOICE STACK (same sample, no choke, vol 0.25) ===")
     print("Post master: \(post)")
-    // 8 voices * 0.9 * 0.25 * pan_scale ≈ 8 * 0.159 = 1.27 — will clip!
-    if post.isClipping {
-        print("  → CLIPPING: 8 stacked voices exceed ±1.0 even at default volume")
-        // Find the max safe voice count
-        for n in 1...8 {
-            let subset = Array(pads.prefix(n))
-            let (_, postN, _) = emulateStack(samples: subset, masterVolume: 1.0)
-            if postN.isClipping {
-                print("  → Clipping starts at \(n) simultaneous voices")
-                break
-            }
-        }
-    }
+    // 8 voices * 0.9 * 0.25 * pan_scale ≈ 8 * 0.159 = 1.27 — will clip
+    #expect(post.isClipping, "8 stacked voices should clip even at default volume")
 }
 
 @Test func findClipThreshold() {
@@ -406,11 +393,7 @@ func emulateStack(
 
     print("\n=== FULL ENGINE (4 pads, MIDI velocity, default settings) ===")
     print("Output: \(stats)")
-    if stats.isClipping {
-        print("  → Engine output clips with 4 simultaneous pads at default volume")
-    } else {
-        print("  → Clean output at default settings")
-    }
+    #expect(!stats.isClipping, "4 pads at default volume should not clip through engine")
 
     // Now crank volumes to 1.0
     for i in 0..<4 {
@@ -426,7 +409,5 @@ func emulateStack(
 
     print("\n=== FULL ENGINE (4 pads, all vol 1.0) ===")
     print("Output: \(stats2)")
-    if stats2.isClipping {
-        print("  → CLIPPING at full volume — peak \(String(format: "%.2f", stats2.combinedPeak))x over unity")
-    }
+    #expect(stats2.isClipping, "4 pads at full volume should clip through engine")
 }

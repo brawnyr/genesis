@@ -37,9 +37,16 @@ import Testing
     layer.addHit(at: 100, velocity: 100)
     layer.addHit(at: 200, velocity: 80)
     layer.clear()  // previousHits = [hit100, hit200]
-    layer.clear()  // previousHits = [] (empty, since hits was already empty)
+    layer.undo()   // should restore [hit100, hit200]
+    #expect(layer.hits.count == 2, "Undo after single clear should restore both hits")
+    #expect(layer.hits[0].position == 100)
+    #expect(layer.hits[1].position == 200)
+
+    // Second clear + undo should also round-trip
+    layer.clear()  // previousHits = [hit100, hit200]
+    layer.clear()  // previousHits = [] (empty)
     layer.undo()   // should restore [] (the state after first clear)
-    #expect(layer.hits.count == 0)
+    #expect(layer.hits.count == 0, "Undo after double clear restores the empty state")
 }
 
 @Test func layerSwingDefaultValue() {

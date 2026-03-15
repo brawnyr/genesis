@@ -26,7 +26,7 @@ struct GHUD: View {
                     .shadow(color: Theme.electric.opacity(0.25), radius: 8)
                 Text(" ")
                 Text("BPM")
-                    .font(Theme.monoSmall.bold())
+                    .font(Theme.mono.bold())
                     .foregroundColor(Theme.sage)
                 Spacer()
                 Text("\(engine.transport.barCount)")
@@ -35,7 +35,7 @@ struct GHUD: View {
                     .shadow(color: Theme.electric.opacity(0.25), radius: 8)
                 Text(" ")
                 Text("BAR")
-                    .font(Theme.monoSmall.bold())
+                    .font(Theme.mono.bold())
                     .foregroundColor(Theme.sage)
             }
             .padding(.bottom, 4)
@@ -47,7 +47,7 @@ struct GHUD: View {
             // === VOLUME + dB ===
             HStack(alignment: .lastTextBaseline, spacing: 0) {
                 Text("VOL")
-                    .font(Theme.monoSmall.bold())
+                    .font(Theme.mono.bold())
                     .foregroundColor(Theme.sage)
                     .shadow(color: Theme.electric.opacity(0.25), radius: 4)
                     .frame(width: 36, alignment: .leading)
@@ -62,7 +62,7 @@ struct GHUD: View {
                     .shadow(color: Theme.electric.opacity(0.25), radius: 8)
                 Text(" ")
                 Text("dB")
-                    .font(Theme.monoSmall.bold())
+                    .font(Theme.mono.bold())
                     .foregroundColor(Theme.sage)
                     .shadow(color: Theme.electric.opacity(0.25), radius: 4)
             }
@@ -80,7 +80,7 @@ struct GHUD: View {
                         .frame(width: 9, height: 9)
                         .shadow(color: engine.velocityMode == .full ? Theme.sage.opacity(0.4) : .clear, radius: 3)
                     Text("VEL \(engine.velocityMode.rawValue.uppercased())")
-                        .font(Theme.monoSmall.bold())
+                        .font(Theme.mono.bold())
                         .foregroundColor(engine.velocityMode == .full ? Theme.chrome : Theme.subtle)
                 }
 
@@ -91,7 +91,7 @@ struct GHUD: View {
                         .frame(width: 9, height: 9)
                         .shadow(color: engine.metronome.isOn ? Theme.sage.opacity(0.4) : .clear, radius: 3)
                     Text("METRO")
-                        .font(Theme.monoSmall.bold())
+                        .font(Theme.mono.bold())
                         .foregroundColor(engine.metronome.isOn ? Theme.chrome : Theme.subtle)
                 }
 
@@ -102,7 +102,7 @@ struct GHUD: View {
                         .frame(width: 9, height: 9)
                         .shadow(color: engine.capture.state == .on ? Theme.clay.opacity(0.4) : .clear, radius: 3)
                     Text("REC")
-                        .font(Theme.monoSmall.bold())
+                        .font(Theme.mono.bold())
                         .foregroundColor(engine.capture.state == .on ? Theme.clay : Theme.subtle)
                 }
 

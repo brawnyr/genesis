@@ -295,8 +295,9 @@ extension GenesisEngine {
                 wrapped = true
 
                 // Looper pads — trigger sample at exact wrap point (beat 1)
-                // Use <= to handle exact block-boundary wraps (overshoot == 0)
-                if wrapFrame >= 0 && wrapFrame <= frameCount {
+                // Use < (exclusive) since wrapFrame is a 0-based index into the block.
+                // When overshoot == 0, wrapFrame == frameCount which is out of bounds.
+                if wrapFrame >= 0 && wrapFrame < frameCount {
                     for i in 0..<PadBank.padCount {
                         if audio.layers[i].looper, !audio.layers[i].isMuted,
                            let sample = padBank.pads[i].sample {
@@ -483,7 +484,7 @@ extension GenesisEngine {
         }
 
         if reusableSnapshot.valid {
-            // Copy snapshot for dispatch — the reusable one stays owned by the engine
+            // Copy snapshot for dispatch — CoW detaches backing stores on mutation below
             let snap = reusableSnapshot
             reusableSnapshot.hits.removeAll(keepingCapacity: true)
             reusableSnapshot.replayHits.removeAll(keepingCapacity: true)

@@ -27,7 +27,7 @@ struct BeatTrackerHUD: View {
                         .foregroundColor(Theme.chrome)
                         .shadow(color: Theme.electric.opacity(0.25), radius: 8)
                     Text("BEAT")
-                        .font(Theme.monoSmall.bold())
+                        .font(Theme.mono.bold())
                         .foregroundColor(Theme.sage)
                 }
             } else {
@@ -36,7 +36,7 @@ struct BeatTrackerHUD: View {
                         .font(Theme.hero)
                         .foregroundColor(Theme.text.opacity(0.4))
                     Text(String(format: "%.1fs", loopSeconds))
-                        .font(Theme.monoTiny)
+                        .font(Theme.mono)
                         .foregroundColor(Theme.text.opacity(0.5))
                 }
             }
@@ -47,7 +47,7 @@ struct BeatTrackerHUD: View {
         .background(
             RoundedRectangle(cornerRadius: 8)
                 .fill(Theme.canvasBg.opacity(0.95))
-                .shadow(color: Color.black.opacity(0.3), radius: 12)
+                .shadow(color: Theme.bg.opacity(0.5), radius: 12)
         )
         .overlay(
             RoundedRectangle(cornerRadius: 8)

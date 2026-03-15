@@ -105,21 +105,30 @@ final class ReverbProcessor {
         }
     }
 
+    /// Zero all delay lines in-place — no heap allocations, safe to call from audio thread.
     func reset() {
         for c in 0..<combBuffersL.count {
-            combBuffersL[c] = [Float](repeating: 0, count: combBuffersL[c].count)
+            combBuffersL[c].withUnsafeMutableBufferPointer { buf in
+                buf.update(repeating: 0)
+            }
             combIndexL[c] = 0
         }
         for c in 0..<combBuffersR.count {
-            combBuffersR[c] = [Float](repeating: 0, count: combBuffersR[c].count)
+            combBuffersR[c].withUnsafeMutableBufferPointer { buf in
+                buf.update(repeating: 0)
+            }
             combIndexR[c] = 0
         }
         for a in 0..<allpassBuffersL.count {
-            allpassBuffersL[a] = [Float](repeating: 0, count: allpassBuffersL[a].count)
+            allpassBuffersL[a].withUnsafeMutableBufferPointer { buf in
+                buf.update(repeating: 0)
+            }
             allpassIndexL[a] = 0
         }
         for a in 0..<allpassBuffersR.count {
-            allpassBuffersR[a] = [Float](repeating: 0, count: allpassBuffersR[a].count)
+            allpassBuffersR[a].withUnsafeMutableBufferPointer { buf in
+                buf.update(repeating: 0)
+            }
             allpassIndexR[a] = 0
         }
     }

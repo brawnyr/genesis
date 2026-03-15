@@ -171,6 +171,7 @@ extension ContentView {
     func handleBrowseKey(keyCode: UInt16, chars: String?, modifiers: NSEvent.ModifierFlags) {
         switch keyCode {
         case Key.w, Key.upArrow:
+            refreshBrowserCache()
             browserIndex = max(0, browserIndex - 1)
             loadBrowserSample()
             if let name = browserFileName() {

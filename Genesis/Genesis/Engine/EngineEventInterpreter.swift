@@ -239,7 +239,9 @@ class EngineEventInterpreter: ObservableObject {
         for i in 0..<PadBank.padCount {
             if activePadVoices.contains(i) {
                 updated[i] = max(updated[i] * Self.sustainDecay, Self.sustainMinIntensity)
-            } else if updated[i] > Self.intensityCutoff {
+            } else if updated[i] > Self.intensityCutoff * 1.5 {
+                // Use 1.5x cutoff as threshold to prevent flicker from float rounding
+                // near the boundary (value oscillating above/below cutoff)
                 updated[i] *= Self.shortDecay
             } else {
                 updated[i] = 0

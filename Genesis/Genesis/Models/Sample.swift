@@ -78,8 +78,10 @@ struct Sample {
                 start: channelData[1], count: frameLen
             ))
         } else {
-            // Mono source — shares backing store via COW (safe since Sample is immutable after load)
-            rightData = leftData
+            // Mono source — explicit copy to guarantee independent backing store
+            rightData = Array(UnsafeBufferPointer(
+                start: channelData[0], count: frameLen
+            ))
         }
 
         let name = url.deletingPathExtension().lastPathComponent

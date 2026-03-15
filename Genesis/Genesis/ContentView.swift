@@ -189,7 +189,7 @@ struct HotkeyGroup: View {
                         .foregroundColor(color)
                         .shadow(color: color.opacity(0.3), radius: 4)
                     Text(action)
-                        .font(Theme.monoSmall)
+                        .font(Theme.mono)
                         .foregroundColor(Theme.text.opacity(0.5))
                 }
             }

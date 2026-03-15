@@ -35,9 +35,10 @@ enum VoiceMixer {
             let needsReverb = reverbAmt > 0.001
 
             if needsReverb {
-                // Render voice into scratch buffers (zeroed first), then add to both main and reverb
-                let startIdx = pool.slots[i].blockOffset
-                for j in startIdx..<count {
+                // Render voice into scratch buffers (zeroed first), then add to both main and reverb.
+                // Zero the FULL range — not just [startIdx..<count] — to prevent stale data
+                // in [0..<startIdx) from bleeding into output and reverb sends.
+                for j in 0..<count {
                     scratchL[j] = 0
                     scratchR[j] = 0
                 }
@@ -46,7 +47,7 @@ enum VoiceMixer {
                                                      pan: pan, volume: volume, hpCoeffs: hpCoeffs, lpCoeffs: lpCoeffs)
 
                 // Sum scratch into main output and reverb send
-                for j in startIdx..<count {
+                for j in 0..<count {
                     bufferL[j] += scratchL[j]
                     bufferR[j] += scratchR[j]
                     reverbSendL[j] += scratchL[j] * reverbAmt
