@@ -44,13 +44,12 @@ struct GenesisCapture {
 
     private mutating func writeAndReset() {
         guard !leftBuffers.isEmpty else { return }
-        let allLeft = leftBuffers.flatMap { $0 }
-        let allRight = rightBuffers.flatMap { $0 }
+        let chunks = zip(leftBuffers, rightBuffers).map { ($0, $1) }
         leftBuffers = []
         rightBuffers = []
 
         DispatchQueue.global(qos: .userInitiated).async {
-            Self.writeWAV(left: allLeft, right: allRight)
+            Self.writeWAVChunked(chunks: chunks)
         }
     }
 
@@ -60,7 +59,52 @@ struct GenesisCapture {
         return f
     }()
 
+    private static func writeWAVChunked(chunks: [([Float], [Float])]) {
+        let filename = "Genesis_\(filenameDateFormatter.string(from: Date())).wav"
+
+        let dir = FileManager.default.homeDirectoryForCurrentUser
+            .appendingPathComponent("recordings")
+        do {
+            try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+        } catch {
+            logger.error("Failed to create recordings directory: \(error.localizedDescription)")
+            return
+        }
+        let url = dir.appendingPathComponent(filename)
+
+        guard let format = AVAudioFormat(standardFormatWithSampleRate: Transport.sampleRate, channels: 2) else {
+            logger.error("Failed to create audio format for WAV export")
+            return
+        }
+        do {
+            let file = try AVAudioFile(forWriting: url, settings: format.settings)
+            for (left, right) in chunks {
+                guard left.count == right.count else { continue }
+                let frameCount = AVAudioFrameCount(left.count)
+                guard let pcmBuffer = AVAudioPCMBuffer(pcmFormat: format, frameCapacity: frameCount) else { continue }
+                pcmBuffer.frameLength = frameCount
+                guard let channelData = pcmBuffer.floatChannelData else { continue }
+                left.withUnsafeBufferPointer { ptr in
+                    guard let base = ptr.baseAddress else { return }
+                    channelData[0].update(from: base, count: left.count)
+                }
+                right.withUnsafeBufferPointer { ptr in
+                    guard let base = ptr.baseAddress else { return }
+                    channelData[1].update(from: base, count: right.count)
+                }
+                try file.write(from: pcmBuffer)
+            }
+            logger.info("Capture saved: \(filename)")
+        } catch {
+            logger.error("Failed to write WAV file: \(error.localizedDescription)")
+        }
+    }
+
     private static func writeWAV(left: [Float], right: [Float]) {
+        guard left.count == right.count else {
+            logger.error("Channel count mismatch: left=\(left.count) right=\(right.count)")
+            return
+        }
         let filename = "Genesis_\(filenameDateFormatter.string(from: Date())).wav"
 
         let dir = FileManager.default.homeDirectoryForCurrentUser

@@ -21,6 +21,7 @@ struct AudioState {
     var capture = GenesisCapture()
     var activePadIndex: Int = 0
     var masterVolume: Float = 1.0
+    var velocityMode: VelocityMode = .full
 
     var loopLengthFrames: Int {
         let beatsPerLoop = Double(barCount * Transport.beatsPerBar)
@@ -241,6 +242,9 @@ class GenesisEngine: ObservableObject {
 
     func cycleVelocityMode() {
         velocityMode = velocityMode == .pressure ? .full : .pressure
+        os_unfair_lock_lock(&audioLock)
+        audio.velocityMode = velocityMode
+        os_unfair_lock_unlock(&audioLock)
     }
 
     // MARK: - Pad recording
@@ -288,11 +292,13 @@ class GenesisEngine: ObservableObject {
     }
 
     func restoreChokeFromPadBank() {
+        os_unfair_lock_lock(&audioLock)
         for i in 0..<PadBank.padCount {
             let choke = padBank.pads[i].choke
             layers[i].choke = choke
             audio.layers[i].choke = choke
         }
+        os_unfair_lock_unlock(&audioLock)
     }
 
     func clearLayer(_ index: Int) {

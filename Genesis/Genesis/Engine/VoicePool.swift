@@ -24,7 +24,7 @@ struct Voice {
     var prevPanL: Float = cos(0.5 * .pi / 2.0)
     var prevPanR: Float = sin(0.5 * .pi / 2.0)
 
-    mutating func start(sample: Sample, velocity: Float, padIndex: Int) {
+    mutating func start(sample: Sample, velocity: Float, padIndex: Int, pan: Float = 0.5) {
         self.sample = sample
         self.velocity = velocity
         self.padIndex = padIndex
@@ -37,8 +37,8 @@ struct Voice {
         self.hpStateR = BiquadState()
         self.lpStateL = BiquadState()
         self.lpStateR = BiquadState()
-        self.prevPanL = cos(0.5 * .pi / 2.0)
-        self.prevPanR = sin(0.5 * .pi / 2.0)
+        self.prevPanL = cos(pan * .pi / 2.0)
+        self.prevPanR = sin(pan * .pi / 2.0)
     }
 
     /// Begin a short fadeout instead of instant kill. Voice deactivates when fade completes.
@@ -156,10 +156,10 @@ struct VoicePool {
     var slots: [Voice] = Array(repeating: Voice(), count: VoicePool.capacity)
 
     /// Allocate a voice slot, returning the index if successful.
-    mutating func allocate(sample: Sample, velocity: Float, padIndex: Int) -> Int? {
+    mutating func allocate(sample: Sample, velocity: Float, padIndex: Int, pan: Float = 0.5) -> Int? {
         for i in 0..<Self.capacity {
             if !slots[i].active {
-                slots[i].start(sample: sample, velocity: velocity, padIndex: padIndex)
+                slots[i].start(sample: sample, velocity: velocity, padIndex: padIndex, pan: pan)
                 return i
             }
         }

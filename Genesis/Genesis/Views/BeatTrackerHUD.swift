@@ -34,10 +34,10 @@ struct BeatTrackerHUD: View {
                 HStack(alignment: .lastTextBaseline, spacing: 4) {
                     Text("—")
                         .font(Theme.hero)
-                        .foregroundColor(Theme.text.opacity(0.15))
+                        .foregroundColor(Theme.text.opacity(0.4))
                     Text(String(format: "%.1fs", loopSeconds))
                         .font(Theme.monoTiny)
-                        .foregroundColor(Theme.text.opacity(0.3))
+                        .foregroundColor(Theme.text.opacity(0.5))
                 }
             }
 

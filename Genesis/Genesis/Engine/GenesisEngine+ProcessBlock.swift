@@ -56,12 +56,13 @@ extension GenesisEngine {
         if audio.layers[padIndex].choke {
             voicePool.killPad(padIndex)
         }
-        let vel = velocityMode == .full ? Float(1.0) : Float(velocity) / 127.0
-        if let idx = voicePool.allocate(sample: sample, velocity: vel, padIndex: padIndex) {
+        let vel = audio.velocityMode == .full ? Float(1.0) : Float(velocity) / 127.0
+        let pan = audio.layers[padIndex].pan
+        if let idx = voicePool.allocate(sample: sample, velocity: vel, padIndex: padIndex, pan: pan) {
             _ = idx // allocation is the side effect
         }
 
-        let reportedVel = velocityMode == .full ? 127 : velocity
+        let reportedVel = audio.velocityMode == .full ? 127 : velocity
         pendingHits.append((padIndex: padIndex, position: audio.position, velocity: reportedVel))
         pendingTriggers[padIndex] = true
     }
@@ -141,10 +142,10 @@ extension GenesisEngine {
 
         if let sample = padBank.pads[layer.index].sample {
             voicePool.killPad(layer.index)
-            let vel = velocityMode == .full ? Float(1.0) : Float(hit.velocity) / 127.0
+            let vel = audio.velocityMode == .full ? Float(1.0) : Float(hit.velocity) / 127.0
             var offset = swungFrame - startPos
             if offset < 0 { offset += loopLen }
-            if let idx = voicePool.allocate(sample: sample, velocity: vel, padIndex: layer.index) {
+            if let idx = voicePool.allocate(sample: sample, velocity: vel, padIndex: layer.index, pan: layer.pan) {
                 voicePool.slots[idx].blockOffset = max(0, min(offset, frameCount - 1))
             }
             pendingReplayHits.append((padIndex: layer.index, position: hit.position, velocity: hit.velocity))
@@ -294,8 +295,8 @@ extension GenesisEngine {
                     if audio.layers[i].looper, !audio.layers[i].isMuted,
                        let sample = padBank.pads[i].sample {
                         voicePool.killPad(i)
-                        let vel: Float = velocityMode == .full ? 1.0 : audio.layers[i].volume
-                        if let idx = voicePool.allocate(sample: sample, velocity: vel, padIndex: i) {
+                        let vel: Float = audio.velocityMode == .full ? 1.0 : audio.layers[i].volume
+                        if let idx = voicePool.allocate(sample: sample, velocity: vel, padIndex: i, pan: audio.layers[i].pan) {
                             voicePool.slots[idx].blockOffset = max(0, min(wrapFrame, frameCount - 1))
                         }
                     }

@@ -16,8 +16,8 @@ extension ContentView {
         static let b: UInt16 = 11
         static let z: UInt16 = 6
         static let x: UInt16 = 7
-        static let p: UInt16 = 35
-            static let m: UInt16 = 46
+        static let v: UInt16 = 9
+        static let m: UInt16 = 46
         static let r: UInt16 = 15
         static let y: UInt16 = 16
         static let o: UInt16 = 31
@@ -150,7 +150,7 @@ extension ContentView {
         case Key.returnKey:
             if let bpm = Int(bpmInput), bpm > 0 {
                 engine.setBPM(bpm)
-                interpreter.appendLine("bpm set → \(bpm)", kind: .transport)
+                interpreter.appendLine("bpm set → \(engine.transport.bpm)", kind: .transport)
             }
             mode = .normal
             bpmInput = ""
@@ -278,7 +278,7 @@ extension ContentView {
         case Key.y:
             engine.cycleBarCount(forward: true)
             interpreter.appendLine("bars → \(engine.transport.barCount)", kind: .transport)
-        case 9: // V key
+        case Key.v:
             engine.cycleVelocityMode()
             interpreter.appendLine("velocity → \(engine.velocityMode.rawValue)", kind: .state)
         case Key.z:

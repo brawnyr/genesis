@@ -58,7 +58,7 @@ struct ChokeBadge: View {
                 .foregroundColor(Theme.text.opacity(0.5))
                 .frame(width: 50, alignment: .leading)
             Text(isOn ? "ON" : "OFF")
-                .font(.system(size: 16, design: .monospaced).bold())
+                .font(Theme.mono.bold())
                 .foregroundColor(isOn ? Theme.sage : Theme.text.opacity(0.5))
                 .padding(.horizontal, 10)
                 .padding(.vertical, 3)

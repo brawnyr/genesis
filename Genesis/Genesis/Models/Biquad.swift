@@ -73,6 +73,11 @@ func biquadProcessSample(_ input: Float, coeffs: BiquadCoefficients, state: inou
     let output = coeffs.b0 * input + state.z1
     state.z1 = coeffs.b1 * input - coeffs.a1 * output + state.z2
     state.z2 = coeffs.b2 * input - coeffs.a2 * output
+    if !output.isFinite {
+        state.z1 = 0
+        state.z2 = 0
+        return 0
+    }
     return output
 }
 
