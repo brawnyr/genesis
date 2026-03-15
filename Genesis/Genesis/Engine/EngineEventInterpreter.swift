@@ -1,4 +1,5 @@
 import Foundation
+import os
 
 enum LineKind {
     case system    // startup, init
@@ -10,20 +11,37 @@ enum LineKind {
     case oracle    // AI session observer
 }
 
-struct TerminalLine: Identifiable {
-    // Thread safety: only create TerminalLine on the main thread.
-    // Using OSAtomicIncrement as a safety net in case of off-main-thread creation.
-    private nonisolated(unsafe) static var nextID: Int = 0
-    let id: Int = {
+/// Lock-protected atomic counter for TerminalLine IDs.
+private final class IDGenerator {
+    private var lock = os_unfair_lock()
+    private var nextID: Int = 0
+
+    func next() -> Int {
+        os_unfair_lock_lock(&lock)
         let val = nextID
         nextID &+= 1
+        os_unfair_lock_unlock(&lock)
         return val
-    }()
+    }
+}
+
+struct TerminalLine: Identifiable {
+    // Thread-safe ID generation via lock-protected counter.
+    private static let idGen = IDGenerator()
+    let id: Int
     let text: String
     let kind: LineKind
     let isHighlight: Bool
     var padIndex: Int? = nil     // for hit lines — colors by pad
     let timestamp: Date = Date()
+
+    init(text: String, kind: LineKind, isHighlight: Bool, padIndex: Int? = nil) {
+        self.id = Self.idGen.next()
+        self.text = text
+        self.kind = kind
+        self.isHighlight = isHighlight
+        self.padIndex = padIndex
+    }
 
     private static let timeFormatter: DateFormatter = {
         let f = DateFormatter()

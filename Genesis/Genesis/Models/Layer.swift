@@ -33,6 +33,7 @@ struct Layer {
     }
 
     mutating func addHit(at position: Int, velocity: Int) {
+        guard position >= 0 else { return }
         let hit = Hit(position: position, velocity: velocity)
         // Binary search insertion — O(log n) vs O(n log n) full sort
         var lo = 0, hi = hits.count

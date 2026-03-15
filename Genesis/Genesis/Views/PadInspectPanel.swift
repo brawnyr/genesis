@@ -81,6 +81,38 @@ struct ChokeBadge: View {
 }
 
 
+struct LooperBadge: View {
+    let isOn: Bool
+
+    var body: some View {
+        HStack(spacing: 8) {
+            Text("LOOP")
+                .foregroundColor(Theme.text.opacity(0.5))
+                .frame(width: 50, alignment: .leading)
+            Text(isOn ? "ON" : "OFF")
+                .font(Theme.mono.bold())
+                .foregroundColor(isOn ? Theme.forest : Theme.text.opacity(0.5))
+                .padding(.horizontal, 10)
+                .padding(.vertical, 3)
+                .background(
+                    RoundedRectangle(cornerRadius: 3)
+                        .fill(isOn ? Theme.forest.opacity(0.12) : Color.clear)
+                )
+                .overlay(
+                    RoundedRectangle(cornerRadius: 3)
+                        .stroke(isOn ? Theme.forest.opacity(0.25) : Theme.subtle.opacity(0.3), lineWidth: 1)
+                )
+                .shadow(color: isOn ? Theme.forest.opacity(0.3) : .clear, radius: 4)
+            Text(isOn ? "(retrigger each loop)" : "(one-shot)")
+                .font(Theme.mono)
+                .foregroundColor(Theme.text.opacity(0.5))
+        }
+        .font(Theme.mono)
+        .padding(.vertical, 4)
+    }
+}
+
+
 // MARK: - Right-side panel (pad readout + sample browser)
 
 struct PadInspectPanel: View {
@@ -195,6 +227,9 @@ struct PadInspectPanel: View {
                 .padding(.bottom, 6)
 
             ChokeBadge(isOn: layer.choke)
+                .padding(.leading, 16)
+
+            LooperBadge(isOn: layer.looper)
                 .padding(.leading, 16)
         }
     }

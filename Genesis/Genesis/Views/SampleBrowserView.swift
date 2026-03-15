@@ -77,7 +77,12 @@ struct SampleBrowserView: View {
                         }
                     }
                     .onChange(of: selectedIndex) { _, newVal in
-                        proxy.scrollTo(newVal, anchor: .center)
+                        // Clamp to valid range, then scroll
+                        if !files.isEmpty {
+                            let clamped = min(max(0, newVal), files.count - 1)
+                            if clamped != newVal { selectedIndex = clamped }
+                        }
+                        proxy.scrollTo(min(max(0, newVal), max(0, files.count - 1)), anchor: .center)
                     }
                 }
             }
@@ -102,12 +107,6 @@ struct SampleBrowserView: View {
         }
         .onAppear { scanFolder() }
         .onChange(of: padIndex) { _, _ in scanFolder() }
-        .onChange(of: selectedIndex) { _, newVal in
-            if !files.isEmpty {
-                let clamped = min(max(0, newVal), files.count - 1)
-                if clamped != newVal { selectedIndex = clamped }
-            }
-        }
     }
 
     private func scanFolder() {

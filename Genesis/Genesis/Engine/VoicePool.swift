@@ -66,8 +66,12 @@ struct Voice {
         let startIdx = blockOffset
         blockOffset = 0
 
-        let remaining = sample.frameCount - position
+        // Voice scheduled beyond this block (e.g. looper at exact block boundary) —
+        // keep alive, it will render from frame 0 next block.
         let available = count - startIdx
+        guard available > 0 else { return (false, 0) }
+
+        let remaining = sample.frameCount - position
         let toWrite = min(available, remaining)
         guard toWrite > 0 else {
             active = false

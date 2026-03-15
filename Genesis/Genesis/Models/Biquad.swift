@@ -21,6 +21,8 @@ struct BiquadCoefficients {
 
     /// Standard 12dB/oct Butterworth low-pass filter.
     static func lowPass(cutoff: Float, sampleRate: Float) -> BiquadCoefficients {
+        // Clamp cutoff to valid range to prevent unstable coefficients
+        let cutoff = max(10.0, min(cutoff, sampleRate * 0.45))
         let w0 = 2.0 * Float.pi * cutoff / sampleRate
         let cosW0 = cos(w0)
         let sinW0 = sin(w0)
@@ -44,6 +46,8 @@ struct BiquadCoefficients {
 
     /// Standard 12dB/oct Butterworth high-pass filter.
     static func highPass(cutoff: Float, sampleRate: Float) -> BiquadCoefficients {
+        // Clamp cutoff to valid range to prevent unstable coefficients
+        let cutoff = max(10.0, min(cutoff, sampleRate * 0.45))
         let w0 = 2.0 * Float.pi * cutoff / sampleRate
         let cosW0 = cos(w0)
         let sinW0 = sin(w0)

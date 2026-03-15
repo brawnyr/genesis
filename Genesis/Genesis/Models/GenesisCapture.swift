@@ -11,74 +11,61 @@ struct GenesisCapture {
 
     var state: State = .off
 
-    // Pre-allocated chunk buffers — avoid per-block heap allocations on audio thread.
-    // Only allocates when a chunk fills (~every 10 seconds).
-    private static let chunkFrames = 44100 * 10
-    private var chunkL: [Float] = []
-    private var chunkR: [Float] = []
-    private var chunkPos: Int = 0
+    // Single contiguous pre-allocated buffer per channel.
+    // Allocated once at startCapture() on the main thread, then zero audio-thread allocations.
+    // Sized for up to 2 minutes of capture. If exceeded, capture stops cleanly.
+    private static let maxCaptureSeconds = 120
+    private static let sampleRate = 44100
+    private static let maxFrames = maxCaptureSeconds * sampleRate
+    private static let chunkFrames = sampleRate * 10  // 10s chunks for WAV writing
 
-    // Completed chunks waiting to be written
-    private var completedL: [[Float]] = []
-    private var completedR: [[Float]] = []
+    private var bufferL: [Float] = []
+    private var bufferR: [Float] = []
+    private var writePos: Int = 0
 
-    var accumulatedFrames: Int {
-        completedL.reduce(0) { $0 + $1.count } + chunkPos
-    }
+    var accumulatedFrames: Int { writePos }
 
     mutating func startCapture() {
         state = .on
-        completedL = []
-        completedR = []
-        completedL.reserveCapacity(64)
-        completedR.reserveCapacity(64)
-        chunkL = [Float](repeating: 0, count: Self.chunkFrames)
-        chunkR = [Float](repeating: 0, count: Self.chunkFrames)
-        chunkPos = 0
+        // Reuse existing allocation if large enough; otherwise allocate once (main thread)
+        if bufferL.count < Self.maxFrames {
+            bufferL = [Float](repeating: 0, count: Self.maxFrames)
+            bufferR = [Float](repeating: 0, count: Self.maxFrames)
+        }
+        writePos = 0
     }
 
-    /// Stop capture and return accumulated chunks for writing.
-    /// Call from the thread that owns this struct (under lock if shared).
+    /// Stop capture and return accumulated audio as chunks for WAV writing.
+    /// Call from the main thread — chunk slicing allocates here, not on the audio thread.
     mutating func stopCapture() -> [([Float], [Float])] {
         state = .off
-        // Flush remaining chunk data
-        if chunkPos > 0 {
-            completedL.append(Array(chunkL[0..<chunkPos]))
-            completedR.append(Array(chunkR[0..<chunkPos]))
+        guard writePos > 0 else { return [] }
+        // Split into ~10s chunks for streamed WAV writing
+        var chunks: [([Float], [Float])] = []
+        chunks.reserveCapacity((writePos / Self.chunkFrames) + 1)
+        var offset = 0
+        while offset < writePos {
+            let end = min(offset + Self.chunkFrames, writePos)
+            chunks.append((Array(bufferL[offset..<end]), Array(bufferR[offset..<end])))
+            offset = end
         }
-        let chunks = zip(completedL, completedR).map { ($0, $1) }
-        completedL = []
-        completedR = []
-        chunkL = []
-        chunkR = []
-        chunkPos = 0
+        writePos = 0
         return chunks
     }
 
-    /// Append audio from the render callback. Uses pre-allocated chunk buffers
-    /// to minimize heap allocations on the audio thread. Only allocates when a
-    /// chunk fills (~every 10 seconds).
+    /// Append audio from the render callback into the pre-allocated buffer.
+    /// Zero heap allocations — just memcpy into the contiguous buffer.
     mutating func appendFromBuffers(left: UnsafeBufferPointer<Float>, right: UnsafeBufferPointer<Float>) {
-        guard state == .on, !chunkL.isEmpty else { return }
+        guard state == .on, !bufferL.isEmpty else { return }
         let count = left.count
-        var srcOffset = 0
-        while srcOffset < count {
-            let space = Self.chunkFrames - chunkPos
-            let toCopy = min(space, count - srcOffset)
-            for i in 0..<toCopy {
-                chunkL[chunkPos + i] = left[srcOffset + i]
-                chunkR[chunkPos + i] = right[srcOffset + i]
-            }
-            chunkPos += toCopy
-            srcOffset += toCopy
-            if chunkPos >= Self.chunkFrames {
-                completedL.append(chunkL)
-                completedR.append(chunkR)
-                chunkL = [Float](repeating: 0, count: Self.chunkFrames)
-                chunkR = [Float](repeating: 0, count: Self.chunkFrames)
-                chunkPos = 0
-            }
+        let space = bufferL.count - writePos
+        let toCopy = min(count, space)
+        guard toCopy > 0 else { return }
+        for i in 0..<toCopy {
+            bufferL[writePos + i] = left[i]
+            bufferR[writePos + i] = right[i]
         }
+        writePos += toCopy
     }
 
     /// Write chunks to a WAV file on a background queue.

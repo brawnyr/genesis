@@ -50,10 +50,11 @@ struct PadBank {
         return index
     }
 
-    mutating func assign(sample: Sample, toPad index: Int) {
+    mutating func assign(sample: Sample, toPad index: Int, path: String? = nil) {
         guard index >= 0, index < Self.padCount else { return }
         pads[index].sample = sample
         pads[index].name = sample.name.uppercased()
+        if let path { pads[index].samplePath = path }
     }
 
     var config: PadConfig {

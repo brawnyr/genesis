@@ -295,8 +295,8 @@ extension GenesisEngine {
                 wrapped = true
 
                 // Looper pads — trigger sample at exact wrap point (beat 1)
-                // Only fire if the wrap actually occurs within this block
-                if wrapFrame >= 0 && wrapFrame < frameCount {
+                // Use <= to handle exact block-boundary wraps (overshoot == 0)
+                if wrapFrame >= 0 && wrapFrame <= frameCount {
                     for i in 0..<PadBank.padCount {
                         if audio.layers[i].looper, !audio.layers[i].isMuted,
                            let sample = padBank.pads[i].sample {
