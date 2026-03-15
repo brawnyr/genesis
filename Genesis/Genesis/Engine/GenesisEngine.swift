@@ -26,7 +26,7 @@ struct AudioState {
     var loopLengthFrames: Int {
         let beatsPerLoop = Double(barCount * Transport.beatsPerBar)
         let secondsPerBeat = 60.0 / Double(bpm)
-        return Int(beatsPerLoop * secondsPerBeat * Transport.sampleRate)
+        return Int((beatsPerLoop * secondsPerBeat * Transport.sampleRate).rounded())
     }
 }
 
@@ -47,6 +47,8 @@ class GenesisEngine: ObservableObject {
     @Published var detectedBPMs: [Int: Double] = [:]
     @Published var activePadIndex: Int = 0 {
         didSet {
+            let clamped = max(0, min(PadBank.padCount - 1, activePadIndex))
+            if clamped != activePadIndex { activePadIndex = clamped; return }
             os_unfair_lock_lock(&audioLock)
             audio.activePadIndex = activePadIndex
             os_unfair_lock_unlock(&audioLock)
@@ -72,6 +74,11 @@ class GenesisEngine: ObservableObject {
     var voiceScratchL = [Float](repeating: 0, count: 4096)
     var voiceScratchR = [Float](repeating: 0, count: 4096)
     let reverb = ReverbProcessor()
+
+    // Pre-allocated layer param snapshots — populated under lock, used outside lock by VoiceMixer
+    var snapshotVolumes = [Float](repeating: 0.25, count: PadBank.padCount)
+    var snapshotPans = [Float](repeating: 0.5, count: PadBank.padCount)
+    var snapshotReverbSends = [Float](repeating: 0, count: PadBank.padCount)
 
     // MARK: - Cached biquad coefficients (recalculated only on cutoff change)
 
@@ -145,10 +152,9 @@ class GenesisEngine: ObservableObject {
 
     func cycleBarCount(forward: Bool) {
         let options = [1, 2, 4]
-        if let idx = options.firstIndex(of: transport.barCount) {
-            let next = forward ? min(idx + 1, options.count - 1) : max(idx - 1, 0)
-            setBarCount(options[next])
-        }
+        let idx = options.firstIndex(of: transport.barCount) ?? 0
+        let next = forward ? min(idx + 1, options.count - 1) : max(idx - 1, 0)
+        setBarCount(options[next])
     }
 
     // MARK: - Master volume
@@ -262,11 +268,14 @@ class GenesisEngine: ObservableObject {
     func muteAll() {
         os_unfair_lock_lock(&audioLock)
         for i in 0..<PadBank.padCount {
-            layers[i].isMuted = true
             audio.layers[i].isMuted = true
         }
         voicePool.killAll()
         os_unfair_lock_unlock(&audioLock)
+        // Update UI state outside lock to avoid priority inversion
+        for i in 0..<PadBank.padCount {
+            layers[i].isMuted = true
+        }
     }
 
     func toggleChoke(pad index: Int) {
@@ -305,9 +314,9 @@ class GenesisEngine: ObservableObject {
 
     func clearLayer(_ index: Int) {
         guard index >= 0, index < layers.count else { return }
-        // Snapshot both sides atomically before clearing
-        let uiHits = layers[index].hits
+        // Snapshot both sides atomically under lock before clearing
         os_unfair_lock_lock(&audioLock)
+        let uiHits = layers[index].hits
         let audioHits = audio.layers[index].hits
         audio.layers[index].hits.removeAll()
         audio.layers[index].isRecording = false
@@ -318,7 +327,6 @@ class GenesisEngine: ObservableObject {
         layers[index].isRecording = false
         layers[index].hasNewHits = false
 
-        // Push onto undo stack (audio copy is authoritative)
         undoStack.append((index: index, uiHits: uiHits, audioHits: audioHits))
         if undoStack.count > Self.maxUndoDepth {
             undoStack.removeFirst()
@@ -362,15 +370,25 @@ class GenesisEngine: ObservableObject {
 
     func toggleCapture() {
         let wasOff = capture.state == .off
-        capture.toggle()
-        os_unfair_lock_lock(&audioLock)
-        audio.captureState = capture.state
-        audio.capture = capture
-        // Cut all ringing voices when looper starts so trailing notes don't bleed in
-        if wasOff && capture.state == .on {
+        if wasOff {
+            // Starting capture
+            os_unfair_lock_lock(&audioLock)
+            audio.capture.startCapture()
+            audio.captureState = .on
+            // Cut all ringing voices so trailing notes don't bleed in
             voicePool.killAll()
+            os_unfair_lock_unlock(&audioLock)
+            capture.state = .on
+        } else {
+            // Stopping capture — retrieve accumulated data from audio thread
+            os_unfair_lock_lock(&audioLock)
+            let chunks = audio.capture.stopCapture()
+            audio.captureState = .off
+            os_unfair_lock_unlock(&audioLock)
+            capture.state = .off
+            // Write from the audio-thread copy which has the actual recorded data
+            GenesisCapture.writeChunksToFile(chunks)
         }
-        os_unfair_lock_unlock(&audioLock)
     }
 
     func toggleMetronome() {

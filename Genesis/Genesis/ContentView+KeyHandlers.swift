@@ -87,6 +87,8 @@ extension ContentView {
         cachedBrowserFiles = (try? FileManager.default.contentsOfDirectory(at: folderURL, includingPropertiesForKeys: nil)
             .filter { PadBank.audioExtensions.contains($0.pathExtension.lowercased()) }
             .sorted { $0.lastPathComponent < $1.lastPathComponent }) ?? []
+        // Reset browser index when pad changes to avoid stale out-of-bounds index
+        browserIndex = 0
     }
 
     func loadBrowserSample() {
@@ -116,7 +118,7 @@ extension ContentView {
         case .bpm:
             handleBPMKey(keyCode: keyCode, chars: chars)
         case .browse:
-            handleBrowseKey(keyCode: keyCode, chars: chars)
+            handleBrowseKey(keyCode: keyCode, chars: chars, modifiers: modifiers)
         case .normal:
             handleNormalKey(keyCode: keyCode, chars: chars, modifiers: modifiers)
         }
@@ -149,9 +151,11 @@ extension ContentView {
         }
         switch keyCode {
         case Key.returnKey:
-            if let bpm = Int(bpmInput), bpm > 0 {
+            if let bpm = Int(bpmInput), bpm >= 1, bpm <= 999 {
                 engine.setBPM(bpm)
                 interpreter.appendLine("bpm set → \(engine.transport.bpm)", kind: .transport)
+            } else if let bpm = Int(bpmInput), bpm > 999 {
+                interpreter.appendLine("bpm must be 1–999", kind: .system)
             }
             mode = .normal
             bpmInput = ""
@@ -164,7 +168,7 @@ extension ContentView {
         }
     }
 
-    func handleBrowseKey(keyCode: UInt16, chars: String?) {
+    func handleBrowseKey(keyCode: UInt16, chars: String?, modifiers: NSEvent.ModifierFlags) {
         switch keyCode {
         case Key.w, Key.upArrow:
             browserIndex = max(0, browserIndex - 1)
@@ -188,8 +192,8 @@ extension ContentView {
             interpreter.appendLine("browser closed", kind: .browse)
             return
         default:
-            // Fall through to normal key handling (space, A/D, etc.)
-            handleNormalKey(keyCode: keyCode, chars: chars, modifiers: [])
+            // Fall through to normal key handling (space, A/D, etc.) preserving modifiers
+            handleNormalKey(keyCode: keyCode, chars: chars, modifiers: modifiers)
         }
     }
 

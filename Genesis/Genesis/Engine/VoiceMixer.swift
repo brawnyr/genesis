@@ -4,10 +4,13 @@ import Foundation
 enum VoiceMixer {
     /// Mix all active voices into stereo output buffers + reverb send buffers.
     /// Returns per-pad peak levels.
-    /// Uses pre-allocated scratch buffers to avoid heap allocations on the audio thread.
+    /// Layer params (volumes, pans, reverbSends) are passed as pre-snapshotted arrays
+    /// to avoid reading shared state outside the audio lock.
     static func mix(
         pool: inout VoicePool,
-        layers: [Layer],
+        layerVolumes: [Float],
+        layerPans: [Float],
+        layerReverbSends: [Float],
         cachedHP: [BiquadCoefficients],
         cachedLP: [BiquadCoefficients],
         intoLeft bufferL: inout [Float],
@@ -25,9 +28,9 @@ enum VoiceMixer {
             let validPad = padIdx >= 0 && padIdx < PadBank.padCount
             let hpCoeffs = validPad ? cachedHP[padIdx] : .bypass
             let lpCoeffs = validPad ? cachedLP[padIdx] : .bypass
-            let pan = validPad ? layers[padIdx].pan : 0.5
-            let volume = validPad ? layers[padIdx].volume : 1.0
-            let reverbAmt = validPad ? layers[padIdx].reverbSend : 0.0
+            let pan = validPad ? layerPans[padIdx] : 0.5
+            let volume = validPad ? layerVolumes[padIdx] : 1.0
+            let reverbAmt = validPad ? layerReverbSends[padIdx] : 0.0
 
             let needsReverb = reverbAmt > 0.001
 

@@ -23,11 +23,11 @@ struct Transport {
     var loopLengthFrames: Int {
         let beatsPerLoop = Double(barCount * Self.beatsPerBar)
         let secondsPerBeat = 60.0 / Double(bpm)
-        return Int(beatsPerLoop * secondsPerBeat * Self.sampleRate)
+        return Int((beatsPerLoop * secondsPerBeat * Self.sampleRate).rounded())
     }
 
     var currentBeat: Int {
-        let beatLengthFrames = Int(60.0 / Double(bpm) * Self.sampleRate)
+        let beatLengthFrames = Int((60.0 / Double(bpm) * Self.sampleRate).rounded())
         guard beatLengthFrames > 0 else { return 1 }
         return (position / beatLengthFrames) % (barCount * Self.beatsPerBar) + 1
     }

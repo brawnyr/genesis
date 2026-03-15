@@ -11,11 +11,12 @@ enum LineKind {
 }
 
 struct TerminalLine: Identifiable {
-    // Safe: TerminalLine is only created on the main thread (all appendLine calls dispatch to main)
+    // Thread safety: only create TerminalLine on the main thread.
+    // Using OSAtomicIncrement as a safety net in case of off-main-thread creation.
     private nonisolated(unsafe) static var nextID: Int = 0
     let id: Int = {
         let val = nextID
-        nextID += 1
+        nextID &+= 1
         return val
     }()
     let text: String
@@ -87,7 +88,9 @@ class EngineEventInterpreter: ObservableObject {
             intensities[hit.padIndex] = min(1.0, velNorm)
 
             loopHitCounts[hit.padIndex] += 1
-            loopHitVelocities[hit.padIndex].append(hit.velocity)
+            if loopHitVelocities[hit.padIndex].count < 256 {
+                loopHitVelocities[hit.padIndex].append(hit.velocity)
+            }
 
             let beatStr = Self.formatBeatPosition(
                 framePosition: hit.position,

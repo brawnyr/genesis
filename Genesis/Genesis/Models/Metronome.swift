@@ -26,12 +26,13 @@ struct Metronome {
     }
 
     static func beatLengthFramesStatic(bpm: Int, sampleRate: Double) -> Int {
-        Int(60.0 / Double(bpm) * sampleRate)
+        Int((60.0 / Double(bpm) * sampleRate).rounded())
     }
 
     /// Get click sample for beat position (0-3). Wraps for odd time signatures.
     static func click(beatIndex: Int) -> Sample {
-        cachedBeats[beatIndex % cachedBeats.count]
+        guard !cachedBeats.isEmpty else { return generateClick(freq: 880.0, amp: 0.3) }
+        return cachedBeats[beatIndex % cachedBeats.count]
     }
 
     private static func generateClick(freq: Double, amp: Float) -> Sample {

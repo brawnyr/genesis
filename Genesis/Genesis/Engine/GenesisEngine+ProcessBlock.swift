@@ -289,18 +289,22 @@ extension GenesisEngine {
             // Advance audio position
             audio.position += frameCount
             if audio.position >= loopLen {
-                wrapFrame = frameCount - (audio.position - loopLen)
+                let overshoot = audio.position - loopLen
+                wrapFrame = frameCount - overshoot
                 audio.position -= loopLen
                 wrapped = true
 
                 // Looper pads — trigger sample at exact wrap point (beat 1)
-                for i in 0..<PadBank.padCount {
-                    if audio.layers[i].looper, !audio.layers[i].isMuted,
-                       let sample = padBank.pads[i].sample {
-                        voicePool.killPad(i)
-                        let vel: Float = 1.0
-                        if let idx = voicePool.allocate(sample: sample, velocity: vel, padIndex: i, pan: audio.layers[i].pan) {
-                            voicePool.slots[idx].blockOffset = max(0, min(wrapFrame, frameCount - 1))
+                // Only fire if the wrap actually occurs within this block
+                if wrapFrame >= 0 && wrapFrame < frameCount {
+                    for i in 0..<PadBank.padCount {
+                        if audio.layers[i].looper, !audio.layers[i].isMuted,
+                           let sample = padBank.pads[i].sample {
+                            voicePool.killPad(i)
+                            let vel: Float = 1.0
+                            if let idx = voicePool.allocate(sample: sample, velocity: vel, padIndex: i, pan: audio.layers[i].pan) {
+                                voicePool.slots[idx].blockOffset = wrapFrame
+                            }
                         }
                     }
                 }
@@ -323,27 +327,12 @@ extension GenesisEngine {
         // Update cached biquad coefficients (only recalculates when cutoffs change)
         updateCachedCoefficients()
 
-        // Snapshot layer rendering params while locked (cheap scalar copies)
-        // These local copies let us release the lock before the heavy render pass
-        var localLayerVolumes = (Float(0), Float(0), Float(0), Float(0), Float(0), Float(0), Float(0), Float(0))
-        var localLayerPans = (Float(0), Float(0), Float(0), Float(0), Float(0), Float(0), Float(0), Float(0))
-        var localLayerReverbSends = (Float(0), Float(0), Float(0), Float(0), Float(0), Float(0), Float(0), Float(0))
-        withUnsafeMutablePointer(to: &localLayerVolumes) { vPtr in
-            vPtr.withMemoryRebound(to: Float.self, capacity: PadBank.padCount) { v in
-                withUnsafeMutablePointer(to: &localLayerPans) { pPtr in
-                    pPtr.withMemoryRebound(to: Float.self, capacity: PadBank.padCount) { p in
-                        withUnsafeMutablePointer(to: &localLayerReverbSends) { rPtr in
-                            rPtr.withMemoryRebound(to: Float.self, capacity: PadBank.padCount) { r in
-                                for i in 0..<PadBank.padCount {
-                                    v[i] = audio.layers[i].volume
-                                    p[i] = audio.layers[i].pan
-                                    r[i] = audio.layers[i].reverbSend
-                                }
-                            }
-                        }
-                    }
-                }
-            }
+        // Snapshot layer rendering params into pre-allocated arrays while locked.
+        // These copies let us release the lock before the heavy render pass.
+        for i in 0..<PadBank.padCount {
+            snapshotVolumes[i] = audio.layers[i].volume
+            snapshotPans[i] = audio.layers[i].pan
+            snapshotReverbSends[i] = audio.layers[i].reverbSend
         }
 
         os_unfair_lock_unlock(&audioLock)
@@ -369,7 +358,9 @@ extension GenesisEngine {
         // Mix all active voices — always, even when stopped (for pad auditioning)
         let frameLevels = VoiceMixer.mix(
             pool: &voicePool,
-            layers: audio.layers,
+            layerVolumes: snapshotVolumes,
+            layerPans: snapshotPans,
+            layerReverbSends: snapshotReverbSends,
             cachedHP: cachedHPCoeffs,
             cachedLP: cachedLPCoeffs,
             intoLeft: &outputBufferL,
@@ -462,11 +453,8 @@ extension GenesisEngine {
             reusableSnapshot.valid = true
         }
 
-        os_unfair_lock_unlock(&audioLock)
-
-        // === Everything below runs OUTSIDE the audio lock ===
-
-        // Capture — avoids heap allocations while holding spinlock
+        // Capture under lock to prevent race with toggleCapture().
+        // Uses pre-allocated chunk buffers so per-block cost is just a memcpy.
         if shouldCapture {
             outputBufferL.withUnsafeBufferPointer { leftPtr in
                 outputBufferR.withUnsafeBufferPointer { rightPtr in
@@ -476,6 +464,10 @@ extension GenesisEngine {
                 }
             }
         }
+
+        os_unfair_lock_unlock(&audioLock)
+
+        // === Everything below runs OUTSIDE the audio lock ===
 
         // Dispatch main-thread UI sync (outside lock to avoid priority inversion)
         if wrapped {

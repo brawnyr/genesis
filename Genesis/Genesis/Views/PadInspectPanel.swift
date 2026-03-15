@@ -95,11 +95,7 @@ struct PadInspectPanel: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
-            Text("INSPECT")
-                .font(Theme.sectionLabel)
-                .foregroundColor(Theme.electric)
-                .shadow(color: Theme.electric.opacity(0.3), radius: 6)
-                .tracking(3)
+            SectionTitle(text: "INSPECT")
                 .padding(.bottom, 6)
 
             padReadoutView

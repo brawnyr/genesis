@@ -7,11 +7,7 @@ struct PadSelect: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
-            Text("PAD_SELECT")
-                .font(Theme.sectionLabel)
-                .foregroundColor(Theme.electric)
-                .shadow(color: Theme.electric.opacity(0.3), radius: 6)
-                .tracking(3)
+            SectionTitle(text: "PAD_SELECT")
                 .padding(.horizontal, 12)
                 .padding(.top, 8)
                 .padding(.bottom, 4)
@@ -23,12 +19,12 @@ struct PadSelect: View {
                     let padColor = Theme.padColor(padIdx)
                     let name = PadBank.spliceFolderNames[padIdx].uppercased()
 
-                    PadCell(
+                    EquatableView(content: PadCell(
                         name: name,
                         padColor: padColor,
                         layer: layer,
                         isActive: isActive
-                    )
+                    ))
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
                     .contentShape(Rectangle())
                     .onTapGesture {
@@ -42,12 +38,28 @@ struct PadSelect: View {
 }
 
 // MARK: - Single pad cell — big name, textual data column
+// Equatable prevents unnecessary redraws when engine publishes unrelated state at 33Hz.
 
-private struct PadCell: View {
+private struct PadCell: View, Equatable {
     let name: String
     let padColor: Color
     let layer: Layer
     let isActive: Bool
+
+    static func == (lhs: PadCell, rhs: PadCell) -> Bool {
+        lhs.name == rhs.name &&
+        lhs.isActive == rhs.isActive &&
+        lhs.layer.volume == rhs.layer.volume &&
+        lhs.layer.pan == rhs.layer.pan &&
+        lhs.layer.isMuted == rhs.layer.isMuted &&
+        lhs.layer.choke == rhs.layer.choke &&
+        lhs.layer.looper == rhs.layer.looper &&
+        lhs.layer.reverbSend == rhs.layer.reverbSend &&
+        lhs.layer.swing == rhs.layer.swing &&
+        lhs.layer.hpCutoff == rhs.layer.hpCutoff &&
+        lhs.layer.lpCutoff == rhs.layer.lpCutoff &&
+        lhs.layer.hits.count == rhs.layer.hits.count
+    }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 1) {

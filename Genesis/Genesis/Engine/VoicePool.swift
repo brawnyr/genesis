@@ -200,6 +200,7 @@ struct VoicePool {
     }
 
     /// Set of pad indices that currently have active voices.
+    /// Note: allocates a Set on each call — do not use from the audio thread.
     var activePadIndices: Set<Int> {
         var result = Set<Int>()
         for i in 0..<Self.capacity {

@@ -75,3 +75,15 @@ enum Theme {
     static let forest = sage
     static let wheat  = gold
 }
+
+/// Unified section title — single source of truth for the First Light section header style.
+struct SectionTitle: View {
+    let text: String
+    var body: some View {
+        Text(text)
+            .font(Theme.sectionLabel)
+            .foregroundColor(Theme.electric)
+            .shadow(color: Theme.electric.opacity(0.3), radius: 6)
+            .tracking(3)
+    }
+}

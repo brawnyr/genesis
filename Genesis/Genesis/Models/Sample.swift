@@ -46,7 +46,7 @@ struct Sample {
         }
 
         let ratio = Transport.sampleRate / sourceFormat.sampleRate
-        let outputCapacity = AVAudioFrameCount(Double(sourceFrameCount) * ratio) + 100
+        let outputCapacity = AVAudioFrameCount(ceil(Double(sourceFrameCount) * ratio)) + 1
         guard let outputBuffer = AVAudioPCMBuffer(pcmFormat: targetFormat, frameCapacity: outputCapacity) else {
             throw SampleError.conversionFailed
         }
@@ -78,7 +78,7 @@ struct Sample {
                 start: channelData[1], count: frameLen
             ))
         } else {
-            // Mono source — duplicate left channel
+            // Mono source — shares backing store via COW (safe since Sample is immutable after load)
             rightData = leftData
         }
 

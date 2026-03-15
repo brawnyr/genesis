@@ -76,11 +76,7 @@ struct ContentView: View {
                             .background(Theme.canvasBg)
 
                         // TERMINAL zone title
-                        Text("TERMINAL")
-                            .font(Theme.sectionLabel)
-                            .foregroundColor(Theme.electric)
-                            .shadow(color: Theme.electric.opacity(0.3), radius: 6)
-                            .tracking(3)
+                        SectionTitle(text: "TERMINAL")
                             .padding(.horizontal, 20)
                             .padding(.top, 8)
 
@@ -131,11 +127,7 @@ struct ContentView: View {
 struct HotkeyHUD: View {
     var body: some View {
         VStack(spacing: 8) {
-            Text("HOTKEYS")
-                .font(Theme.sectionLabel)
-                .foregroundColor(Theme.electric)
-                .shadow(color: Theme.electric.opacity(0.3), radius: 6)
-                .tracking(3)
+            SectionTitle(text: "HOTKEYS")
                 .padding(.horizontal, 0)
             HStack(spacing: 24) {
                 // Transport — sage

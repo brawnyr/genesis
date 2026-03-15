@@ -82,11 +82,13 @@ func biquadProcessSample(_ input: Float, coeffs: BiquadCoefficients, state: inou
 }
 
 /// Maps MIDI CC value (0–127) to frequency (20Hz–20kHz) exponentially.
-/// Formula: 20 * pow(1000, cc/127)
+/// Formula: 20 * pow(1000, cc/127), clamped to 45% of Nyquist for biquad stability.
 func ccToFrequency(_ cc: Int) -> Float {
     let clamped = max(0, min(127, cc))
     let normalized = Float(clamped) / 127.0
-    return 20.0 * pow(1000.0, normalized)
+    let freq = 20.0 * pow(1000.0, normalized)
+    let maxFreq = Float(Transport.sampleRate) * 0.45
+    return min(freq, maxFreq)
 }
 
 /// Converts linear amplitude (0.0–∞) to dBFS.

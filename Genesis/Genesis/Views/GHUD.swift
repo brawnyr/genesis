@@ -15,11 +15,7 @@ struct GHUD: View {
         VStack(alignment: .leading, spacing: 0) {
 
             // === TITLE ===
-            Text("MASTER")
-                .font(Theme.sectionLabel)
-                .foregroundColor(Theme.electric)
-                .shadow(color: Theme.electric.opacity(0.3), radius: 6)
-                .tracking(3)
+            SectionTitle(text: "MASTER")
                 .padding(.bottom, 6)
 
             // === BPM + BARS ===

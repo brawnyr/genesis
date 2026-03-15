@@ -6,6 +6,7 @@ struct TerminalTextLayer: View {
     @ObservedObject var engine: GenesisEngine
 
     @State private var cursorVisible = true
+    private let cursorTimer = Timer.publish(every: 0.6, on: .main, in: .common).autoconnect()
 
     var body: some View {
         ScrollViewReader { proxy in
@@ -35,13 +36,8 @@ struct TerminalTextLayer: View {
                 }
             }
         }
-        .onAppear {
-            withAnimation(.easeInOut(duration: 0.6).repeatForever(autoreverses: true)) {
-                cursorVisible.toggle()
-            }
-        }
-        .onDisappear {
-            cursorVisible = true
+        .onReceive(cursorTimer) { _ in
+            cursorVisible.toggle()
         }
     }
 

@@ -99,6 +99,7 @@ struct PadBank {
     mutating func loadFromSpliceFolders() {
         let fm = FileManager.default
         for (index, folderName) in Self.spliceFolderNames.enumerated() {
+            guard index < pads.count else { break }
             // Skip pads that already have a sample loaded (pads.json took priority)
             guard pads[index].sample == nil else { continue }
 
