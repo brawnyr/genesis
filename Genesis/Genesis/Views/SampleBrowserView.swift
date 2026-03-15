@@ -19,8 +19,8 @@ struct SampleBrowserView: View {
             HStack {
                 Text("BROWSER")
                     .font(Theme.sectionLabel)
-                    .foregroundColor(Theme.chrome)
-                    .shadow(color: Theme.chrome.opacity(0.3), radius: 6)
+                    .foregroundColor(Theme.electric)
+                    .shadow(color: Theme.electric.opacity(0.3), radius: 6)
                 Spacer()
                 Text("[T] close")
                     .font(Theme.monoTiny)
@@ -56,7 +56,7 @@ struct SampleBrowserView: View {
                                 let name = file.deletingPathExtension().lastPathComponent
                                 let isSelected = idx == selectedIndex
                                 Text(name.lowercased().prefix(22))
-                                    .font(Theme.monoSmall)
+                                    .font(Theme.mono)
                                     .foregroundColor(isSelected ? Theme.chrome : Theme.text.opacity(0.35))
                                     .shadow(color: isSelected ? Theme.sage.opacity(0.3) : .clear, radius: 3)
                                     .padding(.vertical, 2)
@@ -91,10 +91,10 @@ struct SampleBrowserView: View {
 
                 HStack(spacing: 8) {
                     Text("W↑ S↓")
-                        .font(Theme.monoTiny)
+                        .font(Theme.mono)
                         .foregroundColor(Theme.subtle)
                     Text("⏎ close")
-                        .font(Theme.monoTiny)
+                        .font(Theme.mono)
                         .foregroundColor(Theme.subtle)
                 }
                 .padding(.top, 4)

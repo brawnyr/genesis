@@ -9,8 +9,8 @@ struct PadSelect: View {
         VStack(alignment: .leading, spacing: 0) {
             Text("PAD_SELECT")
                 .font(Theme.sectionLabel)
-                .foregroundColor(Theme.chrome)
-                .shadow(color: Theme.chrome.opacity(0.3), radius: 6)
+                .foregroundColor(Theme.electric)
+                .shadow(color: Theme.electric.opacity(0.3), radius: 6)
                 .tracking(3)
                 .padding(.horizontal, 12)
                 .padding(.top, 8)
@@ -53,7 +53,7 @@ private struct PadCell: View {
         VStack(alignment: .leading, spacing: 1) {
             // Pad name — big
             Text(name)
-                .font(.system(size: isActive ? 22 : 16, design: .monospaced).bold())
+                .font(.system(size: isActive ? 22 : 17, design: .monospaced).bold())
                 .foregroundColor(layer.isMuted ? Theme.subtle : padColor)
                 .shadow(color: isActive ? padColor.opacity(0.5) : .clear, radius: 6)
                 .frame(maxWidth: .infinity, alignment: .center)
@@ -121,7 +121,7 @@ private struct PadDataRow: View {
             Text(value)
                 .foregroundColor(color)
         }
-        .font(.system(size: 12, design: .monospaced))
+        .font(Theme.mono)
         .frame(maxWidth: .infinity, alignment: .leading)
     }
 }

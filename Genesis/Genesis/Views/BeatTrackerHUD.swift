@@ -25,7 +25,7 @@ struct BeatTrackerHUD: View {
                     Text(beatPosition)
                         .font(Theme.hero)
                         .foregroundColor(Theme.chrome)
-                        .shadow(color: Theme.chrome.opacity(0.3), radius: 8)
+                        .shadow(color: Theme.electric.opacity(0.25), radius: 8)
                     Text("BEAT")
                         .font(Theme.monoSmall.bold())
                         .foregroundColor(Theme.sage)

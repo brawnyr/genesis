@@ -21,8 +21,8 @@ struct TerminalTextLayer: View {
                     // Blinking cursor
                     Text("_")
                         .font(.system(size: 17, design: .monospaced))
-                        .foregroundColor(Theme.terracotta)
-                        .shadow(color: Theme.terracotta.opacity(0.4), radius: 4)
+                        .foregroundColor(Theme.electric)
+                        .shadow(color: Theme.electric.opacity(0.4), radius: 4)
                         .opacity(cursorVisible ? 0.7 : 0)
                         .id("cursor")
                 }
@@ -63,8 +63,8 @@ struct TerminalLineView: View {
         case .hit:       return Theme.terracotta
         case .state:     return Theme.text
         case .capture:   return Theme.terracotta
-        case .browse:    return Theme.moss
-        case .oracle:    return Theme.forest
+        case .browse:    return Theme.sky
+        case .oracle:    return Theme.electric
         }
     }
 

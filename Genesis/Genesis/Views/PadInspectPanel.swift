@@ -15,8 +15,8 @@ struct InspectorSectionHeader: View {
                 .shadow(color: color.opacity(0.5), radius: 4)
             Text(title)
                 .font(Theme.sectionLabel)
-                .foregroundColor(Theme.chrome)
-                .shadow(color: Theme.chrome.opacity(0.3), radius: 4)
+                .foregroundColor(Theme.electric)
+                .shadow(color: Theme.electric.opacity(0.3), radius: 4)
                 .tracking(2)
         }
     }
@@ -72,7 +72,7 @@ struct ChokeBadge: View {
                 )
                 .shadow(color: isOn ? Theme.sage.opacity(0.3) : .clear, radius: 4)
             Text(isOn ? "(cuts previous note)" : "(stacks)")
-                .font(.system(size: 12, design: .monospaced))
+                .font(Theme.mono)
                 .foregroundColor(Theme.text.opacity(0.5))
         }
         .font(Theme.mono)
@@ -97,8 +97,8 @@ struct PadInspectPanel: View {
         VStack(alignment: .leading, spacing: 0) {
             Text("INSPECT")
                 .font(Theme.sectionLabel)
-                .foregroundColor(Theme.chrome)
-                .shadow(color: Theme.chrome.opacity(0.3), radius: 6)
+                .foregroundColor(Theme.electric)
+                .shadow(color: Theme.electric.opacity(0.3), radius: 6)
                 .tracking(3)
                 .padding(.bottom, 6)
 
