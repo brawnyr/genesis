@@ -22,6 +22,32 @@ struct GHUD: View {
                 .tracking(3)
                 .padding(.bottom, 6)
 
+            // === BPM + BARS ===
+            HStack(alignment: .lastTextBaseline, spacing: 0) {
+                Text("\(engine.transport.bpm)")
+                    .font(Theme.hero)
+                    .foregroundColor(Theme.chrome)
+                    .shadow(color: Theme.chrome.opacity(0.3), radius: 8)
+                Text(" ")
+                Text("BPM")
+                    .font(Theme.monoSmall.bold())
+                    .foregroundColor(Theme.sage)
+                Spacer()
+                Text("\(engine.transport.barCount)")
+                    .font(Theme.hero)
+                    .foregroundColor(Theme.chrome)
+                    .shadow(color: Theme.chrome.opacity(0.3), radius: 8)
+                Text(" ")
+                Text("BAR")
+                    .font(Theme.monoSmall.bold())
+                    .foregroundColor(Theme.sage)
+            }
+            .padding(.bottom, 4)
+
+            // Thin rule
+            Rectangle().fill(Theme.separator).frame(height: 1)
+                .padding(.bottom, 6)
+
             // === VOLUME + dB ===
             HStack(alignment: .lastTextBaseline, spacing: 0) {
                 Text("VOL")

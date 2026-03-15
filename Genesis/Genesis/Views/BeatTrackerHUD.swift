@@ -1,5 +1,5 @@
 // Genesis/Genesis/Views/BeatTrackerHUD.swift
-// Centered floating HUD showing BPM, beat position, and loop state
+// Centered floating HUD showing beat position and loop state
 import SwiftUI
 
 struct BeatTrackerHUD: View {
@@ -17,28 +17,8 @@ struct BeatTrackerHUD: View {
         Double(engine.transport.loopLengthFrames) / Transport.sampleRate
     }
 
-    private var elapsedSeconds: Double {
-        Double(engine.transport.position) / Transport.sampleRate
-    }
-
     var body: some View {
-        HStack(spacing: 28) {
-            // BPM
-            HStack(alignment: .lastTextBaseline, spacing: 4) {
-                Text("\(engine.transport.bpm)")
-                    .font(Theme.hero)
-                    .foregroundColor(Theme.chrome)
-                    .shadow(color: Theme.chrome.opacity(0.3), radius: 8)
-                Text("BPM")
-                    .font(Theme.monoSmall.bold())
-                    .foregroundColor(Theme.sage)
-            }
-
-            // Divider
-            Rectangle()
-                .fill(Theme.separator)
-                .frame(width: 1, height: 36)
-
+        HStack(spacing: 20) {
             // Beat position
             if engine.transport.isPlaying {
                 HStack(alignment: .lastTextBaseline, spacing: 4) {
@@ -51,26 +31,10 @@ struct BeatTrackerHUD: View {
                         .foregroundColor(Theme.sage)
                 }
             } else {
-                Text("—")
-                    .font(Theme.hero)
-                    .foregroundColor(Theme.text.opacity(0.15))
-            }
-
-            // Divider
-            Rectangle()
-                .fill(Theme.separator)
-                .frame(width: 1, height: 36)
-
-            // Bars + loop length
-            HStack(alignment: .lastTextBaseline, spacing: 4) {
-                Text("\(engine.transport.barCount)")
-                    .font(Theme.hero)
-                    .foregroundColor(Theme.chrome)
-                    .shadow(color: Theme.chrome.opacity(0.3), radius: 8)
-                VStack(alignment: .leading, spacing: 1) {
-                    Text("BAR")
-                        .font(Theme.monoSmall.bold())
-                        .foregroundColor(Theme.sage)
+                HStack(alignment: .lastTextBaseline, spacing: 4) {
+                    Text("—")
+                        .font(Theme.hero)
+                        .foregroundColor(Theme.text.opacity(0.15))
                     Text(String(format: "%.1fs", loopSeconds))
                         .font(Theme.monoTiny)
                         .foregroundColor(Theme.text.opacity(0.3))
