@@ -19,6 +19,11 @@ final class ReverbProcessor {
     // Allpass coefficient
     private let allpassGain: Float = 0.5
 
+    // Tiny constant added to comb filter writes to prevent denormal floats.
+    // Without this, near-zero reverb tails produce subnormal values that
+    // tank CPU on x86 and waste cycles on ARM.
+    private let antiDenormal: Float = 1.0e-25
+
     // Delay line buffers — L
     private var combBuffersL: [[Float]]
     private var combIndexL: [Int]
@@ -61,7 +66,7 @@ final class ReverbProcessor {
             for c in 0..<Self.combDelays.count {
                 let idx = combIndexL[c]
                 let delayed = combBuffersL[c][idx]
-                combBuffersL[c][idx] = inL + delayed * combFeedback
+                combBuffersL[c][idx] = inL + delayed * combFeedback + antiDenormal
                 combIndexL[c] = (idx + 1) % Self.combDelays[c]
                 combOutL += delayed
             }
@@ -72,7 +77,7 @@ final class ReverbProcessor {
             for c in 0..<Self.combDelaysR.count {
                 let idx = combIndexR[c]
                 let delayed = combBuffersR[c][idx]
-                combBuffersR[c][idx] = inR + delayed * combFeedback
+                combBuffersR[c][idx] = inR + delayed * combFeedback + antiDenormal
                 combIndexR[c] = (idx + 1) % Self.combDelaysR[c]
                 combOutR += delayed
             }
