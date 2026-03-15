@@ -78,7 +78,7 @@ extension GenesisEngine {
             setMasterVolume(Float(value) / 127.0)
         case 74: // Reverb send (knob 1)
             audio.layers[audio.activePadIndex].reverbSend = Float(value) / 127.0
-        case 85: // Pad volume (CC 85)
+        case 83: // Pad volume (MiniLab fader 2)
             audio.layers[audio.activePadIndex].volume = Float(value) / 127.0
         case 71: // Pan (knob 2)
             audio.layers[audio.activePadIndex].pan = Float(value) / 127.0
@@ -92,7 +92,7 @@ extension GenesisEngine {
             } else if value >= 65 && value <= 127 {
                 audio.activePadIndex = max(audio.activePadIndex - 1, 0)
             }
-        case 83: // Metronome volume (MiniLab fader 2)
+        case 85: // Metronome volume (CC 85)
             audio.metronomeVolume = Float(value) / 127.0
         case 18: // Swing (knob 5)
             audio.layers[audio.activePadIndex].swing = 0.5 + (Float(value) / 127.0) * 0.5
