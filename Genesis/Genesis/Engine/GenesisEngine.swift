@@ -50,7 +50,7 @@ class GenesisEngine: ObservableObject {
             os_unfair_lock_unlock(&audioLock)
         }
     }
-    @Published var velocityMode: VelocityMode = .pressure
+    @Published var velocityMode: VelocityMode = .full
     var interpreter: EngineEventInterpreter?
 
     // MARK: - Audio thread state (never touch @Published from here)
