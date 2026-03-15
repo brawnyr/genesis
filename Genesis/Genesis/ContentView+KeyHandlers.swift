@@ -24,6 +24,8 @@ extension ContentView {
         static let escape: UInt16 = 53
         static let upArrow: UInt16 = 126
         static let downArrow: UInt16 = 125
+        static let leftArrow: UInt16 = 123
+        static let rightArrow: UInt16 = 124
         static let leftBracket: UInt16 = 33
         static let rightBracket: UInt16 = 30
 
@@ -226,10 +228,10 @@ extension ContentView {
                     interpreter.appendLine("browse → \(name)", kind: .browse)
                 }
             }
-        case Key.a:
+        case Key.a, Key.leftArrow:
             engine.activePadIndex = (engine.activePadIndex - 1 + PadBank.padCount) % PadBank.padCount
             interpreter.appendLine("pad \(engine.activePadIndex + 1) → \(padName(engine.activePadIndex))", kind: .state)
-        case Key.d:
+        case Key.d, Key.rightArrow:
             engine.activePadIndex = (engine.activePadIndex + 1) % PadBank.padCount
             interpreter.appendLine("pad \(engine.activePadIndex + 1) → \(padName(engine.activePadIndex))", kind: .state)
         case Key.q:
