@@ -67,14 +67,23 @@ struct ContentView: View {
                     HotkeyHUD()
 
                     // Terminal
-                    TerminalTextLayer(interpreter: interpreter, engine: engine)
-                        .frame(maxWidth: .infinity, maxHeight: .infinity)
-                        .background(Theme.canvasBg)
+                    ZStack {
+                        TerminalTextLayer(interpreter: interpreter, engine: engine)
+                            .frame(maxWidth: .infinity, maxHeight: .infinity)
+                            .background(Theme.canvasBg)
 
-                    // Bottom bar: transport + pads
+                        // BEAT_TRACKER_HUD — centered floating overlay
+                        VStack {
+                            Spacer()
+                            BeatTrackerHUD(engine: engine)
+                                .padding(.bottom, 12)
+                        }
+                    }
+
+                    // Bottom bar: master + pads
                     HStack(spacing: 0) {
                         GHUD(engine: engine)
-                            .frame(width: 420)
+                            .frame(width: 320)
 
                         PadSelect(engine: engine)
                             .frame(maxWidth: .infinity)

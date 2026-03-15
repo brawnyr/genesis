@@ -1,5 +1,5 @@
 // Genesis/Genesis/Views/PadSelect.swift
-// MGS2-style horizontal wheel pad selector — all 8 visible, spin to select
+// All 8 pads visible with volumes and effects at all times
 import SwiftUI
 
 struct PadSelect: View {
@@ -13,133 +13,126 @@ struct PadSelect: View {
                 .shadow(color: Theme.terracotta.opacity(0.3), radius: 4)
                 .padding(.horizontal, 10)
                 .padding(.top, 6)
-                .padding(.bottom, 2)
+                .padding(.bottom, 4)
 
-            GeometryReader { geo in
-                let totalWidth = geo.size.width
-                let active = engine.activePadIndex
+            HStack(spacing: 2) {
+                ForEach(0..<PadBank.padCount, id: \.self) { padIdx in
+                    let layer = engine.layers[padIdx]
+                    let isActive = padIdx == engine.activePadIndex
+                    let padColor = Theme.padColor(padIdx)
+                    let name = PadBank.spliceFolderNames[padIdx].uppercased()
 
-                HStack(spacing: 0) {
-                    ForEach(0..<PadBank.padCount, id: \.self) { padIdx in
-                        let wheel = wheelWeight(for: padIdx, active: active)
-                        let layer = engine.layers[padIdx]
-                        let isActive = padIdx == active
-                        let padColor = Theme.padColor(padIdx)
-                        let name = PadBank.spliceFolderNames[padIdx].uppercased()
-
-                        PadWheelItem(
-                            name: name,
-                            padColor: padColor,
-                            layer: layer,
-                            isActive: isActive,
-                            wheel: wheel
-                        )
-                        .frame(width: slotWidth(for: padIdx, active: active, totalWidth: totalWidth))
-                        .frame(maxHeight: .infinity)
-                        .contentShape(Rectangle())
-                        .onTapGesture {
-                            engine.activePadIndex = padIdx
-                        }
+                    PadCell(
+                        name: name,
+                        padColor: padColor,
+                        layer: layer,
+                        isActive: isActive,
+                        hasSample: engine.padBank.pads[padIdx].sample != nil
+                    )
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    .contentShape(Rectangle())
+                    .onTapGesture {
+                        engine.activePadIndex = padIdx
                     }
                 }
             }
         }
-        .animation(.spring(response: 0.3, dampingFraction: 0.75), value: engine.activePadIndex)
-    }
-
-    // MARK: - Wheel math
-
-    /// 0.0 = far from selected, 1.0 = selected
-    private func wheelWeight(for padIdx: Int, active: Int) -> Double {
-        var diff = abs(padIdx - active)
-        if diff > PadBank.padCount / 2 { diff = PadBank.padCount - diff }
-        switch diff {
-        case 0: return 1.0
-        case 1: return 0.6
-        case 2: return 0.35
-        case 3: return 0.2
-        default: return 0.15
-        }
-    }
-
-    /// Active pad gets more space, others compress
-    private func slotWidth(for padIdx: Int, active: Int, totalWidth: CGFloat) -> CGFloat {
-        var diff = abs(padIdx - active)
-        if diff > PadBank.padCount / 2 { diff = PadBank.padCount - diff }
-
-        // Weight: active=3.0, adjacent=1.5, others=1.0
-        let weight: CGFloat
-        switch diff {
-        case 0: weight = 3.0
-        case 1: weight = 1.5
-        default: weight = 1.0
-        }
-
-        // Total weights for all 8 pads
-        let totalWeight: CGFloat = 3.0 + (1.5 * 2) + (1.0 * 5)
-        return totalWidth * weight / totalWeight
+        .animation(.spring(response: 0.25, dampingFraction: 0.8), value: engine.activePadIndex)
     }
 }
 
-// MARK: - Single pad on the wheel
+// MARK: - Single pad cell — always shows volume + effects
 
-private struct PadWheelItem: View {
+private struct PadCell: View {
     let name: String
     let padColor: Color
     let layer: Layer
     let isActive: Bool
-    let wheel: Double
+    let hasSample: Bool
 
     var body: some View {
-        VStack(spacing: 4) {
+        VStack(spacing: 3) {
             // Pad name
             Text(name)
-                .font(.system(size: isActive ? 24 : max(11, 11 + 6 * wheel), design: .monospaced).bold())
-                .foregroundColor(padColor.opacity(0.3 + 0.7 * wheel))
-                .shadow(color: padColor.opacity(isActive ? 0.5 : 0.1 * wheel), radius: isActive ? 10 : 3)
+                .font(.system(size: isActive ? 16 : 11, design: .monospaced).bold())
+                .foregroundColor(layer.isMuted ? Theme.subtle : padColor)
+                .shadow(color: isActive ? padColor.opacity(0.5) : .clear, radius: 6)
 
-            if isActive {
-                // Volume
-                Text("\(Int(layer.volume * 100))% volume")
-                    .font(.system(size: 14, design: .monospaced).bold())
-                    .foregroundColor(layer.isMuted ? Theme.moss : Theme.text)
-
-                HStack(spacing: 6) {
-                    if layer.isMuted {
-                        Text("MUTE")
-                            .font(.system(size: 11, design: .monospaced).bold())
-                            .foregroundColor(Theme.clay)
-                            .shadow(color: Theme.clay.opacity(0.3), radius: 4)
-                    }
-
-                    if !layer.hits.isEmpty {
-                        Text("\(layer.hits.count) hits")
-                            .font(.system(size: 11, design: .monospaced))
-                            .foregroundColor(padColor.opacity(0.5))
-                    }
+            // Volume bar
+            GeometryReader { geo in
+                let barH = geo.size.height
+                let fillH = barH * CGFloat(layer.volume)
+                ZStack(alignment: .bottom) {
+                    RoundedRectangle(cornerRadius: 2)
+                        .fill(Theme.subtle.opacity(0.4))
+                    RoundedRectangle(cornerRadius: 2)
+                        .fill(layer.isMuted ? Theme.subtle : padColor.opacity(0.6))
+                        .frame(height: fillH)
                 }
+            }
+            .frame(width: isActive ? 14 : 8, height: 40)
 
-                if !layer.statusLine.isEmpty {
-                    Text(layer.statusLine)
-                        .font(.system(size: 10, design: .monospaced))
-                        .foregroundColor(Theme.text.opacity(0.35))
-                        .lineLimit(1)
+            // Volume %
+            Text("\(Int(layer.volume * 100))")
+                .font(.system(size: 10, design: .monospaced))
+                .foregroundColor(Theme.text.opacity(0.5))
+
+            // Effects indicators
+            HStack(spacing: 2) {
+                if layer.isMuted {
+                    EffectDot(color: Theme.clay, label: "M")
                 }
-            } else if wheel > 0.4 {
-                // Adjacent pads — show volume small
-                Text("\(Int(layer.volume * 100))% volume")
-                    .font(.system(size: 10, design: .monospaced))
-                    .foregroundColor(Theme.text.opacity(0.25))
+                if layer.choke {
+                    EffectDot(color: Theme.wheat, label: "C")
+                }
+                if layer.looper {
+                    EffectDot(color: Theme.forest, label: "L")
+                }
+            }
+
+            HStack(spacing: 2) {
+                if layer.reverbSend > 0.01 {
+                    EffectDot(color: Theme.sage, label: "R")
+                }
+                if layer.swing > 0.51 {
+                    EffectDot(color: Theme.moss, label: "S")
+                }
+                if layer.hpCutoff > 21 || layer.lpCutoff < 19999 {
+                    EffectDot(color: Theme.terracotta, label: "F")
+                }
+            }
+
+            // Hit count
+            if !layer.hits.isEmpty {
+                Text("\(layer.hits.count)")
+                    .font(.system(size: 9, design: .monospaced))
+                    .foregroundColor(padColor.opacity(0.4))
             }
         }
-        .padding(.vertical, 8)
+        .padding(.vertical, 6)
+        .padding(.horizontal, 2)
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .background(
-            isActive
-                ? RoundedRectangle(cornerRadius: 4)
-                    .fill(padColor.opacity(0.06))
-                    .shadow(color: padColor.opacity(0.12), radius: 8)
-                : nil
+            RoundedRectangle(cornerRadius: 4)
+                .fill(isActive ? padColor.opacity(0.08) : Color.clear)
+                .shadow(color: isActive ? padColor.opacity(0.15) : .clear, radius: 6)
         )
+        .overlay(
+            RoundedRectangle(cornerRadius: 4)
+                .stroke(isActive ? padColor.opacity(0.3) : Color.clear, lineWidth: 1)
+        )
+    }
+}
+
+private struct EffectDot: View {
+    let color: Color
+    let label: String
+
+    var body: some View {
+        Text(label)
+            .font(.system(size: 8, design: .monospaced).bold())
+            .foregroundColor(color)
+            .frame(width: 12, height: 12)
+            .background(Circle().fill(color.opacity(0.15)))
     }
 }
