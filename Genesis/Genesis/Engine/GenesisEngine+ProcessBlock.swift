@@ -96,6 +96,8 @@ extension GenesisEngine {
             audio.metronomeVolume = Float(value) / 127.0
         case 18: // Swing (knob 5)
             audio.layers[audio.activePadIndex].swing = 0.5 + (Float(value) / 127.0) * 0.5
+        case 17: // Fader 4 — kill all voices
+            voicePool.killAll()
         default:
             DispatchQueue.main.async { [weak self] in
                 self?.interpreter?.appendLine("CC \(number) = \(value)", kind: .system)
