@@ -147,7 +147,7 @@ struct HotkeyHUD: View {
 
                 // Sound — forest
                 HotkeyGroup(color: Theme.forest, items: [
-                    ("NUM0-9", "vol"), ("P", "velocity"),
+                    ("NUM0-9", "vol"), ("V", "velocity"),
                     ("M", "metro"), ("T", "looper"),
                 ])
 

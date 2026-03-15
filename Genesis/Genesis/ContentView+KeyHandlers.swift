@@ -278,7 +278,7 @@ extension ContentView {
         case Key.y:
             engine.cycleBarCount(forward: true)
             interpreter.appendLine("bars → \(engine.transport.barCount)", kind: .transport)
-        case Key.p:
+        case 9: // V key
             engine.cycleVelocityMode()
             interpreter.appendLine("velocity → \(engine.velocityMode.rawValue)", kind: .state)
         case Key.z:
