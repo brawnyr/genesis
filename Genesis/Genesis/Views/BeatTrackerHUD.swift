@@ -41,27 +41,6 @@ struct BeatTrackerHUD: View {
                 }
             }
 
-            // Status dots
-            HStack(spacing: 6) {
-                if engine.transport.isPlaying {
-                    Circle()
-                        .fill(Theme.forest)
-                        .frame(width: 10, height: 10)
-                        .shadow(color: Theme.forest.opacity(0.5), radius: 5)
-                }
-                if engine.capture.state == .on {
-                    Circle()
-                        .fill(Theme.clay)
-                        .frame(width: 10, height: 10)
-                        .shadow(color: Theme.clay.opacity(0.5), radius: 5)
-                }
-                if engine.metronome.isOn {
-                    Circle()
-                        .fill(Theme.terracotta)
-                        .frame(width: 10, height: 10)
-                        .shadow(color: Theme.terracotta.opacity(0.4), radius: 5)
-                }
-            }
         }
         .padding(.horizontal, 24)
         .padding(.vertical, 12)
